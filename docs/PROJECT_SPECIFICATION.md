@@ -1,8 +1,8 @@
 # AtlasShare — Product Specification
 
-Status: **agreed direction, Phase 3 implemented and awaiting approval.**
-Requirements here are the target for the whole build. Each phase implements a
-slice; see `DEVELOPMENT_PLAN.md` and `PROGRESS.md`.
+Status: **agreed direction, Phase 3 implemented and approved.** Requirements
+here are the target for the whole build. Each phase implements a slice; see
+`DEVELOPMENT_PLAN.md` and `PROGRESS.md`.
 
 ## 1. One-sentence product
 
@@ -92,8 +92,8 @@ both is a comprehensive-dataset decision, not a political endorsement.
   indicator.
 - **FR-M6** The initial release stores only visited/unvisited state. Notes and
   visit dates are out of scope (D2).
-- **FR-M7** The map is usable on a phone (pan/zoom or a list-first fallback) and
-  never causes page-level horizontal scroll.
+- **FR-M7** The map is usable on a phone (map first, with the full list below)
+  and never causes page-level horizontal scroll.
 - **FR-M8** Empty state explains the first action without a modal wall.
 - **FR-M9** The map renders correctly with zero visited countries.
 

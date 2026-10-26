@@ -5,8 +5,8 @@
 Mark the countries you have visited on a personal world map, then combine your
 map with the people you travel with.
 
-> **Project status: Phase 3 of 8 complete and awaiting approval — personal
-> country map.**
+> **Project status: Phase 3 of 8 complete and approved — personal country
+> map.**
 > You can create an account, sign in/out, reset a password, manage account
 > settings, and mark visited countries on a private 250-unit world map. There is
 > still no sharing and no image export. See [`docs/PROGRESS.md`](docs/PROGRESS.md)

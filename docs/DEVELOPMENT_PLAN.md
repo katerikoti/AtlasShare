@@ -1,8 +1,7 @@
 # AtlasShare — Development Plan
 
-Status: **Phase 3 implemented and awaiting approval.** Phases 1–2 are approved;
-Phase 3 is complete in code, tests, and docs. Later phases are scoped but not
-started.
+Status: **Phase 3 approved (2026-10-26).** Phases 1–3 are complete; Phase 4 is
+scoped but not started.
 
 ## How phases work
 
@@ -64,7 +63,7 @@ PWA, deployment.
 
 ---
 
-## Phase 2 — Accounts and authentication ✅ (implemented, awaiting approval)
+## Phase 2 — Accounts and authentication ✅ (approved 2026-10-26)
 
 **Goal:** a real account system backed by Postgres, with a usable settings page
 and working transactional email.
@@ -123,7 +122,7 @@ remain before deployment.
 
 ---
 
-## Phase 3 — Country dataset and personal map (implemented; approval pending)
+## Phase 3 — Country dataset and personal map ✅ (approved 2026-10-26)
 
 **Goal:** the core product moment — mark countries and see your map.
 

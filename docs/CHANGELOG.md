@@ -22,8 +22,9 @@ Notable changes, newest first. This project follows a phase-based plan; see
 - `setVisitedCountryAction` and user-scoped persistence in
   `src/server/actions/visits.ts` / `src/server/visits.ts`; optimistic mark/unmark
   with rollback on failure.
-- Mobile-first list-first fallback (`order-first lg:order-none`) with no pan/zoom
-  dependency; map and list side by side from `lg`.
+- Mobile-first map-first layout with no pan/zoom dependency; the country list
+  follows the map on narrow screens, and map and list are side by side from
+  `lg`.
 - Local DB integration tests for idempotent set/remove and two-user isolation;
   dataset, action authorization/validation, and map component tests.
 - `data:countries` script and exact `@svg-maps/world` dependency pin.
@@ -49,7 +50,7 @@ Notable changes, newest first. This project follows a phase-based plan; see
 - Browser QA with a signed-in production session: 250 SVG paths, 250 list rows,
   search (`japan` → 1 of 250), mark/unmark count updates, persistence across
   reload, and user isolation (integration test).
-- Layout measured at 320, 390, 1200, and 1280 px: no horizontal overflow; list
+- Layout measured at 320, 390, 1200, and 1280 px: no horizontal overflow; map
   first below `lg`; map/list side by side above it.
 - Dataset generation repeated with identical output; 250 unique units, unique
   names, complete paths, separate `PS`/`IL`.

@@ -1,6 +1,6 @@
 # AtlasShare — Testing
 
-Status: **Phase 3 implementation complete, pending owner approval (2026-10-26).**
+Status: **Phase 3 complete and approved (2026-10-26).**
 64 automated tests in 12 files. Database persistence, auth, map layout, and
 browser behavior were also checked manually; the exact pass/blocked/not-run
 state is below. Results are from 2026-10-26 on macOS, Node 24.13.1, npm 11.8.0,
@@ -204,11 +204,13 @@ and compare hashes when changing the generator.
   and the value persisted across a reload. The smoke user was removed afterward.
 - At 1200 px the map and list render side by side (equal top position; map ~488
   px, list ~304 px) with no horizontal overflow.
-- At 320 px and 390 px the list is first, the map follows, and
-  `document.documentElement.scrollWidth` equals the viewport (no horizontal
-  scrolling) after adding `grid-cols-1`/`min-w-0`. Map card widths were 272 px at
-  320 and 342 px at 390. This fixed a real pre-release overflow: the grid's
-  intrinsic item width had expanded the page to 463 px on narrow screens.
+- At 320 px and 390 px the map is first (top 711/603 px), the country list
+  follows (top 1183/1091 px), and `document.documentElement.scrollWidth` equals
+  the viewport (no horizontal scrolling) after adding `grid-cols-1`/`min-w-0`.
+  Map card widths were 272 px at 320 and 342 px at 390. This fixed a real
+  pre-release overflow: the grid's intrinsic item width had expanded the page to
+  463 px on narrow screens. The initial list-first CSS override was removed
+  after owner review because the map must stay above the list.
 - Search for `japan` showed `1 of 250`; marking Japan updated the count to `2 of
   250`, persisted across reload, and unmarking returned it to `1 of 250`.
 - Server-side integration tests prove two users' visits stay isolated. A
@@ -221,9 +223,9 @@ and compare hashes when changing the generator.
   effect, not a map defect. The in-app browser pane has the same hidden-tab
   limitation.
 - Client auth forms now use `method="post"` so a failed JavaScript boot cannot
-  put a password into the URL. Production sign-in remained functional after the
-  change; sign-up was not repeated in the browser (it shares the same form
-  behavior and the auth flow is covered by the Phase 2 checks).
+  put a password into the URL. Production sign-in and sign-up both remained
+  functional after the change; a fresh QA account was created through the UI and
+  deleted afterward.
 
 ### 5.4 Phase 3 not run or not covered
 
@@ -354,7 +356,7 @@ Phase 3:
 
 - [x] Map loads 250 paths and the 250-row list with a real signed-in session.
 - [x] Desktop map/list layout at 1200 px; no horizontal overflow.
-- [x] Layout at 320/390 px: list first, map follows, no horizontal overflow.
+- [x] Layout at 320/390 px: map first, list follows, no horizontal overflow.
 - [x] Search filters the list; marking and unmarking updates the count.
 - [x] Autosave survives reload; the database holds the desired state.
 - [x] Two users' visits stay isolated (automated integration test).

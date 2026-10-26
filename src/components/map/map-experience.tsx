@@ -333,7 +333,7 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
 
         <section
           aria-labelledby="country-list-heading"
-          className="order-first min-w-0 rounded-card border border-line/80 bg-surface/80 p-4 shadow-soft sm:p-5 lg:order-none lg:sticky lg:top-6"
+          className="min-w-0 rounded-card border border-line/80 bg-surface/80 p-4 shadow-soft sm:p-5 lg:sticky lg:top-6"
         >
           <div>
             <h2

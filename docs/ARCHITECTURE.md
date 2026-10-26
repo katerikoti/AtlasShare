@@ -1,7 +1,7 @@
 # AtlasShare — Architecture
 
-Status: **Phase 3 (country dataset and personal map) is implemented, pending
-approval.** Shared maps, export, and PWA functionality are still planned.
+Status: **Phase 3 (country dataset and personal map) is implemented and
+approved.** Shared maps, export, and PWA functionality are still planned.
 Anything marked _planned_ does not exist in the codebase yet. See
 [`PROGRESS.md`](./PROGRESS.md) for what is actually built.
 
@@ -269,17 +269,17 @@ Identifier rules:
 - Interaction model: click/tap toggles a country; the searchable country list
   provides the keyboard- and screen-reader-friendly path to the same action.
   Both routes call the same Server Action and use optimistic state with rollback.
-- On narrow screens the page uses a **list-first fallback**: the country list is
-  ordered before the map, with no pan/zoom dependency. From `lg` upward the map
-  and list sit side by side. There is no pan/zoom implementation.
+- On narrow screens the map comes first, followed by the country list, with no
+  pan/zoom dependency. From `lg` upward the map and list sit side by side. There
+  is no pan/zoom implementation.
 - The asset is ~1.2 MB raw and ~400 KB compressed in local production, served
   with ETag revalidation. It contains only public geometry, never visit data.
 - The map route shows a server-rendered count and progress, a Suspense skeleton
   while the user's visits load, and a route error boundary; no private data is
   rendered in the fallback.
 - Performance budget: geometry is cached/compressible static data, not a JS
-  bundle string. The country list can be scrolled without loading the map image
-  first; the map is a visual aid, not the only input path.
+  bundle string. The country list remains usable while the map geometry loads
+  or if it fails; the map is a visual aid, not the only input path.
 
 ### 7.3 Counting
 
@@ -393,8 +393,8 @@ for local Postgres.
   `src/config/brand.test.ts`; non-text map borders are checked at 3:1. The map
   always has a non-visual equivalent (list + search). Focus is visible and
   never trapped. Motion respects `prefers-reduced-motion`.
-- **Responsiveness**: mobile-first. On narrow screens the country list comes
-  first and the map follows; no pan/zoom is required. Page chrome and the map
+- **Responsiveness**: mobile-first. On narrow screens the map comes first and
+  the country list follows; no pan/zoom is required. Page chrome and the map
   card never cause horizontal scrolling at 320 px (verified in a browser).
 - **Performance**: map route interactive quickly on a mid-range phone; geometry
   is compressible static data (~1.2 MB raw, ~400 KB compressed locally) and is

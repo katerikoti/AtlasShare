@@ -1,9 +1,8 @@
 # AtlasShare — Progress
 
-**Current phase:** Phase 3 — Country dataset and personal map (implementation
-complete, **awaiting approval**).
-**Status:** Phase 3 is built, verified, and documented. It is not approved yet;
-Phase 4 has not started.
+**Current phase:** Phase 3 — Country dataset and personal map (**approved
+2026-10-26**).
+**Status:** Phase 3 is built, verified, and documented. Phase 4 has not started.
 **Last updated:** 2026-10-26.
 
 This is the first file to read when resuming work. It reflects what is actually
@@ -15,8 +14,8 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | --- | --- | --- |
 | 1. Foundation & planning | ✅ Complete (approved) | Runnable branded skeleton + full docs. Commit `ad7746c`. |
 | 2. Accounts & authentication | ✅ Complete (approved 2026-10-26) | Auth, settings, reset, email plumbing, first migration. |
-| 3. Country dataset & personal map | ✅ Complete (implementation; approval pending) | 250-unit dataset, private map, visited toggle, integration tests, browser QA. |
-| 4. Shared maps | ⛔ Not started — gated | Schema exists; no UI or actions. Needs Phase 3 approval. |
+| 3. Country dataset & personal map | ✅ Complete (approved 2026-10-26) | 250-unit dataset, private map, visited toggle, integration tests, browser QA. |
+| 4. Shared maps | ⛔ Not started | Schema exists; no UI or actions. Awaiting the go-ahead. |
 | 5. Insights & filters | ⛔ Not started | D2 resolved: no notes/dates; filters/stats only. |
 | 6. Image export | ⛔ Not started | — |
 | 7. Public site & PWA | ⛔ Not started | — |
@@ -46,9 +45,9 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   codes outside the dataset; reads/writes are scoped to the session user.
 - The client updates optimistically and rolls back with an error message when
   the Server Action fails. Counts are server-rendered initially.
-- Narrow screens use a **list-first fallback** (list ordered before the map) and
-  no pan/zoom dependency. From `lg` upward the map and list are side by side.
-  At 320/390 px there is no horizontal overflow; this was fixed after finding an
+- Narrow screens show the map first, with the country list below, and no
+  pan/zoom dependency. From `lg` upward the map and list are side by side. At
+  320/390 px there is no horizontal overflow; this was fixed after finding an
   intrinsic grid width of 463 px (`grid-cols-1` + `min-w-0`).
 - Four client auth forms now use `method="post"` so a failed JavaScript boot
   cannot put a password into the URL.
@@ -142,8 +141,8 @@ Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
 | User isolation | integration test | ✅ two users' visits remain separate |
 | Unauthenticated access | `curl` without cookie | ✅ `/map` and `/account` return 307 to `/sign-in` |
 | Desktop layout | Chrome 1200 px | ✅ map and list side by side; no horizontal overflow |
-| Mobile layout | Chrome 320/390 px | ✅ list first, map follows; no horizontal overflow after `grid-cols-1`/`min-w-0` fix |
-| Auth after form change | production browser | ✅ sign-in works with `method="post"`; sign-up not repeated |
+| Mobile layout | Chrome 320/390 px | ✅ map first, list follows (map top 711/603 px vs list 1183/1091 px); no horizontal overflow after `grid-cols-1`/`min-w-0` fix |
+| Auth after form change | production browser | ✅ sign-in and sign-up work with `method="post"` |
 | Phase 2 auth/email | prior verification | ✅ see `docs/TESTING.md` §6; not all checks repeated |
 | Migration | schema review | ✅ no schema change or new migration in Phase 3; Phase 2 migration remains the source |
 | Geometry error/offline | manual | ⬜ not browser-tested |
@@ -156,7 +155,10 @@ Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
 - **Narrow-screen horizontal overflow.** The map/list grid used auto columns;
   intrinsic content forced both cards to 439 px and the document to 463 px at a
   320 px viewport. Added `grid-cols-1` and `min-w-0` to the grid and cards. At
-  320/390 px the page now equals the viewport width and the list stays first.
+  320/390 px the page now equals the viewport width.
+- **Map/list order.** The list had an `order-first` class on narrow screens,
+  putting countries above the map. The owner asked for the map on top. Removed
+  the order override: the map is first, the country list follows.
 - **Password leakage without JavaScript.** Client auth forms could fall back to
   a GET submission and put the password in the query string. Added
   `method="post"` to sign-in, sign-up, forgot-password, and reset-password
@@ -253,22 +255,23 @@ Full records in ADR-024, ADR-025, and §5.
 
 | Item | Status | Needed for |
 | --- | --- | --- |
-| Phase 3 owner approval | pending | Starting Phase 4 |
+| Phase 4 go-ahead | not given | Starting Phase 4 |
 | Neon dev branch + connection strings | connected; Phase 2 migration applied | Deployment verification |
 | Brevo account + verified sender | configured; test delivered/opened | Reset-email validation |
 | Brevo production domain authentication | optional; not configured | Better deliverability in Phase 8 |
 | Approval to push to `origin` | not given | Sharing the repository |
 | Domain name (optional) | undecided | Phase 8 |
 
-No technical blocker remains in Phase 3. No credentials are committed;
-`.env.example` documents the expected variables.
+Phase 3 is approved. No technical blocker remains; Phase 4 awaits explicit
+go-ahead. No credentials are committed; `.env.example` documents the expected
+variables.
 
 ## 7. Repository state
 
 - Local git repository on `main`. Phase 1 is `ad7746c`; Phase 2 is `3065b2f`;
   the Phase 2 documentation commit is `6ae3b7c`.
-- Phase 3 changes are committed locally in the final Phase 3 commit; run
-  `git log -1 --oneline` for the exact hash. **Not pushed** — pushing needs
+- Phase 3 is committed locally in `0abebaf` plus the map-order follow-up; run
+  `git log --oneline` for the exact history. **Not pushed** — pushing needs
   explicit approval.
 - Remote `origin` = `https://github.com/katerikoti/AtlasShare.git`.
 - `gh` CLI is not installed; git credentials are cached.
@@ -279,7 +282,7 @@ No technical blocker remains in Phase 3. No credentials are committed;
 
 ## 8. Next steps
 
-1. Obtain explicit Phase 3 approval. Do not start Phase 4 before it.
+1. Phase 3 is approved. Do not start Phase 4 without a fresh go-ahead.
 2. Push only with explicit permission.
 3. Before Phase 4, decide whether to keep the reserved `note` /
    `firstVisitedAt` columns for future use or remove them in a migration.
@@ -303,8 +306,8 @@ No technical blocker remains in Phase 3. No credentials are committed;
 - **Antarctica uses an approximate projection** from Natural Earth 1:10m; the
   left edge is slightly clipped by the `0 0 1010 760` viewBox. It is a visual
   outline, not a survey boundary.
-- **No pan/zoom.** Narrow screens deliberately use the list-first fallback; the
-  map is a visual shortcut, not the only input.
+- **No pan/zoom.** Narrow screens show the map first and the list below; the map
+  is a visual shortcut, not the only input.
 - **Email delivery is verified through Brevo**, but visual rendering and the
   password-reset message through the app still need a human check. The welcome
   message is not retried for users who signed up while email was disabled.
