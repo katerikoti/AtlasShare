@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                 String                @id
+  name               String
+  email              String
+  emailVerified      Boolean               @default(false)
+  image              String?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  welcomeEmailSentAt DateTime?
+  sessions           Session[]
+  accounts           Account[]
+  visits             VisitedCountry[]
+  ownedMaps          SharedMap[]           @relation("OwnedMaps")
+  mapMemberships     SharedMapMember[]     @relation("MapMemberships")
+  sentInvitations    SharedMapInvitation[] @relation("SentInvitations")
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+enum SharedMapRole {
+  OWNER
+  MEMBER
+}
+
+/// A user's private visit. Country codes are ISO 3166-1 alpha-2, validated
+/// against the committed dataset before insert (Kosovo is `XK`).
+model VisitedCountry {
+  id             String    @id @default(cuid())
+  userId         String
+  countryCode    String    @db.Char(2)
+  firstVisitedAt DateTime? @db.Date
+  note           String?   @db.VarChar(280)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, countryCode])
+  @@index([countryCode])
+  @@map("visited_countries")
+}
+
+model SharedMap {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(80)
+  description String?  @db.VarChar(280)
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       User                  @relation("OwnedMaps", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     SharedMapMember[]
+  invitations SharedMapInvitation[]
+
+  @@index([ownerId])
+  @@map("shared_maps")
+}
+
+model SharedMapMember {
+  id       String        @id @default(cuid())
+  mapId    String
+  userId   String
+  role     SharedMapRole @default(MEMBER)
+  joinedAt DateTime      @default(now())
+
+  map  SharedMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  user User      @relation("MapMemberships", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([mapId, userId])
+  @@index([userId])
+  @@map("shared_map_members")
+}
+
+model SharedMapInvitation {
+  id          String        @id @default(cuid())
+  mapId       String
+  email       String        @db.VarChar(320)
+  tokenHash   String        @unique
+  role        SharedMapRole @default(MEMBER)
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime      @default(now())
+
+  map       SharedMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([mapId, email])
+  @@index([expiresAt])
+  @@map("shared_map_invitations")
+}

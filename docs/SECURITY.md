@@ -1,18 +1,18 @@
 # AtlasShare — Security
 
-Status: **policy for the whole project; nothing beyond the Phase 1 foundation is
-implemented yet.** This document states the rules that every phase must satisfy.
-Deviations require an explicit decision in `DECISIONS.md`.
+Status: **Phase 2 auth and account management are implemented.** This document
+states the rules that every phase must satisfy. Deviations require an explicit
+decision in `DECISIONS.md`.
 
 ## 1. Assets
 
 | Asset | Why it matters | Where it lives |
 | --- | --- | --- |
 | Account credentials and sessions | Account takeover exposes all travel data | Better Auth tables, cookies |
-| A user's visited countries, notes, dates | Personal travel history; can reveal habits | `visited_countries` |
+| A user's visited countries | Personal travel history; can reveal habits | `visited_countries` |
 | Shared map membership and invitations | Unauthorized access to other people's data | `shared_maps*` tables |
 | Email addresses | PII, phishing/spam target | `user.email`, invitation email |
-| Secrets (DB URL, auth secret, Resend key) | Full compromise | Environment variables only |
+| Secrets (DB URL, auth secret, Brevo key) | Full compromise | Environment variables only |
 | Invitation tokens | Grant access to a shared map | Emailed/copied link; hash in DB |
 
 Explicit non-assets: there is no payment data, no precise location, no address
@@ -25,7 +25,7 @@ untrusted: browser, URL, form fields, headers, invitation links, uploaded/import
 ──────────────────────────────────────────────────────────────────────────────
 trusted:   Next.js server runtime, Server Actions, route handlers, Prisma, Neon
 ──────────────────────────────────────────────────────────────────────────────
-external:  Resend (receives email address + message content only)
+external:  Brevo (receives email address + message content only)
 ```
 
 Rules:
@@ -44,19 +44,34 @@ Rules:
 - Email + password is the first provider. OAuth may be added later; it must link
   accounts by verified email only.
 - Passwords are hashed by Better Auth (scrypt by default). We never see or log
-  plaintext passwords. Minimum length 8–12 (final value set in Phase 2) and a
-  breached-password check if it can be done without shipping a huge list.
+  plaintext passwords. The implemented policy is **12–128 characters**; no
+  breached-password list is shipped yet.
 - Sessions: HTTP-only, `Secure` in production, `SameSite=Lax`, path `/`,
-  reasonable lifetime (e.g. 30 days) with rolling refresh.
+  30-day lifetime with a one-day rolling update. Session data is not duplicated
+  in a cache cookie, so revocation takes effect on the next request.
 - Sign-out invalidates the server session, not just the cookie.
+- Changing a password revokes **all** sessions, including the current one, and
+  redirects to sign-in. This avoids a session-rotation race and guarantees other
+  devices are signed out.
 - **Email verification is not enforced initially.** Accepted risk: typo'd or
   fake addresses. Mitigations: password reset and invitations prove control of
   the address; a verified-email requirement can be enabled later without a
   schema change. Revisit before public launch.
-- Password reset uses Better Auth's verification flow with single-use,
-  time-limited tokens. The response is identical whether or not the email
-  exists (no account enumeration).
-- Sign-in and sign-up errors are generic: "Email or password is incorrect."
+- Password reset uses Better Auth's verification flow: a single-use token with a
+  one-hour lifetime; success revokes sessions; the request response is identical
+  whether or not the email exists.
+- **Known deviation:** Better Auth 1.7.12 stores the password-reset token inside
+  `verification.identifier` (`reset-password:<token>`) rather than hashing it.
+  Accepted for now because it is single-use and short-lived; a custom reset flow
+  would be required to hash it at rest. Invitation tokens remain hashed by
+  design.
+- Sign-in failures are generic: "Invalid email or password", regardless of
+  whether the email exists. Sign-up necessarily reports that an existing address
+  is already registered.
+- Account deletion is enabled, requires the current password plus a typed
+  `DELETE` confirmation, and deletes immediately. Prisma cascades remove
+  sessions, visits, owned maps, memberships, and invitations. Better Auth's
+  delete endpoint is disabled by default and was explicitly enabled in Phase 2.
 
 ## 4. Authorization
 
@@ -74,8 +89,8 @@ scoped by the authenticated user or by a verified membership.**
   existence of a map is not disclosed to non-members.
 - Removing a member or revoking an invite takes effect immediately on the next
   request. No cached member lists.
-- The combined map view is computed server-side and returns aggregates. Raw
-  per-member notes/dates are never sent to another member.
+- The combined map view is computed server-side and returns only country codes
+  and counts. No per-member account data is sent to another member.
 
 Test requirement: for each new server action, at least one test proves a
 non-member cannot perform it and cannot read the data.
@@ -89,7 +104,7 @@ non-member cannot perform it and cannot read the data.
 - Ids: opaque `cuid`/UUID format; never interpolate into SQL (Prisma
   parameterizes).
 - Text: trim, enforce max lengths in the database **and** the schema. Map name
-  ≤ 80 chars, description ≤ 280, note ≤ 280, email ≤ 320.
+  ≤ 80 chars, description ≤ 280, email ≤ 320. Notes are not exposed (D2).
 - Emails: normalize to lowercase + trim; validate with a conservative pattern
   and let the email provider reject the rest.
 - Reject unexpected fields rather than ignoring them silently for security-
@@ -101,7 +116,8 @@ non-member cannot perform it and cannot read the data.
 
 - React escapes text by default. `dangerouslySetInnerHTML` is prohibited except
   for a static, reviewed string (none planned).
-- User-provided text (map name, note) is rendered as text, never as markup.
+- User-provided text (display name, map name, description) is rendered as text,
+  never as markup.
 - URLs derived from user input are not allowed. Invitation links are built from
   `NEXT_PUBLIC_APP_URL` + a server-generated token.
 - The SVG map only renders dataset-controlled path data. If a future feature
@@ -135,30 +151,30 @@ non-member cannot perform it and cannot read the data.
 
 ## 9. Rate limiting and abuse
 
-Phase 2 baseline (Better Auth built-in where possible):
+Phase 2 baseline, implemented with Better Auth's built-in limiter:
 
-| Action | Limit (starting point) |
+| Action | Implemented limit |
 | --- | --- |
-| Sign-in attempts | 5 per email + IP per 15 min |
+| Sign-in attempts | 10 per IP per 15 min |
 | Sign-up | 5 per IP per hour |
-| Password reset request | 3 per email per hour |
-| Invitation send | 20 per map per day |
-| Invitation accept | 10 per IP per hour |
-| Visit toggle | generous, but bounded per user per minute |
+| Password reset request | 3 per IP per hour |
+| Password reset submit | 10 per IP per 15 min |
 
-Storage decision deferred: database vs. per-instance memory. On serverless,
-per-instance memory is only a speed bump; if we need real limits, use a shared
-store. Record the decision in Phase 2.
+Storage decision: **per-instance memory**, enabled only when
+`NODE_ENV=production`. This is a speed bump, not a shared limit; on serverless,
+each instance has its own counters. If abuse becomes real, move to a shared
+store (database or managed limiter) and update this section. Limits were not
+exhausted during verification because that would lock the test IP.
 
 ## 10. Secrets and configuration
 
 - Secrets only in environment variables; never in the repo, never `NEXT_PUBLIC_*`.
 - `.env*` is gitignored; `.env.example` contains placeholders only.
-- Rotate the auth secret / Resend key if leaked. Rotating `BETTER_AUTH_SECRET`
+- Rotate the auth secret / Brevo key if leaked. Rotating `BETTER_AUTH_SECRET`
   invalidates sessions (acceptable).
 - Separate Neon branches/databases per environment. Preview deployments must not
   use the production database.
-- The Resend API key is server-only; emails are sent from server code.
+- The Brevo API key is server-only; emails are sent from server code.
 - Do not print env values in build logs or error pages.
 
 ## 11. Transport and headers
@@ -203,9 +219,9 @@ Production (Phase 8):
 - Links are absolute and built from the configured app URL.
 - Never include passwords, tokens other than the intended single-use link, or
   other users' email addresses.
-- Resend receives the recipient address and message body. That is the only data
+- Brevo receives the recipient address and message body. That is the only data
   processor besides Neon/Vercel.
-- Bounce/complaint handling: Resend dashboard for now; a suppression list is a
+- Bounce/complaint handling: Brevo dashboard for now; a suppression list is a
   later concern.
 
 ## 15. Logging and monitoring
@@ -231,7 +247,7 @@ Production (Phase 8):
 ## 17. Privacy
 
 - Collect the minimum: name (optional display), email, password hash, country
-  codes, optional note/date, map membership.
+  codes, map membership. Notes and visit dates are not collected (D2).
 - No analytics, ads, fingerprinting, or geolocation.
 - A user can delete their account and all their data. Owned shared maps are
   deleted for all members; the UI must say so before confirming.
@@ -267,6 +283,8 @@ Before a phase is approved:
 | --- | --- | --- |
 | Email verification not enforced | Friction at sign-up; reset/invite flows still prove address control | Before public launch / Phase 8 |
 | No MFA | Scope; password + rate limiting first | Post-launch |
-| Per-instance rate limiting may be weak on serverless | Simplicity; limits still slow brute force | Phase 2 decision |
+| Per-instance rate limiting may be weak on serverless | Simplicity; limits still slow brute force | When abuse is observed or before public launch |
+| Password-reset token stored raw by Better Auth | Single-use and ≤1 hour; replacing the flow is larger than Phase 2 | Before public launch / Phase 8 |
 | No third-party error tracking yet | Avoid extra data processor before launch | Phase 8 |
 | CSP not yet configured | No production deployment yet | Phase 8 |
+| Welcome email not retried if email was disabled at sign-up | Best-effort design; no job queue yet | Phase 8 or when Brevo is configured |

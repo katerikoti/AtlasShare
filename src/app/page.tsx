@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { brand } from "@/config/brand";
 
 /**
@@ -30,9 +32,23 @@ export default function Home() {
             {brand.name}
           </span>
         </div>
-        <span className="rounded-full border border-moss/30 bg-surface/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-moss">
-          Phase 1 · Foundation
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="hidden rounded-full border border-moss/30 bg-surface/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-moss sm:inline">
+            Phase 2 · Accounts
+          </span>
+          <Link
+            href="/sign-in"
+            className="text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
+          >
+            Sign in
+          </Link>
+          <Link
+            href="/sign-up"
+            className="rounded-full bg-moss px-4 py-2 text-sm font-medium text-canvas transition-colors hover:bg-ink"
+          >
+            Create account
+          </Link>
+        </div>
       </header>
 
       <section className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-14 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-24">
@@ -41,12 +57,27 @@ export default function Home() {
             A shared travel atlas
           </p>
           <h1 className="mt-5 max-w-xl font-display text-5xl leading-[0.98] tracking-tight text-balance sm:text-6xl lg:text-7xl">
-            Your world,
+            Your world,{" "}
             <span className="block italic text-moss">mapped together.</span>
           </h1>
           <p className="mt-6 max-w-lg text-lg leading-relaxed text-ink-muted">
             {brand.description}
           </p>
+
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <Link
+              href="/sign-up"
+              className="inline-flex rounded-full bg-moss px-5 py-3 text-sm font-semibold text-canvas transition-colors hover:bg-ink"
+            >
+              Create your account
+            </Link>
+            <Link
+              href="/sign-in"
+              className="inline-flex rounded-full border border-moss/35 px-5 py-3 text-sm font-medium text-moss transition-colors hover:border-moss hover:bg-surface/70"
+            >
+              Sign in
+            </Link>
+          </div>
 
           <div className="mt-9 max-w-lg rounded-card border border-line/80 bg-surface/80 p-5 shadow-soft backdrop-blur-sm">
             <div className="flex items-start gap-3">
@@ -55,11 +86,11 @@ export default function Home() {
                 className="mt-1.5 size-2.5 shrink-0 rounded-full bg-rose-deep"
               />
               <div>
-                <p className="font-medium text-ink">The foundation is ready.</p>
+                <p className="font-medium text-ink">Accounts are open.</p>
                 <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                  This is a temporary placeholder, not the finished landing
-                  page. Accounts, personal maps, shared maps, and image export
-                  are built in the phases ahead.
+                  You can create an account and manage your details now. Your
+                  personal map, shared maps, and image export arrive in the
+                  phases ahead. The marketing page is a later phase too.
                 </p>
               </div>
             </div>
@@ -72,7 +103,7 @@ export default function Home() {
               <svg
                 viewBox="0 0 640 420"
                 role="img"
-                aria-label="Decorative abstract map illustration for AtlasShare"
+                aria-label={`Decorative abstract map illustration for ${brand.name}`}
                 className="h-auto w-full"
               >
                 <defs>
@@ -145,8 +176,7 @@ export default function Home() {
 
       <footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-t border-line/80 pt-5 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <p>
-          Phase 1 of 8 · Project foundation · No accounts or maps are available
-          yet.
+          Phase 2 of 8 · Accounts are live · Maps arrive next.
         </p>
         <a
           className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"

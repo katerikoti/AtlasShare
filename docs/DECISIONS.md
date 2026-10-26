@@ -97,7 +97,7 @@ the adapter and Prisma engine are supported.
 
 ## ADR-006 — Resend for transactional email, plain HTML templates
 
-**Status:** accepted (Phase 1)
+**Status:** superseded by ADR-023 (Phase 2)
 
 **Context:** Needed: welcome, password reset, invitations. React Email adds a
 build/render dependency; the emails are simple.
@@ -161,22 +161,25 @@ explained. Never store names as keys.
 
 ---
 
-## ADR-010 — Country set: 250 countries & territories (proposed)
+## ADR-010 — Country set: 250 countries & territories
 
-**Status:** **proposed — needs user approval before Phase 3**
+**Status:** accepted (2026-10-26)
 
 **Context:** 195 sovereign states is tidy but makes common travel destinations
 (Hong Kong, Greenland, Puerto Rico, Réunion, Curaçao) unmarkable. 249 ISO
 3166-1 entries + Kosovo = 250 covers what travellers actually visit but is not
 "195 countries".
 
-**Decision (recommended):** Use 250 units, label the feature "countries &
-territories" consistently, count territories separately, include Kosovo as `XK`.
-Alternative: 195 sovereign states with territories folded into their parent.
+**Decision:** Use 250 units, label the feature "countries & territories"
+consistently, count territories separately, and include Kosovo as `XK`.
+Palestine (`PS`) and Israel (`IL`) are both separate map units; neither is
+merged into the other. This is a comprehensive dataset, not a political
+endorsement.
 
 **Consequences:** The dataset, count copy, export, and tests depend on this.
-Switching later is a data migration plus a copy change. This is the single
-largest open product decision.
+Switching later is a data migration plus a copy change. Natural Earth's default
+grouping of Palestine under Israel is unacceptable; the Phase 3 generator must
+verify separate `PS` and `IL` paths and labels.
 
 ---
 
@@ -278,14 +281,179 @@ Tests target the data layer, not the proxy.
 
 ---
 
+## ADR-017 — Local PostgreSQL for development; adapter selected by host
+
+**Status:** accepted (Phase 2)
+
+**Context:** Neon was not provisioned, but Phase 2 needed a real database,
+migrations, and repeatable manual checks. Requiring a cloud branch for every
+local test would slow development.
+
+**Decision:** Use Homebrew PostgreSQL 18 locally (`atlasshare_dev`,
+`atlasshare_test`). Keep Neon as the production target. `src/server/db.ts`
+selects `@prisma/adapter-neon` for `*.neon.tech` hosts and `@prisma/adapter-pg`
+for everything else. Both adapters are pinned at 7.10.1.
+
+**Consequences:** Local development has no pooling/SSL parity with Neon, so the
+Neon path must be exercised before deployment. Two adapters are shipped; the
+selection is one small, tested code path. Credentials stay in `.env`.
+
+---
+
+## ADR-018 — Lazy environment, database, and auth initialization
+
+**Status:** accepted (Phase 2)
+
+**Context:** `next build` evaluates route modules. Eagerly constructing Better
+Auth or Prisma at module scope would require database and auth secrets during a
+build that should not need them.
+
+**Decision:** `getEnv()`, `getDb()`, and `getAuth()` validate/construct lazily on
+first use. Importing modules never throws. Env validation reports the offending
+variable names. Test helpers reset memoized env/mailer state.
+
+**Consequences:** Builds work without runtime secrets; misconfiguration fails at
+the first request rather than at build time. Developers must not accidentally
+eagerly initialize these modules at import time in future code.
+
+---
+
+## ADR-019 — Password, session, and rate-limit policy
+
+**Status:** accepted (Phase 2)
+
+**Context:** The product needs a usable policy on phones without weakening the
+basic account-takeover defenses.
+
+**Decision:** Passwords 12–128 characters (scrypt via Better Auth). Sessions last
+30 days with a one-day rolling update and no session cookie cache. Rate limits
+use Better Auth's in-memory limiter, enabled only in production: sign-in
+10/15 min, sign-up 5/hour, reset request 3/hour, reset submit 10/15 min.
+
+**Consequences:** Long passphrases are encouraged; no breached-password list yet.
+Revocation is immediate because sessions are not cached in a cookie. Per-instance
+memory is only a speed bump on serverless; a shared limiter is future work.
+Limits are not active in development, so tests do not lock themselves out.
+
+---
+
+## ADR-020 — Password change signs out everywhere
+
+**Status:** accepted (Phase 2)
+
+**Context:** Better Auth rotates the current session when the password changes.
+The original proxy redirected signed-in users away from auth pages based on cookie
+presence. During verification this raced the rotation and produced an
+`/account` ↔ `/sign-in` redirect loop that blanked the client.
+
+**Decision:** After a successful password change, delete every session for the
+user (including the rotated one), redirect to
+`/sign-in?passwordChanged=1`, and show a notice. The proxy only protects
+`/account`; it never redirects a signed-in user away from sign-in.
+
+**Consequences:** Users must sign in again after changing a password. Other
+devices are guaranteed to be signed out. The redirect loop is gone. Auth pages
+remain reachable while signed in, which is acceptable and avoids cookie-race
+redirects.
+
+---
+
+## ADR-021 — Better Auth's raw password-reset token storage accepted for now
+
+**Status:** accepted (Phase 2, known deviation)
+
+**Context:** Better Auth 1.7.12 stores password-reset tokens in
+`verification.identifier` as `reset-password:<token>`. Our general policy says
+tokens are hashed at rest. A custom reset flow would be needed to hash them.
+
+**Decision:** Accept the library behavior for Phase 2. Tokens are single-use,
+expire after one hour, and revoke sessions on use. Document the deviation in
+`SECURITY.md` and `DATABASE.md`.
+
+**Consequences:** Anyone with database read access could use a live reset token
+within its short window. Risk is bounded but real. Revisit before public launch
+or replace with a custom hashed-token flow.
+
+---
+
+## ADR-022 — Welcome email is best-effort and sent at most once
+
+**Status:** accepted (Phase 2)
+
+**Context:** Sign-up must not fail because Brevo is down or unconfigured. The
+welcome message is a courtesy, not a verification step.
+
+**Decision:** After user creation, claim the user with `welcomeEmailSentAt`; send
+if the mailer is configured; release the claim on failure or no-op. Never block
+sign-up. No retry queue or background job in Phase 2.
+
+**Consequences:** Duplicate welcomes are prevented. Users who sign up while email
+is disabled will not receive a welcome later unless a retry mechanism is added.
+A verified Brevo sender is required for email delivery; an authenticated domain
+is still recommended for production deliverability.
+
+---
+
+## ADR-023 — Brevo replaces Resend for transactional email
+
+**Status:** accepted (Phase 2)
+
+**Context:** The project needs real welcome and password-reset emails without
+buying a domain. Resend requires a verified domain (or its onboarding sender,
+which only delivers to the account owner). Brevo's free plan allows 300 emails
+per day and can send from a verified individual address, which is enough for
+practice and early testing.
+
+**Decision:** Use Brevo's transactional HTTP API (`POST
+https://api.brevo.com/v3/smtp/email`) through a small `fetch`-based mailer in
+`src/server/email/mailer.ts`. No Brevo SDK or email rendering dependency.
+`BREVO_API_KEY` is optional; without it the no-op mailer logs and skips. The
+`EMAIL_FROM` value may be `Name <verified@example.com>`; the address must be a
+verified Brevo sender.
+
+**Consequences:** No domain purchase is needed to test real delivery. Brevo may
+rewrite or annotate mail from an unauthenticated domain (notably to Gmail,
+Yahoo, and Microsoft recipients), so production should authenticate a domain for
+reliable sender identity and deliverability. The provider receives the recipient
+address and message content; no tracking pixels are added. Resend is removed
+from the dependency tree. Brevo's optional IP allowlisting can block local or
+serverless callers; Vercel's dynamic egress requires disabling it for the
+production key, using static egress, or moving to a scoped M2M bearer token.
+
+---
+
+## ADR-024 — Visited state only; no notes or visit dates
+
+**Status:** accepted (2026-10-26)
+
+**Context:** D2 asked whether optional per-country notes and first-visited dates
+belong in Phase 3 or Phase 5. The product owner does not need notes and does not
+want visit dates; repeat visits would also require a multi-visit history rather
+than a single date.
+
+**Decision:** The initial product stores only whether a country is visited. Do
+not build notes, visit dates, or visit-history UI. The optional
+`visited_countries.note` and `firstVisitedAt` columns remain reserved but unused;
+they are not exposed by any API or UI.
+
+**Consequences:** Phase 3 stays small and the map/count loop is the focus.
+Reintroducing notes or dates needs a new scope decision; dates specifically need
+a separate visit-history model so multiple visits are represented honestly.
+Shared maps never expose any note/date data because none is stored through the
+app.
+
+---
+
 ## Deferred decisions
 
 | Topic | Why deferred | Needed by |
 | --- | --- | --- |
-| Rate-limit storage (DB vs. memory vs. managed) | Depends on Better Auth schema and hosting | Phase 2 |
-| Notes/dates in Phase 3 vs. Phase 5 | Keep Phase 3 focused on the core loop | Phase 3 start |
+| Hashed password-reset tokens | Better Auth stores them raw; custom flow is larger | Before public launch |
+| Automated DB integration tests | Manual SQL used in Phase 2; wiring takes setup | Phase 3 |
+| Notes/visit dates | Removed from the initial scope by D2 (ADR-024) | New scope decision |
 | OAuth providers | Not needed for the core loop | post-launch |
 | Error monitoring vendor | Privacy review first | Phase 8 |
 | Custom domain | Not needed until deployment | Phase 8 |
 | Dark mode | Needs a second accessible palette | post-launch |
 | i18n | English-only first release | post-launch |
+| Shared rate-limit store | In-memory is sufficient until abuse is observed | Before public launch |

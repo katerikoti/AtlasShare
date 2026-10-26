@@ -1,8 +1,9 @@
 # AtlasShare — Architecture
 
-Status: **Phase 1 (foundation) — architecture agreed, implementation mostly planned.**
-Anything marked _planned_ does not exist in the codebase yet. See
-[`PROGRESS.md`](./PROGRESS.md) for what is actually built.
+Status: **Phase 2 (accounts and authentication) is implemented.** Map, shared
+maps, export, and PWA functionality are still planned. Anything marked _planned_
+does not exist in the codebase yet. See [`PROGRESS.md`](./PROGRESS.md) for what is
+actually built.
 
 ## 1. Purpose of this document
 
@@ -14,7 +15,7 @@ document needs an explicit update (and, for significant choices, an ADR in
 
 ## 2. Stack
 
-Versions are the ones installed at the end of Phase 1. Pin exact versions for
+Versions are the ones installed at the end of Phase 2. Pin exact versions for
 anything that affects the database, auth, or build output.
 
 | Layer | Choice | Version | Notes |
@@ -26,10 +27,10 @@ anything that affects the database, auth, or build output.
 | Styling | Tailwind CSS | 4.3.3 | CSS-first config via `@theme` in `globals.css`. |
 | Linting | ESLint | 9 | `eslint-config-next`. |
 | Unit tests | Vitest + React Testing Library | 5.0.5 / 16.3.3 | jsdom, `jest-dom` matchers. |
-| Database | Neon PostgreSQL | — | Serverless Postgres, pooled connection at runtime. |
-| ORM | Prisma | 7.10.1 | ESM, `prisma.config.ts`, `@prisma/adapter-neon`. |
+| Database | Neon PostgreSQL (prod) / PostgreSQL 18 (local) | — | Adapter selected by host. |
+| ORM | Prisma | 7.10.1 | ESM, `prisma.config.ts`, Neon or `pg` driver adapter. |
 | Auth | Better Auth | 1.7.12 | Prisma adapter, database sessions. |
-| Email | Resend | 6.34.1 | Transactional email, plain HTML templates. |
+| Email | Brevo (transactional HTTP API) | — | Best-effort; no-op without an API key. Plain HTML templates, no SDK. |
 | Hosting | Vercel | — | Planned for Phase 8. |
 
 ## 3. Product identity
@@ -62,7 +63,7 @@ verify the metadata in `src/app/layout.tsx`.
                     └───┬───────────┬───────────┬───┘
                         │           │           │
              ┌──────────▼──┐  ┌─────▼─────┐  ┌──▼──────────┐
-             │ Neon        │  │ Resend    │  │ Static      │
+             │ Neon        │  │ Brevo    │  │ Static      │
              │ Postgres    │  │ (email)   │  │ country SVG │
              │ (Prisma 7)  │  │           │  │ in repo     │
              └─────────────┘  └───────────┘  └─────────────┘
@@ -95,14 +96,19 @@ this look like a signed-in area? It must not be the authorization boundary.
 The real check is always server-side, in the data layer:
 
 ```ts
-// illustrative — implemented in Phase 3
-const session = await requireSession();          // throws/redirects
-const map = await requireMapMembership(mapId, session.user.id); // 404 if not a member
+const session = await requireSession();          // redirects to /sign-in when absent
+// Phase 3: const map = await requireMapMembership(mapId, session.user.id);
 ```
 
 Rationale: a proxy runs before the request is resolved and is not intended for
 slow data fetching or full session management (see the Next.js Proxy docs).
 Database-backed authorization cannot be safely done there.
+
+The implemented proxy protects `/account` only. It deliberately does **not**
+redirect signed-in users away from auth pages: Better Auth rotates the session
+cookie on password change, and a cookie-presence redirect between `/account` and
+`/sign-in` can race that rotation into a loop. A signed-in user seeing the
+sign-in form is harmless.
 
 ### 5.3 Caching
 
@@ -135,47 +141,52 @@ src/
   app/
     layout.tsx              # root layout, metadata, fonts
     globals.css             # Tailwind v4 theme tokens (colors, radius, shadow)
-    page.tsx                # temporary Phase 1 placeholder (landing is Phase 7)
+    page.tsx                # temporary Phase 1/2 placeholder (landing is Phase 7)
     not-found.tsx
-    (marketing)/            # planned Phase 7: public pages
-    (auth)/                 # planned Phase 2: sign in, sign up, reset
-    (app)/                  # planned Phase 3+: signed-in application
-      map/                  # personal map
-      maps/                 # shared maps list
-      maps/[id]/            # one shared map
-      settings/             # account settings
-    api/auth/[...all]/      # planned Phase 2: Better Auth handler
+    icon.svg                # app icon
+    (auth)/                 # sign in, sign up, forgot/reset password
+    (app)/account/          # signed-in account settings
+    api/auth/[...all]/      # Better Auth handler
   components/
-    map/                    # planned Phase 3: SVG map, legend, controls
-    export/                 # planned Phase 6: export renderer
-    ui/                     # planned: buttons, dialogs, fields
+    auth/                   # sign-in/up, forgot/reset, sign-out forms
+    account/                # name, password, delete-account forms
+    ui/form.tsx             # field, message, button/input styles
+    (map/ and export/ are planned for Phases 3 and 6)
   config/
     brand.ts                # product identity (source of truth)
+    env.ts                  # lazy Zod validation of server env
   data/
     countries.ts            # planned Phase 3: generated country dataset
     world.svg.ts            # planned Phase 3: generated path data
+  lib/
+    auth-client.ts          # browser Better Auth client
   server/
-    auth.ts                 # planned Phase 2: Better Auth instance
-    db.ts                   # planned Phase 2: Prisma client singleton
+    auth.ts                 # lazy Better Auth instance + options
+    db.ts                   # lazy Prisma client, adapter selected by host
+    session.ts              # getSession + requireSession gate
     authorization.ts        # planned Phase 3: membership/permission helpers
-    actions/                # planned: Server Actions grouped by domain
-    email/                  # planned Phase 2: Resend wrapper + templates
-  lib/                      # framework-agnostic helpers (pure, unit-tested)
+    actions/                # account Server Actions (map actions planned)
+    email/                  # Brevo wrapper, templates, welcome/reset senders
+    validation/             # pure Zod schemas for account forms
   test/
     setup.ts                # Vitest setup (jest-dom)
 prisma/
-  schema.prisma             # planned Phase 2
-  migrations/               # planned Phase 2
-scripts/                    # planned: country dataset generation/validation
-public/                     # planned Phase 7: icons, manifest
+  schema.prisma             # auth + app models (Phase 2 migration)
+  migrations/               # committed migrations
+scripts/
+  better-auth-schema.config.ts
+public/                     # planned Phase 7: PWA icons, manifest
 ```
 
 Rules:
 
 - `src/lib` must stay framework-agnostic and pure so it is cheap to unit test.
+  The browser auth client is the deliberate exception (it is a client-only
+  integration module).
 - `src/server` may import Node APIs and the database; it must never be imported
   by a Client Component.
 - `src/data` is generated data plus its types; no hand edits to generated files.
+- `src/generated/prisma` is generated by `postinstall` and gitignored.
 
 ## 7. Country dataset and map
 
@@ -199,12 +210,11 @@ commit the generated artefacts plus a script that reproduces them. The dataset
 must be reproducible and reviewable in a diff. Attribution for any CC-BY source
 lives in an "About the map" section.
 
-Open question: whether the map shows **195 sovereign states** or **249 ISO
-3166-1 entries plus Kosovo (250 "countries & territories")**. This changes the
-dataset, the count text, and the export. It must be decided before Phase 3
-starts. Recommendation: 250 units, because travellers do visit territories and
-users notice when a place cannot be marked; label the feature "countries &
-territories" everywhere.
+Decision (D1, 2026-10-26): the map shows **249 ISO 3166-1 entries plus Kosovo
+(250 "countries & territories")**. This fixes the dataset, count text, and
+export. Label the feature "countries & territories" everywhere. Palestine (`PS`)
+and Israel (`IL`) are separate units; the generator must assert both paths exist
+and never merge them.
 
 Identifier rules:
 
@@ -213,6 +223,10 @@ Identifier rules:
   used by the EU and widely by software; not an official ISO assignment).
 - Never key data on display names or SVG path ids that differ from the codes.
 - Validate every incoming code against the committed dataset on the server.
+- **Palestine (`PS`) is a country and is always its own map unit.** It is never
+  merged into Israel or any other path. Natural Earth's default grouping of
+  Palestine under Israel is rejected; Phase 3 curation must split it into a
+  separate, correctly labelled path. This applies to both country-set options.
 
 ### 7.2 Rendering
 
@@ -295,14 +309,21 @@ Constraints:
 
 ## 10. Email
 
-- Resend via a thin wrapper in `src/server/email/`.
+- Brevo's transactional HTTP API via a thin wrapper in `src/server/email/`.
+- Brevo can send from a verified individual address without a domain. Domain
+  authentication is still recommended for production because Gmail, Yahoo, and
+  Microsoft may rewrite or flag mail from unauthenticated senders.
 - Plain HTML templates with inline styles, built from the `brand` palette. No
   React Email dependency in the first release.
-- Emails planned: welcome (Phase 2), password reset (Phase 2), shared-map
-  invitation (Phase 4).
+- Emails implemented: welcome (Phase 2), password reset (Phase 2). Invitation
+  email is planned for Phase 4.
 - Sending is best-effort and never blocks the primary mutation from succeeding.
   Failures are logged without tokens or message bodies.
-- `welcomeEmailSentAt` on the user record prevents duplicate welcomes.
+- Without `BREVO_API_KEY`, the mailer is a no-op and logs the skipped subject;
+  sign-up still succeeds.
+- `welcomeEmailSentAt` on the user record prevents duplicate welcomes. If email
+  is disabled at sign-up, the field stays null and the welcome is **not**
+  retried later; there is no job queue yet.
 - Email verification is **not enforced** initially (see `SECURITY.md`). The
   tradeoff is explicit: lower sign-up friction, higher risk of typo'd addresses.
   Reset and invitation emails still prove control of the address.
@@ -318,13 +339,19 @@ See `.env.example`. All are server-side except `NEXT_PUBLIC_APP_URL`.
 | `DIRECT_URL` | Prisma migrations | Neon direct connection. |
 | `BETTER_AUTH_SECRET` | Better Auth | 32+ random bytes. |
 | `BETTER_AUTH_URL` | Better Auth | Origin of the app. |
-| `RESEND_API_KEY` | email | Server only. |
-| `EMAIL_FROM` | email | Must be a verified domain. |
+| `BREVO_API_KEY` | email | Server only. |
+| `EMAIL_FROM` | email | Verified Brevo sender; domain authentication recommended in production. |
 | `TEST_DATABASE_URL` | integration tests | Never production. |
 
-Validation: a small env module will parse and validate these at startup in
-Phase 2, so a missing secret fails loudly at boot rather than at the first
-request.
+Validation: `src/config/env.ts` parses and validates these lazily with Zod.
+Importing the module never throws, so `next build` needs no secrets; the first
+request that needs configuration fails loudly with the offending variable names.
+`DIRECT_URL` is optional for client generation but required for migrations.
+`BREVO_API_KEY` may be absent (email is disabled). `.env` is gitignored.
+
+`src/server/db.ts` and `src/server/auth.ts` are lazy singletons for the same
+reason. The database adapter is Neon for `*.neon.tech` and `@prisma/adapter-pg`
+for local Postgres.
 
 ## 12. Non-functional constraints
 

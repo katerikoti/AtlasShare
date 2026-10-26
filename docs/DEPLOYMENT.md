@@ -1,15 +1,17 @@
 # AtlasShare — Deployment
 
 Status: **not deployed.** This is the Phase 8 target. Nothing here has been
-executed against a real host yet.
+executed against a real host yet. Phase 2 produced the first migration and
+working auth locally; a Neon dev branch is connected and migrated, and Brevo is
+not configured.
 
 ## 1. Target topology
 
 | Piece | Service | Notes |
 | --- | --- | --- |
 | App | Vercel (Next.js) | Node 24 runtime, Turbopack build. |
-| Database | Neon Postgres | Pooled runtime URL + direct migration URL; branches per environment. |
-| Email | Resend | Verified sending domain (SPF/DKIM). |
+| Database | Neon Postgres | Pooled runtime URL + direct migration URL; branches per environment. A 30-day branch expiration is an auto-delete timer, not a usage limit. |
+| Email | Brevo | Verified sender for practice; authenticated domain (SPF/DKIM) recommended for production. |
 | Source | GitHub `katerikoti/AtlasShare` | `main` deploys production. |
 
 No other services are required. No object storage, no queue, no Redis, no
@@ -19,8 +21,8 @@ headless browser.
 
 | Environment | Branch | Database | Email | Purpose |
 | --- | --- | --- | --- | --- |
-| Local | — | Neon dev branch or local Postgres | Resend test sender or disabled | Development |
-| Preview | any PR branch | Neon preview branch (never prod) | Resend test sender | Review |
+| Local | — | Local PostgreSQL 18 (Phase 2) or a Neon dev branch | Brevo verified sender or disabled | Development |
+| Preview | any PR branch | Neon preview branch (never prod) | Brevo verified sender | Review |
 | Production | `main` | Neon production branch | Verified domain | Real users |
 
 Rules:
@@ -41,14 +43,20 @@ DATABASE_URL=postgresql://...-pooler.../neondb?sslmode=require
 DIRECT_URL=postgresql://.../neondb?sslmode=require
 BETTER_AUTH_SECRET=<32+ random bytes>
 BETTER_AUTH_URL=https://<production-domain>
-RESEND_API_KEY=re_...
-EMAIL_FROM=AtlasShare <hello@<verified-domain>>
+BREVO_API_KEY=xkeysib-...
+EMAIL_FROM=AtlasShare <verified-sender@example.com>
 ```
 
 `TEST_DATABASE_URL` is for local/CI only and should not exist in production.
 
 Generate the auth secret with `openssl rand -base64 32`. Rotating it signs
 everyone out.
+
+Brevo IP blocking: local setup may return `401 unauthorized` until the current
+egress IP is authorized. Vercel's outbound IPs are dynamic, so production needs
+one of: IP blocking disabled for the production key, a static egress proxy, or a
+scoped M2M token. M2M would require changing the mailer from an `api-key` header
+to an OAuth bearer token; decide before deployment.
 
 ## 4. Build and release
 
@@ -78,10 +86,9 @@ adding build-time credentials.
 ## 5. First deployment checklist
 
 1. Create the Neon project and production branch; copy both connection strings.
-2. Create a Resend account, add and verify the sending domain (DNS records:
-   SPF, DKIM; DMARC recommended). Until then, use the test sender and your own
-   address.
-3. Create the Vercel project from the GitHub repo.
+2. Create a Brevo account, add and verify a sender address (six-digit code). A
+   domain is optional for practice. For production, authenticate the sending
+   domain (DNS records: SPF, DKIM; DMARC recommended) for reliable delivery.3. Create the Vercel project from the GitHub repo.
 4. Add environment variables for Production (and Preview with a separate DB).
 5. Run `prisma migrate deploy` against the production database.
 6. Deploy; confirm `GET /` and `GET /api/auth/ok` (whatever health endpoint is
@@ -101,8 +108,8 @@ adding build-time credentials.
 - Update `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` to the final origin and
   redeploy.
 - Email DNS is separate from web DNS but lives on the same domain:
-  - SPF must include Resend and must not exceed the DNS lookup limit.
-  - DKIM keys from Resend.
+  - SPF must include Brevo and must not exceed the DNS lookup limit.
+  - DKIM keys from Brevo.
   - DMARC starts at `p=none` for monitoring, then `quarantine`.
 - Decide whether `www` redirects to apex or vice versa; be consistent in auth
   callbacks and email links.
@@ -167,7 +174,7 @@ Phase 8 decision. Minimum viable:
 
 - Vercel deployment and function logs.
 - Uptime check on the landing page and auth endpoint (external, optional).
-- Email delivery visible in the Resend dashboard.
+- Email delivery visible in the Brevo dashboard.
 - Error tracking is optional and must be privacy-reviewed; if added, scrub
   cookies, auth headers, and request bodies.
 
@@ -179,7 +186,7 @@ No analytics by default, consistent with the privacy stance.
 | --- | --- | --- |
 | Vercel | Hobby for development/preview | Pro for commercial use / team features |
 | Neon | Free tier for early usage | Storage/compute beyond free limits |
-| Resend | Free monthly email quota | Volume beyond free tier |
+| Brevo | Free plan: 300 emails/day | Volume beyond free tier |
 | Domain | — | Annual registration |
 
 Prices and limits change; check each provider's current page rather than relying
@@ -190,8 +197,9 @@ these three.
 
 - **Sign-ups failing:** check `DATABASE_URL`, Neon compute status, auth secret,
   and Vercel logs. Confirm migrations applied.
-- **Emails not arriving:** check Resend dashboard for bounces, domain
-  verification, and `EMAIL_FROM`. The action itself should have succeeded.
+- **Emails not arriving:** check the Brevo dashboard for bounces, sender
+  verification, domain authentication, and `EMAIL_FROM`. The action itself should
+  have succeeded.
 - **Invite link invalid:** check expiry/revocation/accepted state, and that the
   signed-in email matches the invitation.
 - **Map blank:** check the dataset asset loaded (network tab), then the SVG
@@ -201,7 +209,7 @@ these three.
 
 ## 14. What is deliberately not set up yet
 
-- No CI pipeline (planned Phase 2/8).
+- No CI pipeline (planned Phase 8). Phase 2 checks were run locally.
 - No custom domain.
 - No error tracking.
 - No staging environment separate from preview deployments.

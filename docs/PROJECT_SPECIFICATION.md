@@ -1,7 +1,8 @@
 # AtlasShare — Product Specification
 
-Status: **agreed direction, Phase 1.** Requirements here are the target for the
-whole build. Each phase implements a slice; see `DEVELOPMENT_PLAN.md`.
+Status: **agreed direction, Phase 2 implemented.** Requirements here are the
+target for the whole build. Each phase implements a slice; see
+`DEVELOPMENT_PLAN.md`.
 
 ## 1. One-sentence product
 
@@ -10,10 +11,10 @@ world map, then combine your map with the people you travel with.
 
 ## 2. Problem
 
-Travel history is scattered across notes, photos, and memory. Existing map tools
-are either social networks that want your whole life, or static image generators
-that cannot represent a group. People who travel together want one shared view
-without giving up their private notes or handing over their account.
+Travel history is scattered across photos, messages, and memory. Existing map
+tools are either social networks that want your whole life, or static image
+generators that cannot represent a group. People who travel together want one
+shared view without handing over their account or private data.
 
 ## 3. Audience
 
@@ -48,18 +49,18 @@ loggers, or people who want street-level location tracking.
 | **Invitation** | A single-use, expiring link sent to one email address. |
 | **Country set** | The canonical list of map units. See §6. |
 
-## 6. Country definition (open decision)
+## 6. Country definition (resolved)
 
-Two options:
+**Decision (D1, 2026-10-26):** Use **250 countries & territories**: 249 ISO
+3166-1 entries plus Kosovo. Label the feature "countries & territories"
+consistently, and count territories separately from their sovereign state.
+Kosovo is included as `XK` (documented exception).
 
-| Option | Units | Pros | Cons |
-| --- | --- | --- | --- |
-| A. Sovereign states | 195 | Simple story, matches "countries" colloquially, smaller map | Travellers to e.g. Hong Kong, Greenland, Puerto Rico, Réunion cannot mark them; feels wrong |
-| B. Countries & territories | 249 ISO 3166-1 + Kosovo = 250 | Every place a traveller can actually visit is markable; matches UN M49 and common travel trackers | "250 countries" is technically wrong; needs careful labelling |
-
-**Recommendation: B**, labelled consistently as "countries & territories".
-Territories are counted separately from their sovereign state. Kosovo is
-included as `XK` (documented exception). This must be confirmed before Phase 3.
+**Palestine and Israel:** Palestine (`PS`) and Israel (`IL`) are both standalone
+map units with their own visited state. Palestine must never be merged into
+Israel or any other entry. The dataset generator must explicitly verify separate
+paths and labels (Natural Earth's default grouping is not acceptable). Including
+both is a comprehensive-dataset decision, not a political endorsement.
 
 ## 7. Functional requirements
 
@@ -89,8 +90,8 @@ included as `XK` (documented exception). This must be confirmed before Phase 3.
   toggle action as the map.
 - **FR-M5** Show a count ("23 of 250 countries & territories") and a progress
   indicator.
-- **FR-M6** Optional per-country note and first-visited date (private), if Phase
-  5 scope allows. Notes never appear on shared maps.
+- **FR-M6** The initial release stores only visited/unvisited state. Notes and
+  visit dates are out of scope (D2).
 - **FR-M7** The map is usable on a phone (pan/zoom or a list-first fallback) and
   never causes page-level horizontal scroll.
 - **FR-M8** Empty state explains the first action without a modal wall.
@@ -111,19 +112,21 @@ included as `XK` (documented exception). This must be confirmed before Phase 3.
 - **FR-S7** Shared map view shows the combined map: countries visited by any
   member, plus a per-member filter (at least "everyone" and one member at a
   time).
-- **FR-S8** Show combined count and per-member counts. Never show another
-  member's private notes or dates.
+- **FR-S8** Show combined count and per-member counts. The initial release
+  stores no notes or visit dates to expose.
 - **FR-S9** Non-members get a 404-style response, not a permission error.
 - **FR-S10** Removing a member immediately changes the combined view.
 
-### 7.4 Travel details & insights (Phase 5)
+### 7.4 Insights & filters (Phase 5)
 
-- **FR-T1** Optional first-visited date and short private note per country.
 - **FR-T2** Filter/sort the country list by visited state, region, and name.
 - **FR-T3** Statistics: total visited, percentage of the set, counts by region
   or continent.
 - **FR-T4** Shared map comparison: "visited by everyone", "only you", "not yet
   by anyone" — if it fits the phase without leaking private data.
+
+**Out of scope (D2):** per-country notes, first-visited dates, and visit-history
+UI. Repeat visits would need a separate visit-history model if ever added.
 
 ### 7.5 Image export (Phase 6)
 
@@ -194,7 +197,7 @@ included as `XK` (documented exception). This must be confirmed before Phase 3.
 1. A new user can sign up, mark countries, and see a correct count in under two
    minutes without help.
 2. Two users can share a map and both see the combined view; neither can see the
-   other's private notes.
+   other's private account data.
 3. A non-member cannot read a shared map by guessing its id.
 4. An exported PNG contains exactly the exporter's data and looks good at
    phone-share resolution.
@@ -205,21 +208,23 @@ included as `XK` (documented exception). This must be confirmed before Phase 3.
 
 ## 11. Assumptions and dependencies
 
-- Neon and Resend accounts can be provisioned when Phase 2 starts.
+- A Neon dev branch is connected and migrated; production deployment is pending.
+  Brevo is not configured. Phase 2 used local PostgreSQL and a disabled mailer.
 - The GitHub repository remains the deployment source.
-- A custom domain (if any) is decided before Phase 8; email sending needs a
-  verified domain.
+- A custom domain (if any) is decided before Phase 8. Brevo can verify an
+  individual sender without a domain; an authenticated domain is recommended for
+  production deliverability.
 - The country dataset can be generated reproducibly; the licence permits
   redistribution with attribution.
 - No legal entity or privacy policy lawyer is assumed; the privacy page is a
   plain-language description of actual data handling, reviewed for accuracy.
 
-## 12. Open decisions
+## 12. Decisions and open questions
 
-| # | Decision | Needed by | Recommendation |
+| # | Decision | Status / needed by | Outcome or recommendation |
 | --- | --- | --- | --- |
-| D1 | 195 states vs. 250 countries & territories | Phase 3 start | 250, labelled "countries & territories" |
-| D2 | Notes/dates in Phase 3 or deferred to Phase 5 | Phase 3 start | Keep Phase 3 to visited state only; add details in Phase 5 |
+| D1 | Country set | Resolved 2026-10-26 | 250 countries & territories; `PS` and `IL` both standalone |
+| D2 | Notes and visit dates | Resolved 2026-10-26 | Visited state only; notes/dates out of scope |
 | D3 | Shared map roles beyond owner/member | Phase 4 start | Owner + member only |
-| D4 | Rate-limit storage | Phase 2 | Decide after checking Better Auth's generated schema |
-| D5 | Custom domain / email sender | Phase 8 | Needed for Resend production sending |
+| D4 | Rate-limit storage | Resolved in Phase 2 | In-memory, production-only; move to a shared store if abuse appears |
+| D5 | Custom domain / email sender | Phase 8 | Custom domain recommended for production email deliverability |

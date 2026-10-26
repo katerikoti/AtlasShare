@@ -1,7 +1,7 @@
 # AtlasShare — Development Plan
 
-Status: **Phase 1 complete, awaiting approval.** Later phases are scoped but not
-started.
+Status: **Phase 2 implemented and awaiting approval.** Phase 1 is approved. Later
+phases are scoped but not started.
 
 ## How phases work
 
@@ -23,14 +23,14 @@ started.
 | 2 | Accounts & authentication | Sign up/in/out, reset, settings, DB live | FR-A1…A7 |
 | 3 | Country dataset & personal map | Mark countries, see map + count | FR-M1…M9, D1 |
 | 4 | Shared maps | Invite, join, combined view | FR-S1…S10 |
-| 5 | Travel details & insights | Notes/dates, filters, stats | FR-T1…T4, D2 |
+| 5 | Insights & filters | Filters, stats, comparison | FR-T2…T4 |
 | 6 | Image export | Shareable PNG of your map | FR-E1…E5 |
 | 7 | Public site & PWA | Landing, privacy, installable app | FR-P1…P5, FR-W1…W4 |
 | 8 | Hardening, QA & deployment | Production launch readiness | NFR-1…8, §10 |
 
 ---
 
-## Phase 1 — Foundation and planning ✅ (awaiting approval)
+## Phase 1 — Foundation and planning ✅ (approved)
 
 **Goal:** a repository that runs, is branded, is tested, and documents the
 architecture before feature code exists.
@@ -63,45 +63,62 @@ PWA, deployment.
 
 ---
 
-## Phase 2 — Accounts and authentication
+## Phase 2 — Accounts and authentication ✅ (implemented, awaiting approval)
 
-**Goal:** a real account system backed by Neon/Postgres, with a usable settings
-page and working transactional email.
+**Goal:** a real account system backed by Postgres, with a usable settings page
+and working transactional email.
 
-**Scope**
+**Scope delivered**
 
-- Provision Neon (branches for dev/preview/prod), Prisma 7 + `@prisma/adapter-neon`,
-  `prisma.config.ts`, first migration.
-- Better Auth: email/password, database sessions, Prisma adapter, `/api/auth/[...all]`,
-  `proxy.ts` for optimistic redirects (not authorization).
-- Env validation module; fail fast on missing config.
-- Sign-up, sign-in, sign-out, password reset, welcome email via Resend.
-- Account settings: display name, change password, delete account.
-- Rate limiting baseline; generic auth errors; session cookie hardening.
+- Prisma 7 + first migration on local PostgreSQL 18; Neon remains the production
+  target and is not provisioned. Runtime adapter selected by database host.
+- `prisma.config.ts`, pooled/direct URL contract, and migration scripts.
+- Better Auth: email/password, database sessions, Prisma adapter,
+  `/api/auth/[...all]`, and a proxy that only protects `/account` optimistically.
+- Lazy env validation; lazy auth/database initialization so builds need no
+  secrets.
+- Sign-up, sign-in, sign-out, password reset, welcome email via Brevo (or a
+  logged no-op without a key).
+- Account settings: display name, change password (signs out everywhere), delete
+  account (password-gated, cascading).
+- Production-only rate limits; generic sign-in errors; session cookie hardening.
 - Route groups `(auth)` and `(app)`; a minimal signed-in shell.
-- Integration tests against `TEST_DATABASE_URL`; unit tests for validation.
+- Unit tests for env/account validation, the session gate, and unauthenticated
+  server-action rejection. DB and browser behavior verified manually.
 
 **Acceptance criteria**
 
-- A new user can sign up, receive a welcome email, sign out, sign in, reset a
-  password, change their name, and delete their account.
-- Deleting an account removes its sessions and private rows (cascade verified).
-- Password reset token is single-use and expires; the response does not reveal
-  whether an email exists.
-- Session cookie is HttpOnly, SameSite=Lax, Secure in production.
-- Server actions reject unauthenticated calls; tests prove it.
-- Migration applies cleanly from an empty database; `migrate deploy` is
-  documented.
-- Emails render correctly in a real client (manual check) and sending failures
-  do not block account creation.
-- `npm run check`, `npm run build`, and the DB smoke test pass; results recorded.
+- [~] A new user can sign up, sign out, sign in, reset a password, change their
+  name, and delete their account. **All verified locally in production mode.**
+  Receiving a welcome email is **sent and accepted by Brevo**; inbox confirmation
+  and reset-email delivery still need a human check.
+- [x] Deleting an account removes its sessions and private rows (cascade verified
+  for visits, owned maps, memberships, and invitations).
+- [x] Password reset token is single-use and expires; the request response does
+  not reveal whether an email exists.
+- [~] Session cookie is HttpOnly and SameSite=Lax; `Secure` was not observable
+  over local HTTP and must be confirmed on an HTTPS deployment.
+- [x] Server actions reject unauthenticated calls; Vitest proves all three
+  account actions redirect before calling Better Auth.
+- [x] Migration applies cleanly from an empty database; `migrate deploy` is
+  documented and was verified on a recreated test database.
+- [~] Emails render correctly in a real client (manual check). **Partially
+  verified:** Brevo accepted the welcome email and the reset mailer is wired, but
+  visual rendering and reset delivery are not yet confirmed.
+- [x] `npm run check`, `npm run build`, and the DB smoke test pass; results are
+  recorded in `PROGRESS.md` and `TESTING.md`.
+- [ ] Automated integration tests against `TEST_DATABASE_URL`. Not wired up;
+  DB behavior was verified manually.
+
+**Known deviations:** local Postgres replaced a Neon dev branch for Phase 2;
+password-reset tokens are stored raw by Better Auth; real email delivery and the
+Neon adapter are unverified.
 
 **Not in this phase:** any map or country data; OAuth; MFA; email verification
 enforcement; public pages.
 
-**Risks:** Better Auth's generated schema differs from the plan; Resend domain
-not verified; Neon connection pooling misconfiguration. Mitigation: verify the
-generated schema before writing app models; test with Resend's sandbox sender.
+**Gate:** user reviews the Phase 2 report and approves. Real email/Neon checks
+remain before deployment.
 
 ---
 
@@ -111,8 +128,10 @@ generated schema before writing app models; test with Resend's sandbox sender.
 
 **Scope**
 
-- Resolve D1 (195 vs 250) and generate the country dataset + SVG paths with a
-  reproducible script; validate codes, names, and path coverage; commit outputs.
+- D1 is resolved: 250 countries & territories, with Palestine (`PS`) and Israel
+  (`IL`) as separate units. Generate the country dataset + SVG paths with a
+  reproducible script; validate codes, names, and path coverage; assert both
+  paths exist; commit outputs.
 - Dataset integrity tests: unique codes, valid alpha-2, no missing names, path
   count matches the dataset.
 - `visited_countries` table + migration; idempotent toggle Server Action with
@@ -134,7 +153,8 @@ generated schema before writing app models; test with Resend's sandbox sender.
 - Visited/unvisited/border colors match the tokens and contrast test.
 - Dataset script is deterministic: re-running it produces no diff.
 
-**Not in this phase:** notes/dates, statistics by region, shared maps, export,
+**Not in this phase:** notes/dates (out of scope per D2), statistics by region,
+shared maps, export,
 landing page.
 
 **Risks:** geometry size/performance; licence/attribution; disputed territories
@@ -153,13 +173,13 @@ rather than ad-hoc curation.
   migration.
 - Create/rename/delete map; owner membership in one transaction.
 - Invite by email; token generation, SHA-256 hash at rest, expiry, revocation;
-  Resend invitation email; copyable link.
+  Brevo invitation email; copyable link.
 - Accept flow with email match, atomic single-use stamping, clear error states.
 - Map list, map detail with combined SVG view, member filter, per-member counts.
 - Owner: revoke invite, remove member. Member: leave map.
 - Authorization helper + negative tests for every action (non-member, non-owner,
   expired/revoked/used invite, wrong email).
-- Aggregation query returns country → member ids only; no notes/dates leak.
+- Aggregation query returns only country codes and counts; no account data.
 
 **Acceptance criteria**
 
@@ -181,35 +201,30 @@ confusion about what "combined" means (copy must be explicit).
 
 ---
 
-## Phase 5 — Travel details and insights
+## Phase 5 — Insights and filters
 
-**Goal:** make the map feel personal and informative without turning it into a
-social network.
+**Goal:** make the map informative without turning it into a social network.
 
 **Scope**
 
-- Optional `firstVisitedAt` and private `note` per visit (schema already
-  reserved); edit UI with validation.
 - Country list filters/sorts: visited, region, name; search stays.
 - Statistics: total, percentage, by region/continent (dataset must carry a
   region field).
 - Shared-map comparison if privacy allows: "everyone", "only you", "nobody yet".
-- Tests for date/note validation and for notes never appearing in shared
-  aggregates.
+- Tests for filters, counts, and shared aggregates.
 
 **Acceptance criteria**
 
-- Notes/dates persist and are visible only to their owner.
 - Filters/sorts are keyboard accessible and do not lose state unexpectedly.
 - Region counts sum to the total visited.
-- Shared comparison never exposes notes or dates.
+- Shared comparison exposes only country codes and counts.
 - Empty and large lists remain usable on mobile.
 
-**Not in this phase:** photos, trip journals, itineraries, charts requiring a
-charting library (prefer small CSS/SVG bars).
+**Not in this phase:** notes, visit dates, visit history, photos, trip journals,
+itineraries, charts requiring a charting library (prefer small CSS/SVG bars).
 
-**Decision needed:** D2 — whether dates/notes ship in Phase 3 or here. Keeping
-them here makes Phase 3 smaller and the core loop faster to validate.
+**D2 resolved (2026-10-26):** notes and visit dates are out of scope. Repeat
+visits would require a separate visit-history model if ever added.
 
 ---
 
@@ -288,7 +303,7 @@ review the fetch handler line by line and test sign-out → offline.
 
 - Deploy to Vercel; Neon production branch; env vars; `migrate deploy` release
   step; custom domain and HTTPS.
-- Resend domain verification (SPF/DKIM), production sender.
+- Brevo domain authentication (SPF/DKIM), production sender.
 - Security headers + CSP (report-only → enforce), HSTS.
 - Full accessibility audit (axe + manual keyboard/screen-reader pass).
 - Cross-browser and device pass; performance check on the map route.

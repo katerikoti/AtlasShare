@@ -5,11 +5,13 @@
 Mark the countries you have visited on a personal world map, then combine your
 map with the people you travel with.
 
-> **Project status: Phase 1 of 8 — foundation only.**
-> The repository runs, but there is no sign-up, no map, no sharing, and no
-> export yet. The current page is a temporary placeholder. See
-> [`docs/PROGRESS.md`](docs/PROGRESS.md) for exactly what exists and
-> [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md) for what comes next.
+> **Project status: Phase 2 of 8 complete and approved — accounts and
+> authentication. Phase 3 has not started.**
+> You can create an account, sign in/out, reset a password, change your name,
+> change your password, and delete your account. There is still no map, no
+> sharing, and no export. See [`docs/PROGRESS.md`](docs/PROGRESS.md) for exactly
+> what exists and [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md) for what
+> comes next.
 
 ## Why
 
@@ -23,25 +25,45 @@ tracking, no feed.
 
 - **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript**
 - **Tailwind CSS 4** with CSS-first design tokens
-- **Neon PostgreSQL** + **Prisma 7** (`@prisma/adapter-neon`)
-- **Better Auth** (planned, Phase 2)
-- **Resend** for transactional email (planned, Phase 2)
+- **Neon PostgreSQL** in production / local PostgreSQL 18 in development
+- **Prisma 7** with a host-selected Neon or `pg` driver adapter
+- **Better Auth** with email/password and database sessions
+- **Brevo** for transactional email (disabled automatically without a key)
 - **Vitest** + React Testing Library; Playwright planned for Phase 8
 - Hosting: Vercel (planned, Phase 8)
 
 ## Getting started
 
-Requirements: Node 24 (`.nvmrc`) and npm.
+Requirements: Node 24 (`.nvmrc`), npm, and PostgreSQL (local or Neon).
 
 ```bash
 npm install
+cp .env.example .env   # fill in real values
+npm run db:deploy      # apply committed migrations (or db:migrate in development)
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. `postinstall` generates the Prisma client.
 
-The app currently needs no environment variables. When Phase 2 lands, copy
-`.env.example` to `.env` and fill in the Neon/Resend values. Never commit `.env`.
+Local development can use plain Postgres; the runtime adapter switches to Neon
+when the database host ends in `.neon.tech`. Start a local server, create the
+databases, and point `DATABASE_URL`/`DIRECT_URL` at them. For a fresh local
+database:
+
+```bash
+createdb atlasshare_dev
+createdb atlasshare_test
+npm run db:migrate
+```
+
+Email is optional in development. Without `BREVO_API_KEY`, welcome and reset
+messages are skipped with a log line; sign-up and password-reset requests still
+succeed (read the reset token from the `verification` table in development).
+To send real mail, create a free Brevo account, add and verify a sender address
+(no domain purchase required), then set `BREVO_API_KEY` and point `EMAIL_FROM`
+at that verified address. If Brevo returns `401 unauthorized` with an
+“unrecognised IP address” message, authorize the current IP in Brevo’s
+**Authorised IPs** settings, then retry. Never commit `.env`.
 
 ### Scripts
 
@@ -55,6 +77,11 @@ The app currently needs no environment variables. When Phase 2 lands, copy
 | `npm test` | Run unit tests once. |
 | `npm run test:watch` | Unit tests in watch mode. |
 | `npm run check` | Lint + typecheck + tests. Run before every commit. |
+| `npm run db:migrate` | Create/apply a dev migration. |
+| `npm run db:deploy` | Apply committed migrations (release/CI). |
+| `npm run db:generate` | Regenerate the Prisma client. |
+| `npm run db:studio` | Open Prisma Studio. |
+| `npm run db:auth-schema` | Regenerate Better Auth's schema fragment (review the diff). |
 
 `next typegen` must run before `tsc` because Next 16 generates route types
 (`LayoutProps<"/">`) into `.next/types`.
@@ -63,15 +90,15 @@ The app currently needs no environment variables. When Phase 2 lands, copy
 
 ```
 src/
-  app/            App Router routes, layout, global CSS
-  components/     (planned) map, export, UI primitives
-  config/         brand identity — the source of truth for the product name
+  app/            App Router routes, metadata, auth/account pages, icon
+  components/     auth/account forms and UI primitives; map/export are planned
+  config/         brand identity and lazy environment validation
   data/           (planned) generated country dataset
-  server/         (planned) auth, database, authorization, actions, email
-  lib/            framework-agnostic helpers
+  lib/            browser auth client and framework-agnostic helpers
+  server/         auth, database, session gate, actions, email, validation
   test/           test setup
 docs/             specification, architecture, database, security, plan, etc.
-prisma/           (planned) schema and migrations
+prisma/           schema and committed migrations
 ```
 
 ## Documentation
@@ -88,11 +115,11 @@ Reference:
 
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — stack, runtime model, map and
   export design.
-- [`docs/DATABASE.md`](docs/DATABASE.md) — planned schema and invariants.
+- [`docs/DATABASE.md`](docs/DATABASE.md) — schema, migrations, and invariants.
 - [`docs/SECURITY.md`](docs/SECURITY.md) — auth, authorization, privacy rules.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md) — decision records (ADRs).
 - [`docs/TESTING.md`](docs/TESTING.md) — strategy and honest test results.
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — planned Vercel/Neon/Resend setup.
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — planned Vercel/Neon/Brevo setup.
 - [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — notable changes.
 
 ## Design
