@@ -6,14 +6,14 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { secondaryButtonClass } from "@/components/ui/form";
 
-export function SignOutButton() {
+export function SignOutButton({ redirectTo = "/" }: { redirectTo?: string }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function onSignOut() {
     setPending(true);
     await authClient.signOut();
-    router.replace("/");
+    router.replace(redirectTo);
     router.refresh();
   }
 

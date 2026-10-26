@@ -17,7 +17,10 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSessionCookie = Boolean(getSessionCookie(request));
 
-  if (!hasSessionCookie && pathname.startsWith("/account")) {
+  if (
+    !hasSessionCookie &&
+    (pathname.startsWith("/account") || pathname.startsWith("/shared"))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/sign-in";
     return NextResponse.redirect(url);
@@ -27,5 +30,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/account/:path*"],
+  matcher: ["/account/:path*", "/shared/:path*"],
 };

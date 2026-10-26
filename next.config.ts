@@ -21,6 +21,21 @@ const nextConfig: NextConfig = {
   // cached by the framework by accident. Enabling Cache Components later is a
   // deliberate performance decision that requires Suspense boundaries around
   // every session read. See docs/DECISIONS.md (ADR-003).
+  async headers() {
+    return [
+      {
+        // The raw invitation token is part of the path. Keep it out of Referer
+        // headers, search indexes, and shared caches even if metadata is not
+        // processed (for example, a non-HTML response or a crawler).
+        source: "/invite/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "Cache-Control", value: "private, no-store" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;

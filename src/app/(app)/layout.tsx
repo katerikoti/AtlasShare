@@ -16,41 +16,50 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-line/80 bg-canvas/80 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-6 py-4 sm:px-10">
-          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-6 py-4 sm:px-10">
+          <Link
+            href="/map"
+            className="flex items-center gap-3 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-moss"
+          >
+            <span
+              aria-hidden="true"
+              className="grid size-8 place-items-center rounded-full bg-moss font-display text-base text-canvas"
+            >
+              A
+            </span>
+            <span className="hidden font-display text-lg tracking-tight sm:inline">
+              {brand.name}
+            </span>
+          </Link>
+          <nav
+            aria-label="Main"
+            className="order-last flex w-full items-center gap-1 sm:order-none sm:ml-2 sm:w-auto"
+          >
             <Link
               href="/map"
-              className="flex items-center gap-3 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-moss"
+              className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
             >
-              <span
-                aria-hidden="true"
-                className="grid size-8 place-items-center rounded-full bg-moss font-display text-base text-canvas"
-              >
-                A
-              </span>
-              <span className="hidden font-display text-lg tracking-tight sm:inline">
-                {brand.name}
-              </span>
+              Map
             </Link>
-            <nav aria-label="Main" className="flex items-center gap-1">
-              <Link
-                href="/map"
-                className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
-              >
-                Map
-              </Link>
-              <Link
-                href="/account"
-                className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
-              >
-                Account
-              </Link>
-            </nav>
-            <span className="hidden text-sm text-ink-muted lg:inline">
-              Signed in as {session.user.name}
-            </span>
+            <Link
+              href="/shared"
+              className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
+            >
+              Shared
+            </Link>
+            <Link
+              href="/account"
+              className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
+            >
+              Account
+            </Link>
+          </nav>
+          <span className="hidden text-sm text-ink-muted lg:inline">
+            Signed in as {session.user.name}
+          </span>
+          <div className="ml-auto">
+            <SignOutButton />
           </div>
-          <SignOutButton />
         </div>
       </header>
 
@@ -60,8 +69,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
       <footer className="border-t border-line/80">
         <p className="mx-auto w-full max-w-4xl px-6 py-4 text-xs text-ink-muted sm:px-10">
-          Private by default · Shared maps and image export arrive in later
-          phases.
+          Private by default · Shared maps are live; image export arrives in a
+          later phase.
         </p>
       </footer>
     </div>

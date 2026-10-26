@@ -1,8 +1,8 @@
 # AtlasShare — Product Specification
 
-Status: **agreed direction, Phase 3 implemented and approved.** Requirements
-here are the target for the whole build. Each phase implements a slice; see
-`DEVELOPMENT_PLAN.md` and `PROGRESS.md`.
+Status: **agreed direction, Phase 4 implemented and verified; awaiting
+approval.** Requirements here are the target for the whole build. Each phase
+implements a slice; see `DEVELOPMENT_PLAN.md` and `PROGRESS.md`.
 
 ## 1. One-sentence product
 
@@ -227,6 +227,6 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 | --- | --- | --- | --- |
 | D1 | Country set | Resolved 2026-10-26; source in ADR-025 | 250 countries & territories; `PS` and `IL` both standalone; `@svg-maps/world` + Natural Earth AQ |
 | D2 | Notes and visit dates | Resolved 2026-10-26 | Visited state only; notes/dates out of scope |
-| D3 | Shared map roles beyond owner/member | Phase 4 start | Owner + member only |
+| D3 | Shared map roles beyond owner/member | Resolved at Phase 4 start (ADR-013) | Owner + member only |
 | D4 | Rate-limit storage | Resolved in Phase 2 | In-memory, production-only; move to a shared store if abuse appears |
 | D5 | Custom domain / email sender | Phase 8 | Custom domain recommended for production email deliverability |

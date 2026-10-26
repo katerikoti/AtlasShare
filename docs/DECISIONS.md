@@ -480,6 +480,73 @@ locally) served with ETag revalidation.
 
 ---
 
+## ADR-026 — Explicit-membership shared maps expose member names and country sets
+
+**Status:** accepted (Phase 4)
+
+**Context:** The Phase 4 plan said the aggregation should expose only country
+codes and counts, but the member filter needs a stable way to list and identify
+members. Email addresses and user ids are unnecessary and more sensitive.
+Sending only a combined set would make per-member filtering impossible.
+
+**Decision:** Shared maps remain explicit-membership only. Every member can see
+other members' display names, membership ids, and deduplicated visited-country
+sets so the filter can work. The client receives combined counts and no emails,
+user ids, raw visit rows, notes, or visit dates. Pending invitation emails are
+returned only to the owner. The account page warns that the display name appears
+on shared maps.
+
+**Consequences:** Members learn each other's country-level travel marks, which
+is the product's intended shared value. A person who needs to hide their name
+must change their display name before joining. Adding nicknames or per-map
+aliases later is a schema/UI change. Tests assert the DTO shape and the
+owner-only invitation query.
+
+---
+
+## ADR-027 — Shared maps are read-only; the owner cannot leave
+
+**Status:** accepted (Phase 4)
+
+**Context:** Letting members mark countries inside a shared map would blur
+ownership and risk changing a person's private map accidentally. Removing the
+owner would leave a map without the required single owner.
+
+**Decision:** The shared page is read-only for everyone, including the owner.
+Members change visits only on `/map`. The owner can update details, invite,
+revoke, remove members, and delete the map; the owner cannot leave. Members can
+leave. Removing or leaving deletes only membership, never the person's private
+visits. Deletion requires typing `DELETE`.
+
+**Consequences:** Clear authorization and no accidental edits. A shared view
+reflects changes on the next request; there is no real-time sync. Transferring
+ownership is not implemented, so an owner who wants out must delete the map or
+an ownership-transfer flow must be added later.
+
+---
+
+## ADR-028 — Invitation acceptance matches an unverified account email
+
+**Status:** accepted (Phase 4, revisit before launch)
+
+**Context:** Invitations are addressed to an email and must not be redeemable by
+a different account. Better Auth email verification is not enforced in this
+project, so the strongest available check is a normalized string match between
+the signed-in account email and the invitation email.
+
+**Decision:** Accept only when the signed-in account email matches the
+invitation email, and perform the claim atomically. Do not add a verification
+gate in Phase 4 because there is no verification UI/flow yet. Record the
+limitation instead of claiming that an invitation proves address control.
+
+**Consequences:** A different signed-in email is rejected. A forwarded link can
+still be redeemed by someone who registers the unregistered invited address
+first. Requiring verified email before acceptance is a pre-launch hardening
+task; adding it needs a verification flow but no schema change. Invitations
+remain single-use, 7-day, hashed, revocable, and high-entropy.
+
+---
+
 ## Deferred decisions
 
 | Topic | Why deferred | Needed by |
@@ -492,3 +559,7 @@ locally) served with ETag revalidation.
 | Dark mode | Needs a second accessible palette | post-launch |
 | i18n | English-only first release | post-launch |
 | Shared rate-limit store | In-memory is sufficient until abuse is observed | Before public launch |
+| Enforce verified email before invitation acceptance | Verification flow is not built; risk recorded in ADR-028 | Before public launch |
+| Invitation-token log retention | Raw token is in the request path; deployment logging policy needed | Before production |
+| Shared-map ownership transfer | Owner must currently delete instead of leaving | If users ask for it |
+| Real-time shared updates | Request-time derived view is sufficient for the first release | post-launch |

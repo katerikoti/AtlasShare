@@ -1,8 +1,8 @@
 # AtlasShare — Architecture
 
-Status: **Phase 3 (country dataset and personal map) is implemented and
-approved.** Shared maps, export, and PWA functionality are still planned.
-Anything marked _planned_ does not exist in the codebase yet. See
+Status: **Phase 4 (shared maps) is implemented and verified, awaiting approval.**
+Phases 1–3 are approved. Insights, export, and PWA functionality are still
+planned. Anything marked _planned_ does not exist in the codebase yet. See
 [`PROGRESS.md`](./PROGRESS.md) for what is actually built.
 
 ## 1. Purpose of this document
@@ -97,20 +97,22 @@ The real check is always server-side, in the data layer:
 
 ```ts
 const session = await requireSession();          // redirects to /sign-in when absent
-// Phase 4: const map = await requireMapMembership(mapId, session.user.id);
+const access = await getMapAccess(mapId, session.user.id); // null => 404-style
 ```
 
 Rationale: a proxy runs before the request is resolved and is not intended for
 slow data fetching or full session management (see the Next.js Proxy docs).
 Database-backed authorization cannot be safely done there.
 
-The implemented proxy optimistically protects `/account` only. `/map` also
-calls `requireSession()` in its server page, so it is protected without relying
-on the proxy. The proxy deliberately does **not** redirect signed-in users away
-from auth pages: Better Auth rotates the session
-cookie on password change, and a cookie-presence redirect between `/account` and
-`/sign-in` can race that rotation into a loop. A signed-in user seeing the
-sign-in form is harmless.
+The implemented proxy optimistically protects `/account` and `/shared`. `/map`,
+`/shared`, `/shared/[mapId]`, and every Server Action still call
+`requireSession()`, `getMapAccess()`, or the owner helper on the server. The
+proxy deliberately does **not** redirect signed-in users away from auth pages:
+Better Auth rotates the session cookie on password change, and a cookie-presence
+redirect between `/account` and `/sign-in` can race that rotation into a loop. A
+signed-in user seeing the sign-in form is harmless. The public `/invite/[token]`
+page checks the token and signed-in email server-side; it is intentionally not
+blocked by the proxy so a signed-out recipient can authenticate first.
 
 ### 5.3 Caching
 
@@ -132,8 +134,9 @@ at this unversioned path because a dataset/code update must stay in sync.
 
 ### 5.4 Server Actions vs. route handlers
 
-- **Server Actions**: marking a country, renaming a map, creating an invitation,
-  accepting an invitation, updating account settings.
+- **Server Actions**: marking a country, creating/renaming/deleting a shared
+  map, inviting/revoking/accepting, removing a member, leaving, and updating
+  account settings.
 - **Route handlers** (`route.ts`): only where an HTTP contract is required —
   Better Auth's `/api/auth/[...all]`, and later the PWA service worker and
   manifest if they cannot be static files.
@@ -150,14 +153,16 @@ src/
     page.tsx                # temporary development placeholder (landing is Phase 7)
     not-found.tsx
     icon.svg                # app icon
-    (auth)/                 # sign in, sign up, forgot/reset password
+    (auth)/                 # sign in, sign up, forgot/reset, invite/[token]
     (app)/account/          # signed-in account settings
     (app)/map/              # personal map + route error boundary
+    (app)/shared/           # shared list, create form, shared/[mapId]
     api/auth/[...all]/      # Better Auth handler
   components/
     auth/                   # sign-in/up, forgot/reset, sign-out forms
     account/                # name, password, delete-account forms
-    map/                    # interactive SVG map and country list
+    map/                    # interactive SVG map, country list, geometry hook
+    shared/                 # shared view, create/invite/settings/member forms
     ui/form.tsx             # field, message, button/input styles
     (export/ is planned for Phase 6)
   config/
@@ -168,15 +173,18 @@ src/
     countries.generated.ts  # generated names/codes; do not edit
   lib/
     auth-client.ts          # browser Better Auth client
+    safe-redirect.ts        # same-origin post-auth `next` validation
   server/
     auth.ts                 # lazy Better Auth instance + options
     db.ts                   # lazy Prisma client, adapter selected by host
     session.ts              # getSession + requireSession gate
-    authorization.ts        # planned Phase 4: membership/permission helpers
+    authorization.ts        # session/map membership/owner checks
     visits.ts               # user-scoped visited-country reads/writes
-    actions/                # account + visits Server Actions
-    email/                  # Brevo wrapper, templates, welcome/reset senders
-    validation/             # pure Zod schemas for account forms
+    shared-maps.ts          # map CRUD, combined view, invitations, membership
+    invitations.ts          # token generation/hash/TTL/URL validation
+    actions/                # account, visits, and shared-map Server Actions
+    email/                  # Brevo wrapper, templates, all senders
+    validation/             # pure Zod schemas for account/shared-map forms
   test/
     setup.ts                # Vitest setup (jest-dom)
 prisma/
@@ -294,24 +302,36 @@ A shared map is a named collection of members. Each member keeps their own
 private visit data; the shared map shows a **derived view**:
 
 - union of members' visited countries (the default),
-- optional per-member filtering,
+- per-member filtering,
 - a "new to the group" or "only you" style comparison if Phase 5 adds it.
 
 Design constraints:
 
 - Membership is explicit. There is no public sharing, no "anyone with the link
   can view" in the first release.
-- Invitations are single-use tokens delivered by email or copyable link. The
-  database stores only a hash of the token. Tokens expire and can be revoked.
+- Invitations are single-use 256-bit tokens delivered by email or copyable link.
+  The database stores only a SHA-256 hash. Tokens expire after 7 days, are
+  revoked on replacement, and are marked accepted atomically.
+- The invited email must match the signed-in account. Email verification is not
+  enforced (see `SECURITY.md`), so this is a string match, not independent proof
+  of address control.
 - Removing a member removes their contribution from the derived view. Their
-  private visits are untouched.
-- A map owner can rename the map, invite, revoke invitations, and remove
-  members. A member can leave. Deleting a map is owner-only and confirmed.
+  private visits are untouched. The owner cannot leave; the map must be deleted.
+- A map owner can rename the map, invite, revoke invitations, remove members,
+  and delete the map. A member can leave. Deleting a map is owner-only and
+  requires typing `DELETE`.
 - The combined view is computed server-side from an authorization-scoped query.
-  A client must never receive another member's raw visit list.
+  The client receives member display names, membership ids, and deduplicated
+  country-code sets so the filter works. It never receives raw visit rows,
+  emails, user ids, notes, or visit dates. Pending invitation emails are
+  owner-only.
+- The shared view is read-only for everyone. Members change their own map on
+  `/map`; shared pages do not mutate personal visits.
 - Roles are intentionally minimal: `OWNER` and `MEMBER`. Editors/viewers are a
   later feature if the product needs them; adding roles early complicates every
   authorization check.
+- Acceptance and invitation creation are not rate-limited. Token entropy makes
+  guessing infeasible, but this remains a hardening item.
 
 ## 9. Image export
 
@@ -349,18 +369,20 @@ Constraints:
   Microsoft may rewrite or flag mail from unauthenticated senders.
 - Plain HTML templates with inline styles, built from the `brand` palette. No
   React Email dependency in the first release.
-- Emails implemented: welcome (Phase 2), password reset (Phase 2). Invitation
-  email is planned for Phase 4.
+- Emails implemented: welcome (Phase 2), password reset (Phase 2), and shared
+  map invitation (Phase 4).
 - Sending is best-effort and never blocks the primary mutation from succeeding.
+  The owner can copy the invitation link if sending is skipped or fails.
   Failures are logged without tokens or message bodies.
 - Without `BREVO_API_KEY`, the mailer is a no-op and logs the skipped subject;
-  sign-up still succeeds.
+  sign-up and invitation creation still succeed.
 - `welcomeEmailSentAt` on the user record prevents duplicate welcomes. If email
   is disabled at sign-up, the field stays null and the welcome is **not**
-  retried later; there is no job queue yet.
+  retried later; there is no job queue or invitation retry.
 - Email verification is **not enforced** initially (see `SECURITY.md`). The
   tradeoff is explicit: lower sign-up friction, higher risk of typo'd addresses.
-  Reset and invitation emails still prove control of the address.
+  Password-reset delivery proves control when it reaches the real inbox, but
+  invitation acceptance only compares the unverified account email string.
 
 ## 11. Environment variables
 

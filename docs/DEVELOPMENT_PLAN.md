@@ -1,7 +1,7 @@
 # AtlasShare — Development Plan
 
-Status: **Phase 3 approved (2026-10-26).** Phases 1–3 are complete; Phase 4 is
-scoped but not started.
+Status: **Phase 4 built and verified (2026-10-26), awaiting approval.** Phases
+1–3 are approved; Phase 5 has not started.
 
 ## How phases work
 
@@ -165,12 +165,18 @@ rather than ad-hoc curation.
 
 ## Phase 4 — Shared maps
 
+**Status:** implemented and verified 2026-10-26; awaiting approval. The three
+shared-map tables already existed from the Phase 2 migration, so this phase did
+not add a migration. The implementation returns member display names and
+deduplicated country-code sets so the member filter works; raw visit rows,
+emails, user ids, notes, and visit dates are still never sent.
+
 **Goal:** travel together, privately.
 
 **Scope**
 
-- `shared_maps`, `shared_map_members`, `shared_map_invitations` tables +
-  migration.
+- Use the existing `shared_maps`, `shared_map_members`, and
+  `shared_map_invitations` tables (no new migration required).
 - Create/rename/delete map; owner membership in one transaction.
 - Invite by email; token generation, SHA-256 hash at rest, expiry, revocation;
   Brevo invitation email; copyable link.
@@ -179,7 +185,9 @@ rather than ad-hoc curation.
 - Owner: revoke invite, remove member. Member: leave map.
 - Authorization helper + negative tests for every action (non-member, non-owner,
   expired/revoked/used invite, wrong email).
-- Aggregation query returns only country codes and counts; no account data.
+- Aggregation query returns deduplicated country codes/counts plus member display
+  names and membership ids required by the filter; no emails, user ids, raw
+  visits, notes, or dates.
 
 **Acceptance criteria**
 

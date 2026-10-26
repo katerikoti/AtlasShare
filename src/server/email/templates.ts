@@ -159,3 +159,42 @@ export function renderPasswordResetEmail(input: {
     ].join("\n"),
   };
 }
+
+/**
+ * Invitation email. It intentionally contains no inviter address, invited
+ * address, member names, or other account data — only the map name and the
+ * single-use link.
+ */
+export function renderInvitationEmail(input: {
+  mapName: string;
+  inviteUrl: string;
+  expiresInDays: number;
+}): RenderedEmail {
+  return {
+    subject: `You're invited to a shared map on ${brand.name}`,
+    html: layout({
+      preview: "Someone added you to a private shared map.",
+      heading: "You're invited to a shared map",
+      body:
+        paragraph(
+          `You have been invited to join “${input.mapName}” on ${brand.name}.`,
+        ) +
+        paragraph(
+          `The invitation expires in ${input.expiresInDays} days and can be used once. It only works for the email address that received it.`,
+        ),
+      cta: { label: "Open the invitation", href: input.inviteUrl },
+      footnote:
+        "If you were not expecting this invitation, you can ignore it. No map data is shown until you sign in with the invited email address and accept.",
+    }),
+    text: [
+      `You have been invited to join “${input.mapName}” on ${brand.name}.`,
+      "",
+      `Accept the invitation (expires in ${input.expiresInDays} days, single use): ${input.inviteUrl}`,
+      "",
+      "This link only works for the email address that received it.",
+      "If you were not expecting this invitation, ignore this email.",
+      "",
+      `— ${brand.name}`,
+    ].join("\n"),
+  };
+}

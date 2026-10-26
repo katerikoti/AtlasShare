@@ -1,11 +1,12 @@
 # AtlasShare — Testing
 
-Status: **Phase 3 complete and approved (2026-10-26).**
-64 automated tests in 12 files. Database persistence, auth, map layout, and
-browser behavior were also checked manually; the exact pass/blocked/not-run
-state is below. Results are from 2026-10-26 on macOS, Node 24.13.1, npm 11.8.0,
-local PostgreSQL 18, and Chrome 148 (headless CDP and the app's browser pane).
-Final `npm run check` and production rebuild results are recorded in section 5.
+Status: **Phase 4 built and verified (2026-10-26), awaiting approval.**
+105 automated tests in 17 files. Database persistence, auth, shared-map
+authorization, map layout, and browser behavior were also checked manually; the
+exact pass/blocked/not-run state is below. Results are from 2026-10-26 on macOS,
+Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome 148 (headless CDP and
+the app's browser pane). Final `npm run check` and production rebuild results
+are recorded in section 5.1.
 
 ## 1. Principles
 
@@ -25,13 +26,13 @@ Final `npm run check` and production rebuild results are recorded in section 5.
 | --- | --- | --- | --- |
 | Lint | ESLint 9 + `eslint-config-next` | Every check | ✅ configured |
 | Types | `next typegen && tsc --noEmit` | Every check | ✅ configured |
-| Unit | Vitest 5 | Every check | ✅ 64 tests / 12 files |
-| Component | Vitest + React Testing Library + jsdom | Every check | ✅ 4 map tests |
+| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 105 tests / 17 files total |
+| Component | React Testing Library + jsdom | Every check | ✅ 6 map/shared-view tests |
 | Data integrity | Vitest over the country dataset | Every check | ✅ 6 tests |
-| Integration (DB) | Vitest against `TEST_DATABASE_URL` | Every check when test DB is configured; skipped otherwise | ✅ 3 tests; local test DB |
+| Integration (DB) | Vitest against `TEST_DATABASE_URL` | Every check when test DB is configured; skipped otherwise | ✅ 14 tests (visits + shared maps); local test DB |
 | End-to-end | Playwright (Phase 8) | CI / pre-release | ⬜ planned; manual browser checks done |
 | Accessibility | axe + manual keyboard/screen-reader | Each UI phase; full audit Phase 8 | ⬜ partial; manual keyboard/screen-reader not run |
-| Visual/layout | Headless Chrome metrics + screenshots | Each UI phase | ✅ layout metrics at 320/390/1200/1280; visual review delegated |
+| Visual/layout | Headless Chrome CDP metrics | Each UI phase | ✅ 320/390/1200/1280 metrics; visual review delegated |
 
 ## 3. Commands
 
@@ -58,14 +59,14 @@ fails.
 
 Integration tests load `.env` and use `TEST_DATABASE_URL` (the local
 `atlasshare_test` database). They are skipped, not passed, when that variable is
-absent. `npm test` therefore reports 64 passed locally; a fresh checkout without
-the test DB reports 61 passed and 3 skipped unless the environment is set.
+absent. `npm test` therefore reports 105 passed locally; a fresh checkout without
+the test DB reports 91 passed and 14 skipped unless the environment is set.
 
 `npm run data:countries` requires `@svg-maps/world@2.0.0` exactly and rewrites
 `src/data/countries.generated.ts` and `public/map/countries.json`. Run it twice
 and compare hashes when changing the generator.
 
-## 4. Automated tests through Phase 3
+## 4. Automated tests through Phase 4
 
 ### 4.1 `npm run lint`
 
@@ -80,13 +81,13 @@ and compare hashes when changing the generator.
 ### 4.3 `npm test`
 
 - Command: `npm test`
-- Result: **passed**, 64/64 tests in 12 files (2026-10-26 13:21 local).
+- Result: **passed**, 105/105 tests in 17 files (2026-10-26 13:57 local).
 - Coverage by file:
   - `src/config/brand.test.ts` — product name, WCAG text contrast, and map border contrast (4).
   - `src/config/env.test.ts` — lazy env parsing, missing/malformed values, short
     secrets, memoization (5).
-  - `src/server/email/templates.test.ts` — welcome/reset content, escaping, no
-    stray tokens (6).
+  - `src/server/email/templates.test.ts` — welcome/reset/invitation content,
+    escaping, URL shape, no stray tokens (9).
   - `src/server/email/welcome.test.ts` — once-only claim, skip without config,
     release/rethrow on failure (4).
   - `src/server/email/mailer.test.ts` — Brevo request shape, sender parsing,
@@ -95,9 +96,9 @@ and compare hashes when changing the generator.
     DELETE validation (11).
   - `src/server/session.test.ts` — `requireSession` redirects without a session
     and returns a real one (2).
-  - `src/server/actions/account.auth.test.ts` — all three account actions reject
-    unauthenticated callers before calling Better Auth; authorized validation
-    paths and password-change session revocation (8).
+  - `src/server/actions/account.auth.test.ts` — account actions reject
+    unauthenticated callers before Better Auth; validation and password-change
+    session revocation (8).
   - `src/data/countries.test.ts` — exactly 250 unique units, names, special
     units, PS/IL separation, path completeness, lookup/sort (6).
   - `src/server/visits.integration.test.ts` — idempotent set/remove, user
@@ -107,9 +108,23 @@ and compare hashes when changing the generator.
     (5).
   - `src/components/map/map-experience.test.tsx` — accessible list and count,
     search, optimistic mark, rollback/error (4).
-- What is **not** covered automatically: Better Auth itself, email delivery,
-  browser routing, the proxy, real touch gestures, and screen-reader output.
-  Database writes are now covered by the integration suite.
+  - `src/server/shared-maps.integration.test.ts` — combined counts, member
+    privacy shape, create/invite/accept/reinvite/revoke/remove/leave, expiry,
+    wrong email, single-use and concurrency, owner invariants (11).
+  - `src/server/actions/shared-maps.auth.test.ts` — every shared-map action
+    rejects unauthenticated/non-member/non-owner callers as appropriate,
+    validates input, and handles email outcomes (17).
+  - `src/components/shared/shared-map-experience.test.tsx` — combined view,
+    member filter, read-only state (2).
+  - `src/server/invitations.test.ts` — token entropy/format, hash/TTL, URL and
+    path handling (5).
+  - `src/lib/safe-redirect.test.ts` — same-origin redirects accepted; absolute,
+    protocol-relative, backslash, control-character, and malformed targets
+    rejected (3).
+- What is **not** covered automatically: Better Auth itself, actual email
+  delivery/rendering, browser routing, the proxy, real touch gestures, and
+  screen-reader output. Database writes and shared-map authorization are covered
+  by integration/action tests.
 
 ### 4.4 `npm run build`
 
@@ -118,13 +133,15 @@ and compare hashes when changing the generator.
 - Routes:
   - static (`○`): `/`, `/_not-found`, `/sign-in`, `/sign-up`,
     `/forgot-password`.
-  - dynamic (`ƒ`): `/account`, `/map`, `/reset-password`, `/api/auth/[...all]`.
-- The map route is dynamic because it reads the signed-in user's visits; the
-  public geometry is a static file under `public/map/`.
-- Proxy is compiled as middleware.
+  - dynamic (`ƒ`): `/account`, `/map`, `/shared`, `/shared/[mapId]`,
+    `/invite/[token]`, `/reset-password`, `/api/auth/[...all]`.
+- The map and shared routes are dynamic because they read the signed-in user's
+  data; the public geometry is a static file under `public/map/`.
+- Proxy is compiled as middleware and optimistically protects `/account` and
+  `/shared`; every page/action re-checks authorization on the server.
 - The build does **not** require runtime secrets; env/auth/database are lazy, and
   the authenticated `(app)` layout is forced dynamic. Verified by re-running the
-  build with `.env` temporarily removed: **passed**.
+  build with `.env` temporarily removed in Phase 3: **passed**.
 
 ### 4.5 Migration from an empty database
 
@@ -164,11 +181,103 @@ and compare hashes when changing the generator.
   control.
 - The request required authorizing the local egress IP (Brevo returned 401
   `unauthorized` before that).
-- Visual rendering and password-reset delivery are not confirmed yet.
+- Phase 4 ran the invitation send path through the action in browser QA; the UI
+  reported the invitation as sent. The test recipient was an `example.com`
+  address, so inbox delivery/rendering was not verified.
+- Visual rendering of transactional email and password-reset delivery are still
+  not confirmed.
 
-## 5. Phase 3 automated and manual verification
+## 5. Phase 4 automated and manual verification
 
-### 5.1 Dataset generation
+### 5.1 Final checks
+
+- `npm run lint`: **passed**, exit 0.
+- `npm run typecheck`: **passed**, exit 0.
+- `npm run check`: **passed**, lint + typecheck + **105/105 tests in 17 files**
+  (2026-10-26, after the final shared-map and landing-header edits).
+- `npm run build`: **passed**. Dynamic routes: `/account`, `/map`, `/shared`,
+  `/shared/[mapId]`, `/invite/[token]`, `/reset-password`,
+  `/api/auth/[...all]`. **No new migration** was created or needed.
+- `npm audit`: 8 advisories (1 critical, 3 high, 4 moderate), all in development
+  tooling/nested dependencies. Runtime Better Auth is 1.7.12; the advisories are
+  in `@better-auth/cli@1.4.21`'s nested Better Auth 1.4.21, drizzle-orm, lodash,
+  and chevrotain. No production bundle/server path uses those vulnerable copies.
+  Unresolved issues are recorded in `PROGRESS.md`; upgrade/replace before
+  deployment.
+
+### 5.2 Shared-map browser QA
+
+Served the production build at `http://localhost:3001` (port 3000 was occupied)
+with `BETTER_AUTH_URL` and runtime `NEXT_PUBLIC_APP_URL` set to that origin.
+Used two local accounts, an in-app browser pane, and a separate headless Chrome
+CDP session.
+
+| Scenario | Result |
+| --- | --- |
+| Owner and member mark personal countries | **pass** — owner NO+SE (2), member FR+SE (2) |
+| Create shared map | **pass** — owner membership created; detail page opened; list showed the map |
+| Invite member by email | **pass** — single-use link generated; UI reported email sent |
+| Invite a different email | **pass (blocked)** — distinct wrong-email state; map name not shown |
+| Sign-out → sign-in from invite | **pass** — `next` returned to `/invite/[token]` |
+| Accept invitation | **pass** — member joined; `?joined=1`; combined count 3; two members |
+| Member filter | **pass** — owner filter showed 2; member list/count updated; “everyone” restored 3 |
+| Member controls | **pass** — member saw the combined view but no owner management/remove controls |
+| Read-only shared map | **pass** — 250 SVG paths, zero checkboxes/toggles |
+| Used invitation | **pass (blocked)** — generic invalid/unavailable state; no second membership |
+| Member leave | **pass** — redirected to `/shared?left=1`; map disappeared from list |
+| Personal data after leaving | **pass** — member's `/map` still showed FR+SE (2 of 250) |
+| Owner rename/description | **pass** — persisted on reload |
+| Revoke pending invitation | **pass** — pending row removed; revoked link invalid |
+| Re-invite and remove member | **pass** — re-invited, accepted, owner removed; combined 3→2; personal map still 2 |
+| Delete map | **pass** — typed `DELETE`; list empty; detail returned HTTP 404 |
+| Invite response headers | **pass** — `Referrer-Policy: no-referrer`, `X-Robots-Tag`, `Cache-Control: private, no-store` |
+| Authenticated map from a signed-in account | **pass** — 250-country combined/read-only view; no raw rows exposed to the client (inspection + tests) |
+
+### 5.3 Responsive and layout checks
+
+- Headless Chrome CDP at **320 and 390 px** (mobile emulation) measured the
+  landing page, `/shared`, `/shared/[mapId]`, and `/map`.
+- `document.documentElement.scrollWidth` equaled the viewport at both widths;
+  no page-level horizontal scroll. SVG paths can extend beyond the viewport
+  inside the clipped map SVG, which is expected and does not widen the document.
+- The shared detail sidebar/nav collapsed without page overflow; the filter,
+  map card, country list, and owner forms stayed within the viewport.
+- The 320 px landing header originally clipped “Create account”; after tightening
+  the header (smaller wordmark/icon, smaller gaps, sign-in link hidden below
+  `sm`, hero CTAs retained), the header fit. Metrics were re-run after the fix.
+- Personal map remained map-first with the country list below; at desktop widths
+  the existing side-by-side layout is unchanged.
+- Responsive metrics use headless Chrome, not a physical phone. Visual design
+  approval remains delegated to the owner.
+
+### 5.4 Automation-tab artifact
+
+The in-app browser pane runs a background/hidden tab; it can pause
+`requestAnimationFrame`, leaving React's streamed Suspense segment hidden. The
+map content was revealed by calling `$RV($RB)` manually. The visible headless
+Chrome session rendered the same pages normally. This is a test-tool visibility
+artifact, not an application loading bug. Do not “fix” the app by removing the
+Suspense boundary.
+
+### 5.5 Not run or not covered in Phase 4
+
+- Physical-phone touch gestures, Safari, and Firefox.
+- Manual keyboard-only walkthrough and screen-reader output for the shared and
+  invite pages; no axe scan.
+- Expired-invitation UI in a browser; expiry is covered by the integration test.
+- Invitation inbox delivery, rendering, bounce handling, and open tracking; the
+  test recipient was an `example.com` address.
+- Real-time updates between two open browsers. The view is request-time; open a
+  fresh request/reload to see changes.
+- Visual design approval. Screenshots/metrics were captured, but the agent did
+  not approve the design.
+- Response headers on a real production domain/CDN; checked locally.
+- Shared-map rate limits and verified-email enforcement; they are not
+  implemented and are recorded as accepted risks.
+
+## 6. Phase 3 automated and manual verification
+
+### 6.1 Dataset generation
 
 - `npm run data:countries` completed and reported 250 units, 250 paths, and the
   viewBox. Running the generator twice produced identical UTF-8 output; the two
@@ -182,7 +291,7 @@ and compare hashes when changing the generator.
   compression brought the browser transfer to ~398 KB. It is public data and
   must never contain a user's visited set.
 
-### 5.2 Automated checks
+### 6.2 Automated checks
 
 - `npm test`: **passed**, 64/64 tests in 12 files. The three database integration
   tests ran against local `atlasshare_test`; they create two users, prove
@@ -194,7 +303,7 @@ and compare hashes when changing the generator.
 - `npm run check`: **passed** after the final Phase 3 edits (see the result note
   below).
 
-### 5.3 Production browser and layout checks
+### 6.3 Production browser and layout checks
 
 - Served the production build at `http://127.0.0.1:3003` with
   `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` set to that origin. Used Chrome
@@ -227,7 +336,7 @@ and compare hashes when changing the generator.
   functional after the change; a fresh QA account was created through the UI and
   deleted afterward.
 
-### 5.4 Phase 3 not run or not covered
+### 6.4 Phase 3 not run or not covered
 
 - No physical-phone test, real touch gesture test, or Safari/Firefox test.
 - No manual keyboard tab/space walkthrough or screen-reader session; the list is
@@ -241,7 +350,7 @@ and compare hashes when changing the generator.
 - No visual design review by the agent. Screenshots were captured at 320, 390,
   and 1280 px, but visual approval is delegated to the owner.
 
-### 5.5 Final result
+### 6.5 Final result
 
 Final Phase 3 commands on 2026-10-26: `npm run lint`, `npm run typecheck`,
 `npm run check`, and `npm run build` all exited 0. `npm run check` reported
@@ -249,9 +358,9 @@ Final Phase 3 commands on 2026-10-26: `npm run lint`, `npm run typecheck`,
 after the mobile overflow fix; no files changed after that build except
 documentation.
 
-## 6. Phase 2 manual verification (historical)
+## 7. Phase 2 manual verification (historical)
 
-### 6.1 Production smoke and auth flows
+### 7.1 Production smoke and auth flows
 
 Served with `PORT=3102 BETTER_AUTH_URL=http://localhost:3102
 NEXT_PUBLIC_APP_URL=http://localhost:3102 npm start` against local Postgres.
@@ -280,7 +389,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3102 npm start` against local Postgres.
 Test data lived only in the local `atlasshare_dev` database. Emails used
 `example.com` addresses. No credentials or tokens were committed.
 
-### 6.2 Layout and accessibility measurements
+### 7.2 Layout and accessibility measurements
 
 Headless Chrome via CDP at 320, 390, and 1280 px for `/`, `/sign-in`,
 `/sign-up`, `/forgot-password`, `/reset-password`, `/account`, and a missing
@@ -296,7 +405,7 @@ page.
 | Console errors | none after adding `src/app/icon.svg`; only the deliberately requested missing page returns 404 |
 | Focus visibility | Phase 1 outline styles still apply; not re-measured this phase |
 
-### 6.3 Not run or blocked in Phase 2
+### 7.3 Not run or blocked in Phase 2
 
 | Check | Status | Why |
 | --- | --- | --- |
@@ -313,13 +422,13 @@ page.
 | Cross-browser (Safari/Firefox) | **not run** | Chrome only. |
 | Lighthouse | **not run** | Meaningful after the map/landing page exist. |
 
-### 6.4 Phase 1 results (historical)
+### 7.4 Phase 1 results (historical)
 
 Phase 1 passed lint, typecheck, 4/4 tests, build, production smoke, 404, and
 320/390/1280 layout checks. The detailed record is in the Phase 1 commit and
 `CHANGELOG.md`; Phase 2 supersedes those counts.
 
-## 7. Test data and fixtures
+## 8. Test data and fixtures
 
 - Local Postgres databases: `atlasshare_dev` for development/manual checks and
   `atlasshare_test` for the Vitest integration suite. `TEST_DATABASE_URL` is
@@ -332,7 +441,7 @@ Phase 1 passed lint, typecheck, 4/4 tests, build, production smoke, 404, and
 - Country fixtures use real codes from the committed dataset; tests fail if a
   fixture code is not in the dataset.
 
-## 8. Accessibility testing plan
+## 9. Accessibility testing plan
 
 Per UI phase:
 
@@ -348,9 +457,32 @@ The map needs special attention: the SVG is not 250 tab stops. The country list
 is the accessible control surface; the SVG has an accessible name and reflects
 state via text alternatives.
 
-## 9. Manual QA checklist (feature phases)
+## 10. Manual QA checklist (feature phases)
 
-Phase 3 additions are checked separately from the historical Phase 2 items.
+Phase 4 additions are checked separately from the historical Phase 2/3 items.
+
+Phase 4:
+
+- [x] Owner and member see the combined view and correct counts (3); owner filter
+  shows 2; member filtering works.
+- [x] Invitation acceptance succeeds for the invited signed-in email; wrong email
+  is rejected without revealing the map name.
+- [x] Used and revoked invitations are rejected; expired acceptance is covered by
+  the integration test (browser UI not exercised).
+- [x] Member sees no owner management controls; shared map is read-only with 250
+  paths and zero checkboxes.
+- [x] Member leaves; the owner removes a member; personal map data remains (2).
+- [x] Owner renames, revokes, re-invites, and deletes; deleted map returns 404.
+- [x] Shared routes and landing page measured at 320/390 px; no page-level
+  horizontal overflow.
+- [x] Invite route sends no-referrer/noindex/no-store headers (curl).
+- [ ] Physical phone touch and Safari/Firefox.
+- [ ] Keyboard-only and screen-reader pass, axe scan.
+- [ ] Expired-invitation browser state and real inbox delivery/rendering.
+- [ ] Long map name/description and member-name wrapping at 320 px.
+- [ ] Human visual design approval.
+- [ ] Invitation rate limiting and verified-email enforcement (not implemented;
+  accepted risks, not test gaps).
 
 Phase 3:
 
@@ -376,8 +508,10 @@ Phase 2 (historical):
 - [ ] Long text (80/280 chars) does not break layout.
 - [ ] Offline (after PWA exists): branded offline page, no private cache.
 - [x] Unauthenticated `/account` and fake-cookie `/account` redirect.
+- [x] Unauthenticated `/shared` redirect; non-member map access returns 404
+  (action/integration tests; map page uses the signed-in member check).
 
-## 10. CI (planned)
+## 11. CI (planned)
 
 When the repo gets CI (Phase 8):
 
@@ -392,7 +526,7 @@ they are skipped and the run is reported as such. The build must not need
 secrets: database access at build time is avoided by lazy env/auth/database
 initialization and dynamic rendering.
 
-## 11. Known gaps
+## 12. Known gaps
 
 - No browser-level regression tests yet.
 - No automated test that a forged server-action request is rejected at the HTTP
@@ -402,8 +536,13 @@ initialization and dynamic rendering.
   manual SQL is still the check for foreign-key edge cases.
 - No browser-level map test for geometry fetch failure, retry, or route error
   boundary.
-- No automated layout regression (the 320 px overflow was caught manually in
+- No automated layout regression (the 320 px overflows were caught manually in
   headless Chrome); a Playwright viewport test is planned for Phase 8.
 - No test that client bundles contain no secrets. Planned for Phase 8 (grep the
   build output for known secret patterns).
-- No load testing or rate-limit verification. At this scale, not justified yet.
+- No load testing or shared-map rate-limit verification. At this scale, not
+  justified yet; invitation acceptance currently has no rate limit.
+- No automated test of production access logs for invitation tokens; app code
+  does not log the token, but the hosting layer may record the path.
+- No automated test that a forwarded invite cannot be redeemed by registering
+  the unverified invited email; this is an accepted risk, not a solved case.

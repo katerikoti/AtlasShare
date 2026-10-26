@@ -1,8 +1,9 @@
 # AtlasShare — Security
 
-Status: **Phase 3 personal map is implemented; shared maps and export are not.**
-This document states the rules that every phase must satisfy. Deviations require
-an explicit decision in `DECISIONS.md`.
+Status: **Phase 4 shared maps are implemented and verified, awaiting approval.**
+Export and PWA are not implemented. This document states the rules that every
+phase must satisfy. Deviations require an explicit decision in
+`DECISIONS.md`.
 
 ## 1. Assets
 
@@ -54,9 +55,11 @@ Rules:
   redirects to sign-in. This avoids a session-rotation race and guarantees other
   devices are signed out.
 - **Email verification is not enforced initially.** Accepted risk: typo'd or
-  fake addresses. Mitigations: password reset and invitations prove control of
-  the address; a verified-email requirement can be enabled later without a
-  schema change. Revisit before public launch.
+  fake addresses. Password reset proves control when the message reaches the
+  real inbox. Invitation acceptance only checks that the signed-in account email
+  string matches; it does not independently prove address control. A verified-
+  email requirement can be enabled later without a schema change, but should be
+  added before public launch. This is recorded as an accepted risk.
 - Password reset uses Better Auth's verification flow: a single-use token with a
   one-hour lifetime; success revokes sessions; the request response is identical
   whether or not the email exists.
@@ -80,17 +83,19 @@ scoped by the authenticated user or by a verified membership.**
 
 - Personal visits: `where: { userId: session.user.id }`. There is no endpoint
   that accepts a `userId` from the client.
-- Shared maps: a `requireMapAccess(mapId, userId)` helper returns the map +
-  membership or throws a not-found response. All member/invitation mutations go
-  through it.
-- Owner-only actions (rename, delete, invite, revoke, remove member) check
-  `role === "OWNER"` server-side.
+- Shared maps: `getMapAccess(mapId, userId)` returns the map + membership or
+  `null`; the page renders `notFound()`. All member/invitation mutations use
+  the same helper. Owner-only actions (rename, delete, invite, revoke, remove
+  member) additionally check `role === "OWNER"` server-side.
 - Authorization failures for private maps return **404**, not 403, so the
   existence of a map is not disclosed to non-members.
 - Removing a member or revoking an invite takes effect immediately on the next
   request. No cached member lists.
-- The combined map view is computed server-side and returns only country codes
-  and counts. No per-member account data is sent to another member.
+- The combined map view is computed server-side. The client receives member
+  display names, membership ids, and deduplicated country-code sets so the
+  member filter works, plus combined counts. It does not receive emails, user
+  ids, raw visit rows, notes, or visit dates. Pending invitation emails are
+  returned only to the owner.
 
 Test requirement: for each new server action, at least one test proves a
 non-member cannot perform it and cannot read the data.
@@ -137,8 +142,9 @@ non-member cannot perform it and cannot read the data.
   session for top-level navigations.
 - No state-changing GET requests.
 - Invitation acceptance is a POST that requires the signed-in user's email to
-  match the invitation email, so a forwarded link cannot be redeemed by a
-  different account.
+  match the invitation email. A different account cannot redeem it, but because
+  email verification is not enforced, a forwarded link can be redeemed by
+  registering the unregistered invited address first.
 
 ## 8. Invitation tokens
 
@@ -148,11 +154,17 @@ non-member cannot perform it and cannot read the data.
 - Single use: acceptance stamps `acceptedAt` atomically; a second attempt fails.
 - Expiry: 7 days. Revocable by the owner. Expired/revoked tokens are rejected
   with the same generic message as invalid ones.
-- Rate-limit acceptance attempts per IP and per account.
-- Do not put tokens in logs, analytics, Referer-leaking URLs on other origins,
-  or error messages. The invite page sets `Referrer-Policy: no-referrer`.
+- Acceptance is **not rate-limited**. The 256-bit token makes guessing
+  infeasible, but a shared limiter is still a pre-launch hardening item.
+- Application code does not log tokens, and invite responses send
+  `Referrer-Policy: no-referrer`, `X-Robots-Tag: noindex, nofollow`, and
+  `Cache-Control: private, no-store`. The raw token is necessarily in the
+  request path, so hosting/proxy access logs can record it; restrict log access
+  and retention in production.
 - Invitations are per-email. Copyable links still target one address. Changing
-  the invitation email requires revoking and re-inviting.
+  the invitation email requires revoking and re-inviting. Because email
+  verification is not enforced, a forwarded link can be redeemed by whoever
+  registers the unregistered invited address first; see accepted risks.
 
 ## 9. Rate limiting and abuse
 
@@ -171,6 +183,10 @@ each instance has its own counters. If abuse becomes real, move to a shared
 store (database or managed limiter) and update this section. Limits were not
 exhausted during verification because that would lock the test IP.
 
+Shared-map Server Actions (create, invite, revoke, accept, remove, leave,
+delete) are **not covered by these limits**. In particular, invitation
+acceptance has no rate limit; see §8 and §20.
+
 ## 10. Secrets and configuration
 
 - Secrets only in environment variables; never in the repo, never `NEXT_PUBLIC_*`.
@@ -188,8 +204,8 @@ Production (Phase 8):
 
 - HTTPS only; HSTS with a long max-age after the domain is stable.
 - `X-Content-Type-Options: nosniff`
-- `Referrer-Policy: strict-origin-when-cross-origin` (invite pages:
-  `no-referrer`)
+- `Referrer-Policy: strict-origin-when-cross-origin` (invite routes send
+  `no-referrer` plus `X-Robots-Tag` and `private, no-store` today)
 - `Permissions-Policy` denying camera, microphone, geolocation
 - `frame-ancestors 'none'` via CSP; no embedding
 - Content-Security-Policy with a nonce/hash strategy compatible with Next.js 16
@@ -237,10 +253,13 @@ Production (Phase 8):
 
 ## 15. Logging and monitoring
 
-- Log security-relevant events without PII: sign-in failure counts, invitation
-  accepted/revoked (ids only), authorization denials.
+- Security-relevant events should be logged without PII: invitation
+  accepted/revoked (ids only), authorization denials, and rate-limit trips. The
+  current implementation logs action failures with generic context only; there
+  is no structured audit trail yet.
 - Never log passwords, session tokens, invitation tokens, full email bodies, or
-  full connection strings.
+  full connection strings. Note that the invite token is in the request path, so
+  access-log configuration must account for that.
 - Error tracking, if added, must scrub request bodies and cookies.
 - Server errors return a generic message to the client; details stay in logs.
 
@@ -292,10 +311,12 @@ Before a phase is approved:
 
 | Risk | Why accepted | Revisit |
 | --- | --- | --- |
-| Email verification not enforced | Friction at sign-up; reset/invite flows still prove address control | Before public launch / Phase 8 |
+| Email verification not enforced; invitation acceptance trusts the email string | Friction at sign-up; a forwarded invite plus registering the unregistered invited address can satisfy the check | Before public launch / Phase 8 |
 | No MFA | Scope; password + rate limiting first | Post-launch |
 | Per-instance rate limiting may be weak on serverless | Simplicity; limits still slow brute force | When abuse is observed or before public launch |
+| Shared-map actions, including invite acceptance, have no rate limit | 256-bit tokens make guessing infeasible; implementation complexity deferred | Before public launch / Phase 8 |
+| Invitation token appears in the URL path and hosting access logs | Needed for a clickable link; app does not log it and sends no-referrer/no-store headers | Before production; restrict log access/retention |
+| Invitation email is best-effort with no retry/bounce handling | Owner can copy the link; no job queue yet | Phase 8 or when Brevo domain auth is configured |
 | Password-reset token stored raw by Better Auth | Single-use and ≤1 hour; replacing the flow is larger than Phase 2 | Before public launch / Phase 8 |
 | No third-party error tracking yet | Avoid extra data processor before launch | Phase 8 |
 | CSP not yet configured | No production deployment yet | Phase 8 |
-| Welcome email not retried if email was disabled at sign-up | Best-effort design; no job queue yet | Phase 8 or when Brevo is configured |

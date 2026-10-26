@@ -70,13 +70,17 @@ export default async function AccountPage() {
           <Link href="/map" className="font-medium text-moss underline underline-offset-2">
             your map
           </Link>
-          . Shared maps and image export are built in the phases ahead.
+          , or start a{" "}
+          <Link href="/shared" className="font-medium text-moss underline underline-offset-2">
+            private shared map
+          </Link>{" "}
+          with other travellers. Image export arrives in a later phase.
         </p>
       </div>
 
       <Section
         title="Your details"
-        description="This name appears on your account and, later, on maps you share."
+        description="This name appears on your account and on maps you share."
       >
         <NameForm name={session.user.name} />
       </Section>

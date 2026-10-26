@@ -97,4 +97,20 @@
   .map-country[data-visited="true"]:hover {
     fill: var(--color-rose-deep);
   }
+
+  /*
+   * Shared maps are read-only for everyone, including the owner. Keep the
+   * country shapes hoverable for their titles but do not imply a toggle.
+   */
+  .map-country-readonly {
+    cursor: default;
+  }
+
+  .map-country-readonly:hover {
+    fill: var(--color-map);
+  }
+
+  .map-country-readonly[data-visited="true"]:hover {
+    fill: var(--color-rose);
+  }
 }

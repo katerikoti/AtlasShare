@@ -20,31 +20,31 @@ export default function Home() {
         }}
       />
 
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 border-b border-line/80 pb-5">
-        <div className="flex items-center gap-3">
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-3 border-b border-line/80 pb-5 sm:gap-6">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <span
             aria-hidden="true"
-            className="grid size-9 place-items-center rounded-full bg-moss font-display text-lg text-canvas"
+            className="grid size-8 shrink-0 place-items-center rounded-full bg-moss font-display text-base text-canvas sm:size-9 sm:text-lg"
           >
             A
           </span>
-          <span className="font-display text-2xl tracking-tight">
+          <span className="truncate font-display text-xl tracking-tight sm:text-2xl">
             {brand.name}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <span className="hidden rounded-full border border-moss/30 bg-surface/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-moss sm:inline">
-            Phase 3 · Personal map
+            Phase 4 · Shared maps
           </span>
           <Link
             href="/sign-in"
-            className="text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
+            className="hidden text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink sm:inline"
           >
             Sign in
           </Link>
           <Link
             href="/sign-up"
-            className="rounded-full bg-moss px-4 py-2 text-sm font-medium text-canvas transition-colors hover:bg-ink"
+            className="rounded-full bg-moss px-3 py-2 text-sm font-medium text-canvas transition-colors hover:bg-ink sm:px-4"
           >
             Create account
           </Link>
@@ -86,11 +86,13 @@ export default function Home() {
                 className="mt-1.5 size-2.5 shrink-0 rounded-full bg-rose-deep"
               />
               <div>
-                <p className="font-medium text-ink">Your personal map is ready.</p>
+                <p className="font-medium text-ink">
+                  Personal and shared maps are live.
+                </p>
                 <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                  Create an account, then mark the countries and territories you
-                  have visited. Your map stays private to you; shared maps and
-                  image export arrive in the phases ahead.
+                  Create an account and mark the countries you have visited.
+                  Then start a private shared map and invite people by email;
+                  image export arrives in a later phase.
                 </p>
               </div>
             </div>
@@ -176,7 +178,8 @@ export default function Home() {
 
       <footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-t border-line/80 pt-5 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <p>
-          Phase 3 of 8 · Personal map is live · Sharing comes next.
+          Phase 4 of 8 · Personal and shared maps are live · Image export comes
+          later.
         </p>
         <a
           className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"

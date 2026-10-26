@@ -5,12 +5,13 @@
 Mark the countries you have visited on a personal world map, then combine your
 map with the people you travel with.
 
-> **Project status: Phase 3 of 8 complete and approved — personal country
-> map.**
+> **Project status: Phase 4 of 8 built and verified, awaiting approval — shared
+> maps.**
 > You can create an account, sign in/out, reset a password, manage account
-> settings, and mark visited countries on a private 250-unit world map. There is
-> still no sharing and no image export. See [`docs/PROGRESS.md`](docs/PROGRESS.md)
-> for exactly what exists and [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md)
+> settings, mark visited countries on a private 250-unit world map, and combine
+> your map with invited members in a private read-only shared view. There is
+> still no image export or PWA. See [`docs/PROGRESS.md`](docs/PROGRESS.md) for
+> exactly what exists and [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md)
 > for what comes next.
 
 ## Why
@@ -58,13 +59,14 @@ createdb atlasshare_test
 npm run db:migrate
 ```
 
-Email is optional in development. Without `BREVO_API_KEY`, welcome and reset
-messages are skipped with a log line; sign-up and password-reset requests still
-succeed (read the reset token from the `verification` table in development).
-To send real mail, create a free Brevo account, add and verify a sender address
-(no domain purchase required), then set `BREVO_API_KEY` and point `EMAIL_FROM`
-at that verified address. If Brevo returns `401 unauthorized` with an
-“unrecognised IP address” message, authorize the current IP in Brevo’s
+Email is optional in development. Without `BREVO_API_KEY`, welcome, reset, and
+invitation messages are skipped with a log line; sign-up, password-reset
+requests, and shared-map invitations still succeed (read the reset token from
+the `verification` table in development, and copy the invitation link from the
+owner UI). To send real mail, create a free Brevo account, add and verify a
+sender address (no domain purchase required), then set `BREVO_API_KEY` and point
+`EMAIL_FROM` at that verified address. If Brevo returns `401 unauthorized` with
+an “unrecognised IP address” message, authorize the current IP in Brevo’s
 **Authorised IPs** settings, then retry. Never commit `.env`.
 
 ### Scripts
@@ -93,12 +95,12 @@ at that verified address. If Brevo returns `401 unauthorized` with an
 
 ```
 src/
-  app/            App Router routes, metadata, auth/account/map pages, icon
-  components/     auth, account, map, and UI primitives
+  app/            App Router routes, metadata, auth/account/map/shared/invite
+  components/     auth, account, map, shared, and UI primitives
   config/         brand identity and lazy environment validation
   data/           generated country metadata + canonical helpers
-  lib/            browser auth client and framework-agnostic helpers
-  server/         auth, database, session gate, visits, actions, email
+  lib/            browser auth client, safe redirects, pure helpers
+  server/         auth, database, authorization, shared maps, actions, email
   test/           test setup
 docs/             specification, architecture, database, security, plan, etc.
 prisma/           schema and committed migrations

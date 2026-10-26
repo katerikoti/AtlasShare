@@ -220,7 +220,7 @@ these three.
 
 ## 14. What is deliberately not set up yet
 
-- No CI pipeline (planned Phase 8). Phase 3 checks were run locally.
+- No CI pipeline (planned Phase 8). Phase 3 and Phase 4 checks were run locally.
 - No custom domain.
 - No error tracking.
 - No staging environment separate from preview deployments.

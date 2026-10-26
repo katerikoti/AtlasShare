@@ -6,6 +6,56 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ## [Unreleased]
 
+### Added — Phase 4: shared maps (2026-10-26)
+
+- `/shared` map list and create form; `/shared/[mapId]` combined read-only map,
+  member filter, member list, owner settings, and management sections.
+- Public `/invite/[token]` preview/acceptance page that prompts signed-out
+  visitors to sign in or create an account, then returns them to the invitation.
+- Shared-map data layer and Server Actions: create, update, delete, invite,
+  revoke, accept, remove member, and leave. The owner membership is created with
+  the map in one transaction; acceptance claims the invitation atomically.
+- 256-bit single-use invitation tokens, stored only as SHA-256 hashes, with a
+  7-day expiry and revoke-on-replace. Email delivery is best-effort through
+  Brevo; the owner can copy the link.
+- Combined view built from authorization-scoped queries: display names,
+  membership ids, deduplicated country sets, combined counts, and per-member
+  filtering. No emails, user ids, raw visit rows, notes, or dates are sent.
+- Invitation email template and `safeNextPath` validation for sign-in/sign-up
+  return URLs.
+- Invite-route response headers: `Referrer-Policy: no-referrer`,
+  `X-Robots-Tag: noindex, nofollow`, and `Cache-Control: private, no-store`.
+
+### Changed — Phase 4
+
+- Shared navigation, account copy, and public home copy now describe Phase 4.
+- The landing header scales the wordmark and hides the duplicate sign-in link
+  below `sm`, fixing a clipped “Create account” button at 320 px.
+- Invitation copy feedback uses one live region and resets on a new submission;
+  single-member labels use correct pluralization.
+- The proxy optimistically protects `/shared` in addition to `/account`; all
+  pages and actions still re-check authorization server-side.
+
+### Verified — Phase 4
+
+- `npm run check` passed: lint, typecheck, and **105/105 tests in 17 files**
+  (including 14 local PostgreSQL integration tests).
+- `npm run build` passed with `/shared`, `/shared/[mapId]`, and
+  `/invite/[token]` dynamic. **No new migration was required**; the Phase 2
+  shared-map tables are reused.
+- Two-account production browser QA passed for create/invite/wrong-email/accept,
+  combined counts (3) and filtering (owner 2), used/revoked links, member leave,
+  owner rename/revoke/remove, deletion, and deleted-map HTTP 404.
+- Read-only shared view: 250 SVG paths, zero checkboxes, member controls absent.
+- Responsive metrics at 320/390 px for the landing page, `/shared`,
+  `/shared/[mapId]`, and `/map`; document width matched the viewport. Invite
+  response headers checked with `curl`.
+- Manual gaps: physical touch, Safari/Firefox, keyboard/screen-reader, visual
+  design approval, invitation inbox rendering, and expired-invite browser UI.
+- Accepted limitations: no invitation rate limit, no email verification before
+  acceptance, no retry/purge job, and raw token paths can appear in hosting
+  access logs. See `PROGRESS.md`/`SECURITY.md`.
+
 ### Added — Phase 3: country dataset and personal map (2026-10-26)
 
 - Reproducible 250-unit dataset generator from exact

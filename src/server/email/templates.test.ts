@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { brand } from "@/config/brand";
 import {
+  renderInvitationEmail,
   renderPasswordResetEmail,
   renderWelcomeEmail,
 } from "./templates";
@@ -74,5 +75,49 @@ describe("renderPasswordResetEmail", () => {
     });
 
     expect(email.text).toMatch(/did not request/i);
+  });
+});
+
+describe("renderInvitationEmail", () => {
+  const inviteUrl =
+    "https://atlasshare.example/invite/AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abc";
+
+  it("includes the map name, single-use link, and expiry", () => {
+    const email = renderInvitationEmail({
+      mapName: "Summer in the Nordics",
+      inviteUrl,
+      expiresInDays: 7,
+    });
+
+    expect(email.subject).toContain(brand.name);
+    expect(email.html).toContain("Summer in the Nordics");
+    expect(email.html).toContain(inviteUrl);
+    expect(email.text).toContain(inviteUrl);
+    expect(email.text).toContain("7 days");
+    expect(email.text).toContain("single use");
+  });
+
+  it("escapes a user-provided map name", () => {
+    const email = renderInvitationEmail({
+      mapName: '<script>alert("x")</script>',
+      inviteUrl,
+      expiresInDays: 7,
+    });
+
+    expect(email.html).not.toContain("<script>alert");
+    expect(email.html).toContain("&lt;script&gt;");
+  });
+
+  it("contains no invited address, account metadata, or notes", () => {
+    const email = renderInvitationEmail({
+      mapName: "Weekend away",
+      inviteUrl,
+      expiresInDays: 7,
+    });
+
+    expect(email.html).not.toContain("userId");
+    expect(email.html).not.toContain("emailVerified");
+    expect(email.html).not.toContain("firstVisitedAt");
+    expect(email.text).not.toContain("@");
   });
 });

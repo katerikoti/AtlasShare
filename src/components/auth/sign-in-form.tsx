@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
+import { safeNextPath } from "@/lib/safe-redirect";
 import {
   Field,
   FormMessage,
@@ -14,6 +15,7 @@ import {
 
 export function SignInForm() {
   const router = useRouter();
+  const next = safeNextPath(useSearchParams().get("next"));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -39,7 +41,7 @@ export function SignInForm() {
       return;
     }
 
-    router.replace("/account");
+    router.replace(next ?? "/account");
     router.refresh();
   }
 
@@ -95,7 +97,7 @@ export function SignInForm() {
         <p>
           New here?{" "}
           <Link
-            href="/sign-up"
+            href={`/sign-up${next ? `?next=${encodeURIComponent(next)}` : ""}`}
             className="font-medium text-moss underline decoration-moss/40 underline-offset-4 hover:text-ink"
           >
             Create an account

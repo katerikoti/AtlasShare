@@ -1,8 +1,9 @@
 # AtlasShare — Progress
 
-**Current phase:** Phase 3 — Country dataset and personal map (**approved
-2026-10-26**).
-**Status:** Phase 3 is built, verified, and documented. Phase 4 has not started.
+**Current phase:** Phase 4 — Shared maps (**built and verified, awaiting
+approval**).
+**Status:** Phases 1–3 are approved. Phase 4 is implemented, checked, and
+browser-tested in production mode; it needs owner approval before Phase 5 starts.
 **Last updated:** 2026-10-26.
 
 This is the first file to read when resuming work. It reflects what is actually
@@ -15,13 +16,58 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | 1. Foundation & planning | ✅ Complete (approved) | Runnable branded skeleton + full docs. Commit `ad7746c`. |
 | 2. Accounts & authentication | ✅ Complete (approved 2026-10-26) | Auth, settings, reset, email plumbing, first migration. |
 | 3. Country dataset & personal map | ✅ Complete (approved 2026-10-26) | 250-unit dataset, private map, visited toggle, integration tests, browser QA. |
-| 4. Shared maps | ⛔ Not started | Schema exists; no UI or actions. Awaiting the go-ahead. |
+| 4. Shared maps | ✅ Built, awaiting approval (2026-10-26) | Create/manage maps, invitations, member roles, combined read-only view, two-account QA. |
 | 5. Insights & filters | ⛔ Not started | D2 resolved: no notes/dates; filters/stats only. |
 | 6. Image export | ⛔ Not started | — |
 | 7. Public site & PWA | ⛔ Not started | — |
 | 8. Hardening, QA & deployment | ⛔ Not started | — |
 
 ## 2. What exists today
+
+### Shared maps (Phase 4)
+
+- Signed-in pages: `/shared` lists the maps a user belongs to and creates a new
+  map; `/shared/[mapId]` shows the combined view, member list, and owner
+  controls; `/invite/[token]` previews and accepts an invitation. Non-members
+  receive the app's 404 page for a map id.
+- The shared-map tables already existed from the Phase 2 migration. Phase 4 uses
+  them as-is: **no new migration or schema change** was needed.
+- Creating a map inserts the map and the owner's `OWNER` membership in one
+  transaction. Any signed-in user can create a map; creating maps is not
+  limited beyond the existing auth rate limits.
+- Owner actions: rename/update description, invite by email, revoke pending
+  invitations, remove members, and delete the map after typing `DELETE`.
+  Members can leave; the owner cannot leave and must delete instead. Removing a
+  member or leaving deletes only the membership, never the person's private
+  visits.
+- Invitations use 32 random bytes (43-character base64url), stored as SHA-256
+  hex. They expire after 7 days, are single-use, and are revocable. Acceptance is
+  an atomic conditional update followed by membership creation. Re-inviting the
+  same email revokes the previous pending link in the same transaction.
+- Invitation preview and acceptance require the signed-in account email to match
+  the invited address. Invalid, expired, revoked, used, and malformed tokens get
+  a generic unavailable state; a different signed-in email gets a distinct
+  message but never sees the map name. Pending invitation emails are only
+  queried for the owner.
+- Invitation email is best-effort via Brevo and contains only the map name and
+  link. The owner can always copy the link from the UI if delivery is skipped or
+  fails. The raw token is never logged by application code.
+- The combined view is computed server-side from an authorization-scoped query.
+  The client receives each member's display name, membership id, and deduplicated
+  country-code set (needed for the filter), plus combined country counts. It does
+  not receive emails, user ids, raw visit rows, notes, or visit dates.
+- Shared maps are read-only for everyone, including the owner. The map surface
+  has no checkboxes or toggles; members change their own map from `/map`. The
+  filter switches between everyone and one member, and the counts/list follow it.
+- `/shared` and `/shared/[mapId]` are optimistically protected by `proxy.ts` and
+  re-checked with `requireSession()` / `requireMapAccess()` on the server.
+  `/invite/[token]` is public so a signed-out recipient can sign in or create an
+  account; the raw token is shown only in the URL path.
+- `safeNextPath` restricts post-auth redirects to same-origin paths. Sign-in and
+  sign-up preserve an invitation `next` parameter; the invite page uses a
+  no-referrer metadata tag and response headers (plus noindex and no-store).
+- Shared navigation, account/home/footer copy, read-only map CSS, and the
+  create-map/invite/settings/delete/revoke/remove/leave forms are implemented.
 
 ### Country dataset and personal map (Phase 3)
 
@@ -51,7 +97,7 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   intrinsic grid width of 463 px (`grid-cols-1` + `min-w-0`).
 - Four client auth forms now use `method="post"` so a failed JavaScript boot
   cannot put a password into the URL.
-- Home page and README now report Phase 3; the landing page itself is still the
+- Home page and README report Phase 4; the landing page itself is still the
   temporary development placeholder until Phase 7.
 
 ### Accounts and authentication (Phase 2)
@@ -114,11 +160,60 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 
 ### Not built (do not assume otherwise)
 
-No shared-map UI or actions, no insights/filters, no image export, no final
-landing page, no PWA, no CI, and no deployment. The shared-map tables exist only
-as schema for Phase 4. Visited state has no notes or dates (D2).
+No insights/filters (Phase 5), no image export (Phase 6), no final landing page
+or PWA (Phase 7), no CI, and no deployment. The shared-map tables are now used by
+the Phase 4 UI and actions; there was no Phase 4 migration. Visited state has no
+notes or dates (D2).
 
-## 3. Verification (2026-10-26)
+## 3. Verification
+
+### Phase 4 verification (2026-10-26)
+
+Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
+(headless CDP, the app browser pane, and a separate headless Chrome CDP session),
+production build served on `localhost:3001` because port 3000 was occupied by
+another project. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
+`http://localhost:3001`.
+
+| Check | Command / method | Result |
+| --- | --- | --- |
+| Lint | `npm run lint` | ✅ exit 0 |
+| Types | `npm run typecheck` | ✅ exit 0 |
+| Tests | `npm test` | ✅ **105/105 passed (17 files)** |
+| Full check | `npm run check` | ✅ exit 0 |
+| Production build | `npm run build` | ✅ exit 0; `/shared`, `/shared/[mapId]`, `/invite/[token]` present |
+| Shared-map data | 11 local PostgreSQL integration tests | ✅ counts, privacy shape, invitation states/concurrency, member removal/leave, ownership |
+| Action authorization | 17 action tests | ✅ non-member/non-owner, validation, email outcome, redirects |
+| Two-account flow | production browser | ✅ owner NO+SE (2), member FR+SE (2), combined 3; filter owner 2 |
+| Invite wrong email | production browser | ✅ rejected, map name hidden |
+| Invite accept | production browser | ✅ member joined; 2 members; `?joined=1`; member controls absent |
+| Used / revoked / malformed token | browser + tests | ✅ generic unavailable state |
+| Owner rename/revoke/remove/delete | production browser | ✅ rename persisted; revoke invalidated link; remove changed combined 3→2; delete removed map and detail returned HTTP 404 |
+| Member leave | production browser | ✅ redirected to `/shared?left=1`; personal map still FR+SE (2 of 250) |
+| Read-only shared map | browser inspection | ✅ 250 paths, 0 checkboxes, read-only class/cursor |
+| Invite token headers | `curl -D -` | ✅ `Referrer-Policy: no-referrer`, `X-Robots-Tag`, `Cache-Control: private, no-store` |
+| Responsive layout | headless Chrome CDP at 320/390 px | ✅ landing, `/shared`, `/shared/[mapId]`, `/map`; document width equals viewport; no page overflow |
+| Migration | schema review | ✅ no Phase 4 schema change or migration; Phase 2 tables reused |
+| Invitation inbox delivery/render | Brevo | ⬜ send path ran; delivery/opening and visual rendering not verified |
+| Expired invite in browser | integration test only | ⬜ covered by test, not browser |
+| Physical touch / Safari / Firefox | manual | ⬜ not run |
+| Keyboard / screen reader | manual | ⬜ not run |
+| Visual design approval | human review | ⬜ delegated to the owner |
+
+#### Phase 4 defects found and fixed
+
+- **Landing header overflowed at 320 px.** The brand and “Create account” button
+  exceeded the viewport and were clipped by the landing page's `overflow-hidden`;
+  the header now scales the wordmark, tightens gaps, and hides the duplicate
+  “Sign in” link below `sm` (the hero keeps both calls to action).
+- **Landing page still reported Phase 3 and “sharing comes next”.** Updated the
+  badge, status card, and footer to Phase 4.
+- **Invite form had duplicate live regions.** Removed the `sr-only` status and
+  kept one visible `role="status"`/`aria-live` node; copy status resets when a
+  new invitation is submitted.
+- **Single-member shared maps said “1 of 1 members”.** Corrected the plural.
+
+### Phase 3 verification (2026-10-26)
 
 Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
 (headless CDP and the app's browser pane), production build served on
@@ -207,8 +302,9 @@ Full records in `DECISIONS.md` (ADR-017 onwards).
 - Password change signs out every device and requires signing in again.
 - Account deletion is immediate after password confirmation and relies on
   cascades.
-- Proxy only protects `/account`; auth pages are not redirected by cookie
-  presence (avoids rotation races and lets a signed-in user reach sign-in).
+- Proxy only performs optimistic cookie checks for `/account` and `/shared`;
+  auth pages are not redirected by cookie presence (avoids rotation races and
+  lets a signed-in user reach sign-in).
 - Better Auth password-reset tokens are stored raw in `verification.identifier`
   by the library. Accepted for now (single-use, ≤1 hour) and recorded as a
   limitation; invitation tokens remain hashed by design.
@@ -222,11 +318,38 @@ Full records in ADR-024, ADR-025, and §5.
 - Keep visited state only (ADR-024): no notes, dates, or history UI.
 - Fetch public geometry at runtime instead of bundling it; validate all 250 codes
   before rendering; never put visit data in the asset.
-- On narrow screens, order the country list before the map (no pan/zoom
-  requirement) and keep the list keyboard-accessible.
+- On narrow screens, put the map first and the country list below it; from `lg`
+  upward, place them side by side. Keep the list keyboard-accessible.
 - No new database migration; `visited_countries` from Phase 2 is sufficient.
 - Auth forms submit with `method="post"`; this is a hardening fix, not a new auth
   flow.
+
+### Phase 4 decisions
+
+Full records in ADR-012, ADR-013, and ADR-026.
+
+- Shared maps are explicit-membership only: no public links, anonymous viewing,
+  or “anyone with the link” access.
+- All members see each other's display names and country-level marks for the
+  filter; the client receives membership ids and deduplicated country-code sets,
+  never emails, user ids, raw visit rows, notes, or dates. Pending invitation
+  emails are owner-only.
+- Owner and member roles only. The owner manages details, invitations, members,
+  and deletion; members can leave. The owner cannot leave.
+- The shared map is read-only for everyone; personal visits are changed only on
+  `/map`. Removing a member or leaving never deletes private visits.
+- Invitations are 7-day, single-use, per-email, hashed at rest, revocable, and
+  re-inviting replaces the prior pending link. Email delivery is best-effort;
+  the owner can always copy the link.
+- Destructive map deletion requires typing `DELETE`; member removal/leave are
+  confirmations but do not delete personal data.
+- Post-auth redirects use `safeNextPath`; only same-origin paths are accepted.
+- The shared-map tables already existed, so Phase 4 added no migration. New
+  routes/actions reuse the existing schema and indexes.
+- Invitation acceptance is not rate-limited. Token entropy is 256 bits and a
+  valid link still requires the matching signed-in email, but a forwarded link
+  can be redeemed by whoever can register the unverified invited address first.
+  This is recorded as an accepted risk, not claimed as solved.
 
 ## 5. Resolved decisions
 
@@ -255,42 +378,46 @@ Full records in ADR-024, ADR-025, and §5.
 
 | Item | Status | Needed for |
 | --- | --- | --- |
-| Phase 4 go-ahead | not given | Starting Phase 4 |
+| Phase 4 approval | built and verified; not yet approved | Starting Phase 5 |
 | Neon dev branch + connection strings | connected; Phase 2 migration applied | Deployment verification |
-| Brevo account + verified sender | configured; test delivered/opened | Reset-email validation |
+| Brevo account + verified sender | configured; prior test delivered/opened | Reset/invitation email validation |
 | Brevo production domain authentication | optional; not configured | Better deliverability in Phase 8 |
 | Approval to push to `origin` | not given | Sharing the repository |
 | Domain name (optional) | undecided | Phase 8 |
 
-Phase 3 is approved. No technical blocker remains; Phase 4 awaits explicit
-go-ahead. No credentials are committed; `.env.example` documents the expected
-variables.
+Phase 1–3 are approved. Phase 4 is built and verified and awaits explicit
+approval before Phase 5. No credentials are committed; `.env.example` documents
+the expected variables.
 
 ## 7. Repository state
 
 - Local git repository on `main`. Phase 1 is `ad7746c`; Phase 2 is `3065b2f`;
   the Phase 2 documentation commit is `6ae3b7c`.
 - Phase 3 is committed locally in `0abebaf` plus the map-order follow-up; run
-  `git log --oneline` for the exact history. **Not pushed** — pushing needs
-  explicit approval.
+  `git log --oneline` for the exact history. Phase 4 is committed locally after
+  the final check; run `git log --oneline` for its hash. **Not pushed** — pushing
+  needs explicit approval.
 - Remote `origin` = `https://github.com/katerikoti/AtlasShare.git`.
 - `gh` CLI is not installed; git credentials are cached.
 - `package-lock.json` is committed; `node_modules`, `.next`, `.env*`,
   `src/generated`, and `tsbuildinfo` are ignored.
-- The Phase 3 smoke account was deleted after browser QA; the local integration
-  database contains no persistent fixtures.
+- Phase 4 browser QA created `phase4.owner@example.com` and
+  `phase4.member@example.com` plus a “Mobile QA” shared map. Both accounts were
+  deleted after QA; Prisma cascades removed their sessions, visits, memberships,
+  invitations, and the owned map. The Phase 3 smoke account was already deleted.
 
 ## 8. Next steps
 
-1. Phase 3 is approved. Do not start Phase 4 without a fresh go-ahead.
-2. Push only with explicit permission.
-3. Before Phase 4, decide whether to keep the reserved `note` /
-   `firstVisitedAt` columns for future use or remove them in a migration.
-4. In Phase 4, add shared-map membership, invitations, and authorization tests;
-   the schema already exists.
-5. Optionally complete the outstanding manual checks: physical phone, keyboard
-   and screen reader, geometry error/offline, and visual approval.
-6. Keep the welcome/reset email visual and delivery check on the Phase 8 list.
+1. Owner reviews Phase 4 and explicitly approves or requests changes.
+2. Do not start Phase 5 until that approval; do not push without permission.
+3. Complete the remaining manual checks if desired: physical touch, Safari and
+   Firefox, keyboard-only, screen reader, invite-email rendering, and visual
+   design approval.
+4. Decide before launch whether to remove the unused `note` /
+   `firstVisitedAt` columns or keep them reserved.
+5. Keep the shared-rate-limit, email-verification, and invitation-token log
+   concerns on the pre-launch/Phase 8 list.
+6. Clean up local QA accounts and maps before any production data is used.
 
 ## 9. Known limitations and debt
 
@@ -308,9 +435,26 @@ variables.
   outline, not a survey boundary.
 - **No pan/zoom.** Narrow screens show the map first and the list below; the map
   is a visual shortcut, not the only input.
+- **Shared maps are read-only and not real-time.** Members update their own map
+  on `/map`; the shared page reflects accepted membership and country changes on
+  the next request/revalidation. There is no live presence, comments, or owner
+  transfer.
+- **Member names are visible to all members of a map**, by design, so the filter
+  can identify people. Emails, user ids, raw visit rows, notes, and visit dates
+  are not sent to the shared view. Pending invitation emails are owner-only.
+- **Invitation tokens are in the URL path.** Application code does not log them,
+  and invite responses send `Referrer-Policy: no-referrer`, `X-Robots-Tag`, and
+  `Cache-Control: private, no-store`. Hosting/proxy access logs can still record
+  the path, so production log retention and access must be restricted.
+- **Invitation acceptance and invitation creation are not rate-limited.**
+  Acceptance tokens have 256 bits of entropy; guessing is infeasible. A forwarded
+  link can satisfy the email check by registering the unverified invited address
+  first (see the email-verification limitation).
 - **Email delivery is verified through Brevo**, but visual rendering and the
   password-reset message through the app still need a human check. The welcome
-  message is not retried for users who signed up while email was disabled.
+  and invitation messages are not retried if email is disabled or fails.
+- **Invitation email delivery is best-effort**; the owner can copy the link. No
+  resend, delivery webhook, bounce suppression, or retry queue is implemented.
 - **The `note` and `firstVisitedAt` columns are unused** by the approved initial
   scope (D2). They remain reserved; remove them with a migration before launch if
   notes/dates are still unwanted.
@@ -323,10 +467,14 @@ variables.
 - **Password-reset tokens are stored raw** by Better Auth in
   `verification.identifier` (the identifier includes the token). They are
   single-use and expire in one hour. Replacing this needs a custom reset flow.
-- **Rate limiting is per-instance memory** and only active in production. It
-  slows basic brute force but is not a shared limiter.
-- **No email verification, MFA, or OAuth.** Email verification enforcement is
-  deferred; sign-up reports that an address already exists.
+- **Auth rate limiting is per-instance memory** and only active in production.
+  It slows basic brute force on sign-in/sign-up/reset but is not a shared limiter
+  and does not cover shared-map Server Actions.
+- **No email verification, MFA, or OAuth.** Shared invitations match the account's
+  email string, but the address is not verified. If an attacker has a forwarded
+  link and can register the unregistered invited address first, the email check
+  can be satisfied. Requiring verified email before acceptance is a pre-launch
+  hardening task; sign-up also reports that an address already exists.
 - **Secure cookies are not observable locally** because the smoke test used
   HTTP. Production uses an HTTPS origin.
 - **No CI, deployment, or error monitoring.** Checks run locally.
@@ -344,6 +492,6 @@ variables.
 2. Run `npm ci` and `npm run check`; confirm `TEST_DATABASE_URL` for integration.
 3. Start local Postgres if needed and confirm `DATABASE_URL` / `DIRECT_URL`.
 4. Check the blockers and known limitations above.
-5. Do not start Phase 4 without explicit approval; do not push without approval.
+5. Do not start Phase 5 without explicit approval; do not push without approval.
 6. At the end of any work: update this file, run `npm run check` and
    `npm run build`, report honestly, and stop.

@@ -1,10 +1,11 @@
 # AtlasShare — Database
 
-Status: **implemented through Phase 3.** The auth and application tables exist
-in the Phase 2 migration. Phase 3 uses `visited_countries` for the personal map;
-shared-map tables remain schema-only until Phase 4. The schema below is the
-contract later phases build on. It will be adjusted only with a documented
-reason (and a migration), not silently.
+Status: **implemented through Phase 4.** The auth and application tables exist
+in the Phase 2 migration. Phase 3 uses `visited_countries`; Phase 4 uses the
+`shared_maps`, `shared_map_members`, and `shared_map_invitations` tables created
+in that same migration. **Phase 4 added no migration or schema change.** The
+schema below is the contract later phases build on. It will be adjusted only
+with a documented reason (and a migration), not silently.
 
 ## 1. Principles
 
@@ -201,7 +202,8 @@ prisma.sharedMap.findFirst({
   include: { members: { include: { user: true } } },
 });
 
-// Combined view: aggregate country -> member ids only; no account data.
+// Combined view: country -> count, plus membership/display-name rows.
+// Raw visit rows, emails, and user ids are never serialized to the client.
 prisma.visitedCountry.groupBy({
   by: ["countryCode"],
   where: { userId: { in: memberIds } },
@@ -209,10 +211,15 @@ prisma.visitedCountry.groupBy({
 });
 ```
 
+The rendered shared view also needs each member's deduplicated country-code set
+and display name for the per-member filter. `src/server/shared-maps.ts` builds
+that view from authorization-scoped membership and visit queries; it does not
+send emails, user ids, notes, or dates.
+
 `note` and `firstVisitedAt` are reserved but unused in the approved initial
-scope (D2); no API or UI exposes them. The combined view uses only country codes
-and counts. Reintroducing either needs a new scope decision; visit dates would
-also need a separate visit-history model for repeat visits.
+scope (D2); no API or UI exposes them. Reintroducing either needs a new scope
+decision; visit dates would also need a separate visit-history model for repeat
+visits.
 
 ## 6. Transactions and concurrency
 
@@ -263,6 +270,9 @@ denormalized counters are needed. Count on read.
   reads, drop old column in a later release).
 - Migration files are committed. The database schema and the Prisma schema must
   never diverge.
+- Phase 4 did not add a migration: its tables/indexes were already in
+  `20261025141145_init_auth_and_accounts`. No database reset or `db push` was
+  used for Phase 4 QA.
 - Neon PITR/branching is the recovery path; take a branch before risky
   migrations.
 
@@ -282,7 +292,8 @@ denormalized counters are needed. Count on read.
 
 - Sessions: cleaned up on expiry by Better Auth / a maintenance task.
 - Invitations: expired invites are inert immediately; rows are purged after 30
-  days by a maintenance script (planned, Phase 4).
+  days by a maintenance script (**not yet implemented**; deferred to Phase 8 or
+  a deployment task). There is no cron/queue in the app.
 - Account deletion: cascades visits, memberships, owned maps, and sent
   invitations. This is irreversible and must be confirmed in the UI.
 - Backups: Neon's retention window (per plan). Document the actual window when
@@ -302,12 +313,27 @@ Resolved in Phase 2:
 5. First migration written and verified with `migrate deploy` on an empty test
    database. Account deletion and all declared cascades were verified manually.
 
+Resolved in Phase 4:
+
+1. No schema change or migration was needed; the Phase 2 shared-map tables and
+   indexes are sufficient.
+2. Local integration coverage is wired through `TEST_DATABASE_URL`: 14 tests
+   cover visits plus shared-map counts, privacy shape, invitations, concurrency,
+   membership removal/leaving, and owner invariants.
+3. Acceptance is atomic: a conditional update claims an unexpired,
+   unrevoked/unaccepted invitation, then membership is created and `acceptedAt`
+   stamped. Re-invitation revokes the prior pending row in the same transaction.
+4. Expired invitations are inert through the application check; the 30-day purge
+   job remains unimplemented.
+
 Remaining before production:
 
 1. Provision Neon branches/roles and verify the Neon adapter and pooling.
-2. Wire `TEST_DATABASE_URL` into automated integration tests (visits, maps,
-   isolation, cascades).
-3. Decide whether to replace Better Auth's raw reset-token storage with a hashed
+2. Decide whether to replace Better Auth's raw reset-token storage with a hashed
    custom flow.
-4. Confirm session cleanup for expired rows; Better Auth currently removes the
+3. Confirm session cleanup for expired rows; Better Auth currently removes the
    current session on sign-out, but a periodic cleanup may be needed at scale.
+4. Implement the invitation purge job and decide production log retention for
+   invitation-token paths.
+5. Require verified email before invitation acceptance (currently the account
+   email string is compared without verification).
