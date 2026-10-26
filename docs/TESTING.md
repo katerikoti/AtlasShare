@@ -135,8 +135,10 @@ fails.
   test user was deleted afterward.
 - The follow-up message **“AtlasShare test 2”** was delivered and opened in the
   real inbox, confirming outbound delivery end to end.
-- A second follow-up, **“AtlasShare test 3,”** was delivered but not opened when
-  checked.
+- A second follow-up, **“AtlasShare test 3,”** was delivered and opened from the
+  Gmail **Promotions** tab. The sent body has no unsubscribe link, but Brevo
+  injects a `List-Unsubscribe` header, so Gmail displays its own unsubscribe
+  control.
 - The request required authorizing the local egress IP (Brevo returned 401
   `unauthorized` before that).
 - Visual rendering and password-reset delivery are not confirmed yet.
@@ -195,6 +197,7 @@ page.
 | Real welcome email | **pass (delivery)** | App sign-up returned 200 and Brevo accepted the message; `welcomeEmailSentAt` was set. A follow-up test was delivered and opened. |
 | Real password-reset email | **blocked** | Not yet exercised through the app; the token flow was previously tested by reading the token from the local DB. |
 | Email rendering in a real client | **not confirmed** | A follow-up test was delivered and opened; visual rendering still needs a human check. |
+| Gmail Primary-tab placement | **not confirmed** | Test 3 landed in Promotions. Brevo's `List-Unsubscribe` header and the unauthenticated sender likely contribute; domain authentication is the planned fix. |
 | Neon production database | **blocked** | Dev branch connected and migrated; production deployment still pending. |
 | Secure session cookie over HTTPS | **not run** | Local smoke test used HTTP; Better Auth applies `Secure` for HTTPS origins. |
 | Rate-limit exhaustion | **not run** | Deliberately avoided locking the test IP for 15 minutes. |

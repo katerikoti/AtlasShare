@@ -58,6 +58,14 @@ one of: IP blocking disabled for the production key, a static egress proxy, or a
 scoped M2M token. M2M would require changing the mailer from an `api-key` header
 to an OAuth bearer token; decide before deployment.
 
+Brevo adds a `List-Unsubscribe` header to transactional email even when the body
+has no unsubscribe link, so Gmail may show an unsubscribe button and may place
+unauthenticated mail in Promotions. The free plan cannot replace this with a
+`List-Help` header; Enterprise support can for eligible transactional mail.
+Authenticate a sending domain to improve Primary-tab placement. Do not click the
+Gmail unsubscribe control during testing unless you intend to suppress future
+AtlasShare email.
+
 ## 4. Build and release
 
 Vercel settings:

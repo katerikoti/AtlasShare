@@ -187,8 +187,9 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 - Real-time collaborative editing.
 - Native iOS/Android apps.
 - Payments, subscriptions, or ads.
-- Third-party analytics, tracking pixels, or social login beyond a possible
-  later OAuth addition.
+- Product analytics, tracking pixels, or social login beyond a possible later
+  OAuth addition. Brevo's transactional-email telemetry and unsubscribe header
+  are provider behavior, disclosed in the privacy notes.
 - Admin dashboards.
 - Internationalisation (English only for now).
 

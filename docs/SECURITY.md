@@ -215,7 +215,13 @@ Production (Phase 8):
 
 ## 14. Email
 
-- Plain HTML with inline styles, no remote tracking pixels, no open tracking.
+- Plain HTML with inline styles; the app adds no tracking pixels. Brevo records
+  delivery/open telemetry and injects a `List-Unsubscribe` header into
+  transactional mail, which Gmail may display as an unsubscribe control. Review
+  or disable provider tracking before launch if strict no-tracking is required.
+- Clicking Gmail's unsubscribe control can suppress future transactional email;
+  it is not an app account setting. Re-enable the address in Brevo if clicked by
+  mistake.
 - Links are absolute and built from the configured app URL.
 - Never include passwords, tokens other than the intended single-use link, or
   other users' email addresses.

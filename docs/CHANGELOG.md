@@ -82,9 +82,11 @@ Notable changes, newest first. This project follows a phase-based plan; see
   `atlasshare_test` database and to the connected Neon `dev` branch; `migrate
   status` reports the schema is up to date.
 - Brevo accepted a direct test email and the welcome email sent by an app
-  sign-up; `welcomeEmailSentAt` was set and the test account was removed. A
-  follow-up test was delivered and opened in the real inbox. Visual rendering and
-  password-reset delivery were not confirmed.
+  sign-up; `welcomeEmailSentAt` was set and the test account was removed. Test 2
+  was delivered and opened; test 3 was delivered and opened from Gmail
+  Promotions. The body has no unsubscribe link, but Brevo adds a
+  `List-Unsubscribe` header. Visual rendering and password-reset delivery were
+  not confirmed.
 - Manual production-mode flows passed: sign-up, sign-in/out, name update,
   password change, reset, deletion, cascades, CSRF, short-password rejection,
   and 320/390/1280 px layout checks.

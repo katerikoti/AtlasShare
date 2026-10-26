@@ -415,10 +415,15 @@ verified Brevo sender.
 rewrite or annotate mail from an unauthenticated domain (notably to Gmail,
 Yahoo, and Microsoft recipients), so production should authenticate a domain for
 reliable sender identity and deliverability. The provider receives the recipient
-address and message content; no tracking pixels are added. Resend is removed
-from the dependency tree. Brevo's optional IP allowlisting can block local or
-serverless callers; Vercel's dynamic egress requires disabling it for the
-production key, using static egress, or moving to a scoped M2M bearer token.
+address and message content. The app adds no tracking pixels, but Brevo records
+delivery/open telemetry and injects a `List-Unsubscribe` header into
+transactional email, so Gmail may show its own unsubscribe control even when the
+body has no unsubscribe link. Brevo's free plan does not let you replace that
+header (Enterprise can request `List-Help` for eligible transactional mail);
+clicking it can suppress future transactional email. Resend is removed from the
+dependency tree. Brevo's optional IP allowlisting can block local or serverless
+callers; Vercel's dynamic egress requires disabling it for the production key,
+using static egress, or moving to a scoped M2M bearer token.
 
 ---
 

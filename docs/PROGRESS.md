@@ -116,9 +116,9 @@ were re-run.
 | Validation | Vitest | ✅ name trim/length, password length/match, DELETE confirmation |
 | Layout | Chrome CDP at 320/390/1280 | ✅ no horizontal overflow; labeled inputs; correct colors and single `h1` |
 | Console/network | Chrome CDP | ✅ no app errors after adding the app icon; only expected 404 for the deliberately tested missing page |
-| Welcome email delivery | Brevo | ✅ app sign-up returned 200; Brevo accepted it; test 2 delivered/opened; test 3 delivered; test account deleted |
+| Welcome email delivery | Brevo | ✅ app sign-up returned 200; Brevo accepted it; test 2 delivered/opened; test 3 delivered/opened in Gmail Promotions |
 | Neon | remote DB | ✅ dev branch connected; migration applied; schema up to date |
-| Real email-client rendering | manual | ⬜ test 2 delivered/opened; visual layout not reviewed |
+| Real email-client rendering | manual | ⬜ test 3 opened in Promotions; visual layout not reviewed |
 | Rate-limit exhaustion | manual | ⬜ not run — would deliberately lock the test IP for 15 minutes |
 | Cross-browser / axe / VoiceOver | manual | ⬜ not run |
 | Automated DB/integration tests | `TEST_DATABASE_URL` | ⬜ not automated; DB behavior was verified manually (see `TESTING.md`) |
@@ -232,6 +232,10 @@ No credentials are committed. `.env.example` documents the expected variables.
   authorizing the current egress IP. Vercel's outbound IPs are dynamic, so
   production will need IP blocking disabled, static egress, or a scoped M2M token
   (which would replace the current `api-key` header).
+- **Brevo adds a `List-Unsubscribe` header to transactional mail.** Gmail may
+  show an unsubscribe control and place unauthenticated mail in Promotions; the
+  free plan cannot remove the header. Clicking it can suppress future
+  transactional email. Domain authentication is the main deliverability fix.
 - **Password-reset tokens are stored raw** by Better Auth in
   `verification.identifier` (the identifier includes the token). They are
   single-use and expire in one hour. Replacing this needs a custom reset flow.
