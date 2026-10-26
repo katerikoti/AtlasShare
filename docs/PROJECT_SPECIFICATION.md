@@ -1,8 +1,8 @@
 # AtlasShare — Product Specification
 
-Status: **agreed direction, Phase 2 implemented.** Requirements here are the
-target for the whole build. Each phase implements a slice; see
-`DEVELOPMENT_PLAN.md`.
+Status: **agreed direction, Phase 3 implemented and awaiting approval.**
+Requirements here are the target for the whole build. Each phase implements a
+slice; see `DEVELOPMENT_PLAN.md` and `PROGRESS.md`.
 
 ## 1. One-sentence product
 
@@ -210,7 +210,8 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 ## 11. Assumptions and dependencies
 
 - A Neon dev branch is connected and migrated; production deployment is pending.
-  Brevo is not configured. Phase 2 used local PostgreSQL and a disabled mailer.
+  Brevo is configured and delivered test messages. Local integration tests use
+  `atlasshare_test`; see `TESTING.md`.
 - The GitHub repository remains the deployment source.
 - A custom domain (if any) is decided before Phase 8. Brevo can verify an
   individual sender without a domain; an authenticated domain is recommended for
@@ -224,7 +225,7 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 
 | # | Decision | Status / needed by | Outcome or recommendation |
 | --- | --- | --- | --- |
-| D1 | Country set | Resolved 2026-10-26 | 250 countries & territories; `PS` and `IL` both standalone |
+| D1 | Country set | Resolved 2026-10-26; source in ADR-025 | 250 countries & territories; `PS` and `IL` both standalone; `@svg-maps/world` + Natural Earth AQ |
 | D2 | Notes and visit dates | Resolved 2026-10-26 | Visited state only; notes/dates out of scope |
 | D3 | Shared map roles beyond owner/member | Phase 4 start | Owner + member only |
 | D4 | Rate-limit storage | Resolved in Phase 2 | In-memory, production-only; move to a shared store if abuse appears |

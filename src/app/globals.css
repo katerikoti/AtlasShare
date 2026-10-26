@@ -70,3 +70,31 @@
     }
   }
 }
+
+@layer components {
+  /*
+   * Map fills are driven by the same tokens as the rest of the app. The stroke
+   * stays moss so unvisited countries remain distinguishable from the map
+   * base at 3:1 contrast.
+   */
+  .map-country {
+    fill: var(--color-map);
+    stroke: var(--color-moss);
+    stroke-width: 0.8;
+    vector-effect: non-scaling-stroke;
+    cursor: pointer;
+    transition: fill 120ms ease;
+  }
+
+  .map-country:hover {
+    fill: var(--color-rose);
+  }
+
+  .map-country[data-visited="true"] {
+    fill: var(--color-rose);
+  }
+
+  .map-country[data-visited="true"]:hover {
+    fill: var(--color-rose-deep);
+  }
+}

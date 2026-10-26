@@ -17,7 +17,8 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:auth-schema": "better-auth generate --config scripts/better-auth-schema.config.ts --output prisma/schema.prisma -y"
+    "db:auth-schema": "better-auth generate --config scripts/better-auth-schema.config.ts --output prisma/schema.prisma -y",
+    "data:countries": "node scripts/generate-countries.mjs"
   },
   "dependencies": {
     "@prisma/adapter-neon": "7.10.1",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@better-auth/cli": "1.4.21",
+    "@svg-maps/world": "2.0.0",
     "@tailwindcss/turbopack": "^4",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",

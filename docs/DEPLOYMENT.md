@@ -1,9 +1,8 @@
 # AtlasShare — Deployment
 
 Status: **not deployed.** This is the Phase 8 target. Nothing here has been
-executed against a real host yet. Phase 2 produced the first migration and
-working auth locally; a Neon dev branch is connected and migrated, and Brevo is
-not configured.
+executed against a real host yet. Phases 2–3 are implemented locally; a Neon dev
+branch is connected and migrated, and Brevo has delivered test email.
 
 ## 1. Target topology
 
@@ -21,7 +20,7 @@ headless browser.
 
 | Environment | Branch | Database | Email | Purpose |
 | --- | --- | --- | --- | --- |
-| Local | — | Local PostgreSQL 18 (Phase 2) or a Neon dev branch | Brevo verified sender or disabled | Development |
+| Local | — | Local PostgreSQL 18 or a Neon dev branch | Brevo verified sender or disabled | Development |
 | Preview | any PR branch | Neon preview branch (never prod) | Brevo verified sender | Review |
 | Production | `main` | Neon production branch | Verified domain | Real users |
 
@@ -147,7 +146,11 @@ Notes:
 
 ## 8. Caching and the service worker
 
-- Static assets and the country dataset: long-lived, immutable, content-hashed.
+- JS/CSS build assets: long-lived and immutable; Next.js content-hashes them.
+- `/map/countries.json`: public but **unversioned**. Local production serves it
+  with `Cache-Control: public, max-age=0` and ETag revalidation. Use a short CDN
+  TTL, or add a content hash/version, before applying long-lived caching; a stale
+  geometry file must not be paired with a newer country list.
 - HTML and API: no CDN caching of authenticated responses.
 - The service worker (Phase 7) must never cache authenticated documents or
   `/api/*`. On deploy, bump the cache version; old caches are deleted on
@@ -217,7 +220,7 @@ these three.
 
 ## 14. What is deliberately not set up yet
 
-- No CI pipeline (planned Phase 8). Phase 2 checks were run locally.
+- No CI pipeline (planned Phase 8). Phase 3 checks were run locally.
 - No custom domain.
 - No error tracking.
 - No staging environment separate from preview deployments.

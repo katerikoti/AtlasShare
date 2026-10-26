@@ -1,8 +1,9 @@
 # AtlasShare — Database
 
-Status: **implemented for Phase 2.** The auth tables and application tables exist
-in the first migration; no map/visit features use them yet. The schema below is
-the contract later phases build on. It will be adjusted only with a documented
+Status: **implemented through Phase 3.** The auth and application tables exist
+in the Phase 2 migration. Phase 3 uses `visited_countries` for the personal map;
+shared-map tables remain schema-only until Phase 4. The schema below is the
+contract later phases build on. It will be adjusted only with a documented
 reason (and a migration), not silently.
 
 ## 1. Principles
@@ -155,10 +156,14 @@ The country list is static, versioned with the code, and needed on the client
 for rendering. A database copy would drift from the SVG geometry and require a
 seed/migration every time the dataset changes. Instead:
 
-- the dataset lives in `src/data/countries.ts` (generated),
-- the server validates every `countryCode` against it before writing,
-- removing a country from the dataset is a **data migration** concern: the
-  Phase 3 generator must report orphaned visit rows rather than deleting them.
+- the canonical metadata lives in `src/data/countries.generated.ts`, imported
+  through the `src/data/countries.ts` helper; generated SVG geometry lives in
+  `public/map/countries.json`;
+- the server validates every `countryCode` against the helper before writing;
+- the generator is deliberately database-free and never deletes visit rows. If a
+  future dataset change removes a code, that change is a **data migration** and
+  must first query and report affected visit rows (and decide how to migrate or
+  remove them). The initial 250-unit generation removes nothing.
 
 If a future feature needs per-country editorial content (translations, notes,
 external links), a `CountryMeta` table can be added then; it would still be
@@ -265,11 +270,11 @@ denormalized counters are needed. Count on read.
 
 - No production seed. The country dataset is code, not rows.
 - Local development and manual verification use `atlasshare_dev` with unique
-  `example.com` accounts. `atlasshare_test` was recreated for the migration
-  smoke test.
-- Integration tests create their own users/maps in a transaction or a dedicated
-  test database and clean up after themselves. `TEST_DATABASE_URL` is documented
-  but **Vitest is not wired to it yet**; DB behavior was checked manually.
+  `example.com` accounts. `atlasshare_test` is used by the integration run.
+- Integration tests create their own users/maps in a dedicated test database and
+  clean up after themselves. Vitest loads `.env` and runs the persistence suite
+  when `TEST_DATABASE_URL` is set; without it, the suite is skipped with a clear
+  reason. The test database name is `atlasshare_test`.
 - Never copy production data into development. If realistic data is needed,
   generate synthetic users and visits.
 

@@ -1,8 +1,9 @@
 # AtlasShare — Progress
 
-**Current phase:** Phase 2 — Accounts and authentication (**approved**).
-**Status:** Phase 2 is complete and approved. Phase 3 has not started and awaits
-an explicit go-ahead.
+**Current phase:** Phase 3 — Country dataset and personal map (implementation
+complete, **awaiting approval**).
+**Status:** Phase 3 is built, verified, and documented. It is not approved yet;
+Phase 4 has not started.
 **Last updated:** 2026-10-26.
 
 This is the first file to read when resuming work. It reflects what is actually
@@ -14,14 +15,45 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | --- | --- | --- |
 | 1. Foundation & planning | ✅ Complete (approved) | Runnable branded skeleton + full docs. Commit `ad7746c`. |
 | 2. Accounts & authentication | ✅ Complete (approved 2026-10-26) | Auth, settings, reset, email plumbing, first migration. |
-| 3. Country dataset & personal map | ⛔ Not started | D1 resolved; awaits Phase 3 go-ahead. |
-| 4. Shared maps | ⛔ Not started | Schema exists; no UI or actions. |
+| 3. Country dataset & personal map | ✅ Complete (implementation; approval pending) | 250-unit dataset, private map, visited toggle, integration tests, browser QA. |
+| 4. Shared maps | ⛔ Not started — gated | Schema exists; no UI or actions. Needs Phase 3 approval. |
 | 5. Insights & filters | ⛔ Not started | D2 resolved: no notes/dates; filters/stats only. |
 | 6. Image export | ⛔ Not started | — |
 | 7. Public site & PWA | ⛔ Not started | — |
 | 8. Hardening, QA & deployment | ⛔ Not started | — |
 
 ## 2. What exists today
+
+### Country dataset and personal map (Phase 3)
+
+- Canonical dataset: 250 units (249 ISO 3166-1 entries plus Kosovo `XK`),
+  generated from `@svg-maps/world@2.0.0` (CC-BY-4.0) plus a committed Natural
+  Earth 1:10m Antarctica outline (public domain). Palestine (`PS`) and Israel
+  (`IL`) are separate units. Generated metadata is in
+  `src/data/countries.generated.ts`; geometry is in `public/map/countries.json`.
+- `scripts/generate-countries.mjs` removes `go`/`ju`, merges six `um-*`
+  subdivisions into `UM`, adds `AQ`, normalizes names, sorts codes, asserts the
+  count, creates output directories, and requires exactly `@svg-maps/world`
+  `2.0.0`. `npm run data:countries` reproduces both outputs deterministically.
+- `/map` is a signed-in, user-scoped page: a 250-path SVG map, searchable
+  250-row country list, count and progress bar, legend, empty state, geometry
+  loading/error/retry, route error boundary, and source/licence disclosure.
+- Map geometry is fetched after first paint from `/map/countries.json`, validated
+  against all 250 codes, and is not bundled into JavaScript. Raw asset size is
+  ~1.2 MB; local production compression measured ~398 KB. It is public data.
+- Visits are stored in `visited_countries` with a unique `(userId, countryCode)`
+  constraint. `setVisitedCountryAction` rejects unauthenticated callers and
+  codes outside the dataset; reads/writes are scoped to the session user.
+- The client updates optimistically and rolls back with an error message when
+  the Server Action fails. Counts are server-rendered initially.
+- Narrow screens use a **list-first fallback** (list ordered before the map) and
+  no pan/zoom dependency. From `lg` upward the map and list are side by side.
+  At 320/390 px there is no horizontal overflow; this was fixed after finding an
+  intrinsic grid width of 463 px (`grid-cols-1` + `min-w-0`).
+- Four client auth forms now use `method="post"` so a failed JavaScript boot
+  cannot put a password into the URL.
+- Home page and README now report Phase 3; the landing page itself is still the
+  temporary development placeholder until Phase 7.
 
 ### Accounts and authentication (Phase 2)
 
@@ -59,17 +91,17 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 - Next.js 16.4.3 App Router, React 19.3.0, TypeScript 5.9.3, Tailwind 4.3.3,
   Turbopack.
 - Brand identity in `src/config/brand.ts`; design tokens in `src/app/globals.css`.
-- Root metadata, branded home page (still a Phase 1/2 placeholder, not the final
-  landing page), branded 404, and an SVG app icon.
+- Root metadata, branded home page (still a temporary placeholder, not the final
+  Phase 7 landing page), branded 404, and an SVG app icon.
 - Accessible focus styles, reduced-motion handling, responsive layout verified
-  at 320/390/1280 px.
+  at 320/390/1280 px; map no longer causes horizontal overflow at 320 px.
 
 ### Tooling
 
 - ESLint 9, TypeScript strict, Vitest 5 + RTL + jsdom + jest-dom.
 - Scripts: `dev`, `build`, `start`, `lint`, `typegen`, `typecheck`, `test`,
-  `test:watch`, `check`, `postinstall`, `db:generate`, `db:migrate`,
-  `db:deploy`, `db:studio`, `db:auth-schema`.
+  `test:watch`, `check`, `postinstall`, `data:countries`, `db:generate`,
+  `db:migrate`, `db:deploy`, `db:studio`, `db:auth-schema`.
 - Prisma 7 schema in `prisma/schema.prisma`; migrations committed. Better Auth
   schema was generated with the installed CLI and then extended.
 - `.env` is gitignored; `.env.example` documents all variables. No credentials
@@ -83,47 +115,61 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 
 ### Not built (do not assume otherwise)
 
-No country dataset or map, no visit toggling, no shared-map UI/actions, no
-insights, no export, no final landing page, no PWA, no CI, no deployment. The
-shared-map tables exist only as schema for Phase 4.
+No shared-map UI or actions, no insights/filters, no image export, no final
+landing page, no PWA, no CI, and no deployment. The shared-map tables exist only
+as schema for Phase 4. Visited state has no notes or dates (D2).
 
-## 3. Verification (2026-10-25, provider/tests re-run 2026-10-26)
+## 3. Verification (2026-10-26)
 
-Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, headless
-Chrome, production build served on port 3102. The manual browser/API checks were
-not repeated after the Brevo provider change; lint, types, unit tests, and builds
-were re-run.
+Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
+(headless CDP and the app's browser pane), production build served on
+`127.0.0.1:3003` with matching `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL`.
 
 | Check | Command / method | Result |
 | --- | --- | --- |
 | Lint | `npm run lint` | ✅ exit 0 |
 | Types | `npm run typecheck` | ✅ exit 0 |
-| Unit/component tests | `npm test` | ✅ 46/46 passed (8 files) |
-| Production build | `npm run build` | ✅ exit 0; `/`, `/sign-in`, `/sign-up`, `/forgot-password` static; `/account`, `/reset-password`, auth API dynamic. Re-run with `.env` removed: ✅ passes without runtime secrets. |
-| Migration from empty DB | `prisma migrate deploy` against fresh `atlasshare_test` | ✅ 1 migration; 9 tables incl. `_prisma_migrations` |
-| Sign-up | production server + browser | ✅ account + session created; lands on `/account`; 30-day HttpOnly/SameSite=Lax cookie |
-| Duplicate sign-up | API | ✅ 422 `USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL` |
-| Wrong/unknown sign-in | API | ✅ identical 401 `Invalid email or password` |
-| Sign-out / sign-in | browser | ✅ session ends and a new session signs in |
-| Name update | browser + server action | ✅ trimmed, revalidated, shown immediately |
-| Password change | browser + server action | ✅ redirects to `/sign-in?passwordChanged=1`, all sessions revoked, new password works |
-| Password reset | API + browser | ✅ generic request response; token single-use; 1-hour expiry; new password signs in |
-| Account deletion | browser | ✅ redirects to `/?account=deleted`; user, sessions, visits, map, member, invitation rows all cascaded to 0 |
-| Authorization | fake cookie + no cookie | ✅ `/account` returns 307 to `/sign-in`; proxy alone is not trusted |
-| CSRF | cross-origin POST | ✅ 403 `INVALID_ORIGIN` |
-| Password minimum | API | ✅ 400 `PASSWORD_TOO_SHORT` |
-| Server-action gate | Vitest | ✅ unauthenticated name/password/delete actions redirect and never call Better Auth |
-| Validation | Vitest | ✅ name trim/length, password length/match, DELETE confirmation |
-| Layout | Chrome CDP at 320/390/1280 | ✅ no horizontal overflow; labeled inputs; correct colors and single `h1` |
-| Console/network | Chrome CDP | ✅ no app errors after adding the app icon; only expected 404 for the deliberately tested missing page |
-| Welcome email delivery | Brevo | ✅ app sign-up returned 200; Brevo accepted it; test 2 delivered/opened; test 3 delivered/opened in Gmail Promotions |
-| Neon | remote DB | ✅ dev branch connected; migration applied; schema up to date |
-| Real email-client rendering | manual | ⬜ test 3 opened in Promotions; visual layout not reviewed |
-| Rate-limit exhaustion | manual | ⬜ not run — would deliberately lock the test IP for 15 minutes |
-| Cross-browser / axe / VoiceOver | manual | ⬜ not run |
-| Automated DB/integration tests | `TEST_DATABASE_URL` | ⬜ not automated; DB behavior was verified manually (see `TESTING.md`) |
+| Tests | `npm test` | ✅ 64/64 passed (12 files); 3 local DB integration tests |
+| Full check | `npm run check` | ✅ exit 0 (2026-10-26) |
+| Production build | `npm run build` | ✅ exit 0; `/map` dynamic; geometry is a static public asset |
+| Dataset count | generator + tests | ✅ 250 units, 250 paths, unique codes and names |
+| Palestine/Israel | generator + test | ✅ separate `PS` and `IL` paths |
+| Determinism | run generator twice | ✅ identical output |
+| Map render | production + signed-in browser | ✅ 250 paths, 250 list rows, count/progress |
+| Search | browser | ✅ `japan` shows 1 of 250 |
+| Toggle | browser + DB | ✅ mark/unmark updates count and `visited_countries` |
+| Refresh persistence | browser | ✅ visit survives reload; count still correct |
+| User isolation | integration test | ✅ two users' visits remain separate |
+| Unauthenticated access | `curl` without cookie | ✅ `/map` and `/account` return 307 to `/sign-in` |
+| Desktop layout | Chrome 1200 px | ✅ map and list side by side; no horizontal overflow |
+| Mobile layout | Chrome 320/390 px | ✅ list first, map follows; no horizontal overflow after `grid-cols-1`/`min-w-0` fix |
+| Auth after form change | production browser | ✅ sign-in works with `method="post"`; sign-up not repeated |
+| Phase 2 auth/email | prior verification | ✅ see `docs/TESTING.md` §6; not all checks repeated |
+| Migration | schema review | ✅ no schema change or new migration in Phase 3; Phase 2 migration remains the source |
+| Geometry error/offline | manual | ⬜ not browser-tested |
+| Keyboard/screen reader | manual | ⬜ not run |
+| Physical phone/Safari/Firefox | manual | ⬜ not run |
+| Visual review | screenshots | ⬜ delegated to the owner |
 
 ### Defects found and fixed during verification
+
+- **Narrow-screen horizontal overflow.** The map/list grid used auto columns;
+  intrinsic content forced both cards to 439 px and the document to 463 px at a
+  320 px viewport. Added `grid-cols-1` and `min-w-0` to the grid and cards. At
+  320/390 px the page now equals the viewport width and the list stays first.
+- **Password leakage without JavaScript.** Client auth forms could fall back to
+  a GET submission and put the password in the query string. Added
+  `method="post"` to sign-in, sign-up, forgot-password, and reset-password
+  forms.
+- **Hidden automation tab looked stuck on the map skeleton.** A hidden browser
+  tab pauses `requestAnimationFrame`, so React's streamed Suspense segment is not
+  revealed by the browser pane/CDP tab. In a visible Chrome tab the map reveals
+  normally; do not “fix” this by removing streaming based only on a hidden tab.
+- **A stale lockfile install changed 74 unrelated optional dependencies.**
+  Restored the lockfile and manually added only the exact `@svg-maps/world`
+  entry. Validate with `npm ci --dry-run` before relying on a clean install.
+
+### Phase 2 defects found and fixed (historical)
 
 - **Password-change redirect loop.** Better Auth rotates the session on password
   change. The proxy redirected signed-in users away from auth pages based on
@@ -143,7 +189,7 @@ were re-run.
   `next build` failed during static generation of the authenticated layout. The
   layout now opts into `dynamic = "force-dynamic"`; a secret-free build passes.
 
-## 4. Decisions made in Phase 2
+## 4. Decisions carried from Phase 2
 
 Full records in `DECISIONS.md` (ADR-017 onwards).
 
@@ -165,6 +211,21 @@ Full records in `DECISIONS.md` (ADR-017 onwards).
   by the library. Accepted for now (single-use, ≤1 hour) and recorded as a
   limitation; invitation tokens remain hashed by design.
 
+### Phase 3 decisions
+
+Full records in ADR-024, ADR-025, and §5.
+
+- Use the curated `@svg-maps/world@2.0.0` dataset plus a custom Natural Earth
+  1:10m Antarctica outline; keep the generator database-free and deterministic.
+- Keep visited state only (ADR-024): no notes, dates, or history UI.
+- Fetch public geometry at runtime instead of bundling it; validate all 250 codes
+  before rendering; never put visit data in the asset.
+- On narrow screens, order the country list before the map (no pan/zoom
+  requirement) and keep the list keyboard-accessible.
+- No new database migration; `visited_countries` from Phase 2 is sufficient.
+- Auth forms submit with `method="post"`; this is a hardening fix, not a new auth
+  flow.
+
 ## 5. Resolved decisions
 
 ### D1 — Country set (resolved 2026-10-26)
@@ -173,8 +234,12 @@ Full records in `DECISIONS.md` (ADR-017 onwards).
   labelled consistently, with territories counted separately.
 - Palestine (`PS`) and Israel (`IL`) are both standalone map units and must never
   be merged. The dataset generator must explicitly verify both paths and labels.
+- Implemented source: `@svg-maps/world@2.0.0` (CC-BY-4.0), removing `go`/`ju`,
+  merging six `um-*` paths into `UM`, and adding `AQ` from a committed Natural
+  Earth 1:10m outline (public domain). The generator asserts separate `PS` and
+  `IL` paths and a total of 250.
 - This is a comprehensive dataset, not a political endorsement. Changing the set
-  later needs a data migration and copy changes.
+  later needs a data migration, orphan-row review, and copy changes.
 
 ### D2 — Notes/dates (resolved 2026-10-26)
 
@@ -188,62 +253,75 @@ Full records in `DECISIONS.md` (ADR-017 onwards).
 
 | Item | Status | Needed for |
 | --- | --- | --- |
-| Phase 3 go-ahead | not given | Starting the country map |
-| Neon dev branch + connection strings | connected; migration applied | Production deployment verification |
+| Phase 3 owner approval | pending | Starting Phase 4 |
+| Neon dev branch + connection strings | connected; Phase 2 migration applied | Deployment verification |
 | Brevo account + verified sender | configured; test delivered/opened | Reset-email validation |
 | Brevo production domain authentication | optional; not configured | Better deliverability in Phase 8 |
 | Approval to push to `origin` | not given | Sharing the repository |
 | Domain name (optional) | undecided | Phase 8 |
 
-No credentials are committed. `.env.example` documents the expected variables.
+No technical blocker remains in Phase 3. No credentials are committed;
+`.env.example` documents the expected variables.
 
 ## 7. Repository state
 
-- Local git repository on `main`. Phase 1 is commit `ad7746c`; Phase 2 is
-  committed locally and is **not pushed**.
-- Remote `origin` = `https://github.com/katerikoti/AtlasShare.git`. **Not
-  pushed** — pushing needs explicit approval.
+- Local git repository on `main`. Phase 1 is `ad7746c`; Phase 2 is `3065b2f`;
+  the Phase 2 documentation commit is `6ae3b7c`.
+- Phase 3 changes are committed locally in the final Phase 3 commit; run
+  `git log -1 --oneline` for the exact hash. **Not pushed** — pushing needs
+  explicit approval.
+- Remote `origin` = `https://github.com/katerikoti/AtlasShare.git`.
 - `gh` CLI is not installed; git credentials are cached.
 - `package-lock.json` is committed; `node_modules`, `.next`, `.env*`,
   `src/generated`, and `tsbuildinfo` are ignored.
+- The Phase 3 smoke account was deleted after browser QA; the local integration
+  database contains no persistent fixtures.
 
 ## 8. Next steps
 
-1. Confirm visual rendering of the delivered email and exercise password-reset
-   delivery through the app.
-2. Obtain explicit approval to start Phase 3; push only with explicit permission.
-3. Build the Phase 3 country dataset (250 units, `PS` and `IL` separate),
-   personal map, and visited toggle.
-4. Add automated DB integration tests against `TEST_DATABASE_URL` (toggle,
-   isolation, cascades).
-5. Stop for approval before Phase 4.
+1. Obtain explicit Phase 3 approval. Do not start Phase 4 before it.
+2. Push only with explicit permission.
+3. Before Phase 4, decide whether to keep the reserved `note` /
+   `firstVisitedAt` columns for future use or remove them in a migration.
+4. In Phase 4, add shared-map membership, invitations, and authorization tests;
+   the schema already exists.
+5. Optionally complete the outstanding manual checks: physical phone, keyboard
+   and screen reader, geometry error/offline, and visual approval.
+6. Keep the welcome/reset email visual and delivery check on the Phase 8 list.
 
 ## 9. Known limitations and debt
 
-- **Email delivery is now verified through Brevo.** An app sign-up was accepted,
-  and a follow-up test message was delivered and opened in the real inbox. Visual
-  rendering still needs a human check, and the reset email has not been exercised
-  through the app yet. The welcome message is not retried for users who signed up
-  while email was disabled.
+- **Map visual review is delegated.** Layout was checked with Chrome metrics at
+  320/390/1200/1280 px and screenshots were captured, but the agent did not
+  visually approve the rendered map. Physical-phone touch, Safari/Firefox,
+  keyboard-only navigation, screen-reader output, geometry error/retry, offline,
+  and throttled-mobile performance remain unverified.
+- **Geometry is a public 1.2 MB asset.** Local production compresses it to
+  ~398 KB; it is ETag-revalidated (`max-age=0`) at an unversioned path. A CDN
+  should use a short TTL or a versioned URL if long caching is desired. It never
+  contains visit data.
+- **Antarctica uses an approximate projection** from Natural Earth 1:10m; the
+  left edge is slightly clipped by the `0 0 1010 760` viewBox. It is a visual
+  outline, not a survey boundary.
+- **No pan/zoom.** Narrow screens deliberately use the list-first fallback; the
+  map is a visual shortcut, not the only input.
+- **Email delivery is verified through Brevo**, but visual rendering and the
+  password-reset message through the app still need a human check. The welcome
+  message is not retried for users who signed up while email was disabled.
 - **The `note` and `firstVisitedAt` columns are unused** by the approved initial
-  scope (D2). They remain in the schema as reserved fields; remove them with a
-  migration before launch if notes/dates are still unwanted.
+  scope (D2). They remain reserved; remove them with a migration before launch if
+  notes/dates are still unwanted.
 - **Brevo IP allowlisting is a deployment concern.** Local calls required
   authorizing the current egress IP. Vercel's outbound IPs are dynamic, so
-  production will need IP blocking disabled, static egress, or a scoped M2M token
-  (which would replace the current `api-key` header).
-- **Brevo adds a `List-Unsubscribe` header to transactional mail.** Gmail may
-  show an unsubscribe control and place unauthenticated mail in Promotions; the
-  free plan cannot remove the header. Clicking it can suppress future
-  transactional email. Domain authentication is the main deliverability fix.
+  production will need IP blocking disabled, static egress, or a scoped M2M token.
+- **Brevo adds a `List-Unsubscribe` header** to transactional mail; Gmail may show
+  its own unsubscribe control. The free plan cannot remove it. Domain
+  authentication is the main deliverability fix.
 - **Password-reset tokens are stored raw** by Better Auth in
   `verification.identifier` (the identifier includes the token). They are
   single-use and expire in one hour. Replacing this needs a custom reset flow.
 - **Rate limiting is per-instance memory** and only active in production. It
   slows basic brute force but is not a shared limiter.
-- **No automated DB integration tests** are in `npm test`; the migration and
-  cascade behavior were verified manually against local Postgres. The test
-  database exists but is not wired into Vitest.
 - **No email verification, MFA, or OAuth.** Email verification enforcement is
   deferred; sign-up reports that an address already exists.
 - **Secure cookies are not observable locally** because the smoke test used
@@ -254,17 +332,15 @@ No credentials are committed. `.env.example` documents the expected variables.
   Prisma Studio pulls lodash. The runtime uses Better Auth 1.7.12, which is
   outside the affected range, and none of these are in the production bundle.
   Re-check before deployment and replace/upgrade when fixes are available.
-- **Visual review is delegated to the user.** Layout is checked by DOM
-  measurements, not by the agent viewing screenshots.
-- The home page is still a temporary Phase 1/2 placeholder; the real landing
+- The home page is still a temporary development placeholder; the real landing
   page is Phase 7.
 
 ## 10. Resuming in a fresh session
 
 1. Read this file, then `DEVELOPMENT_PLAN.md`, then `AGENTS.md`.
-2. `npm ci` (or `npm install` if the lockfile changed) and `npm run check`.
+2. Run `npm ci` and `npm run check`; confirm `TEST_DATABASE_URL` for integration.
 3. Start local Postgres if needed and confirm `DATABASE_URL` / `DIRECT_URL`.
-4. Check the "Open decisions" and "Blockers" sections above.
-5. Do not start a later phase without explicit approval.
+4. Check the blockers and known limitations above.
+5. Do not start Phase 4 without explicit approval; do not push without approval.
 6. At the end of any work: update this file, run `npm run check` and
    `npm run build`, report honestly, and stop.

@@ -5,13 +5,13 @@
 Mark the countries you have visited on a personal world map, then combine your
 map with the people you travel with.
 
-> **Project status: Phase 2 of 8 complete and approved — accounts and
-> authentication. Phase 3 has not started.**
-> You can create an account, sign in/out, reset a password, change your name,
-> change your password, and delete your account. There is still no map, no
-> sharing, and no export. See [`docs/PROGRESS.md`](docs/PROGRESS.md) for exactly
-> what exists and [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md) for what
-> comes next.
+> **Project status: Phase 3 of 8 complete and awaiting approval — personal
+> country map.**
+> You can create an account, sign in/out, reset a password, manage account
+> settings, and mark visited countries on a private 250-unit world map. There is
+> still no sharing and no image export. See [`docs/PROGRESS.md`](docs/PROGRESS.md)
+> for exactly what exists and [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md)
+> for what comes next.
 
 ## Why
 
@@ -30,6 +30,8 @@ tracking, no feed.
 - **Better Auth** with email/password and database sessions
 - **Brevo** for transactional email (disabled automatically without a key)
 - **Vitest** + React Testing Library; Playwright planned for Phase 8
+- **Map data:** `@svg-maps/world` 2.0.0 (CC-BY-4.0) plus a public-domain
+  Natural Earth 1:10m Antarctica outline; generated locally, no map library
 - Hosting: Vercel (planned, Phase 8)
 
 ## Getting started
@@ -77,6 +79,7 @@ at that verified address. If Brevo returns `401 unauthorized` with an
 | `npm test` | Run unit tests once. |
 | `npm run test:watch` | Unit tests in watch mode. |
 | `npm run check` | Lint + typecheck + tests. Run before every commit. |
+| `npm run data:countries` | Regenerate the committed country metadata and map geometry. |
 | `npm run db:migrate` | Create/apply a dev migration. |
 | `npm run db:deploy` | Apply committed migrations (release/CI). |
 | `npm run db:generate` | Regenerate the Prisma client. |
@@ -90,15 +93,16 @@ at that verified address. If Brevo returns `401 unauthorized` with an
 
 ```
 src/
-  app/            App Router routes, metadata, auth/account pages, icon
-  components/     auth/account forms and UI primitives; map/export are planned
+  app/            App Router routes, metadata, auth/account/map pages, icon
+  components/     auth, account, map, and UI primitives
   config/         brand identity and lazy environment validation
-  data/           (planned) generated country dataset
+  data/           generated country metadata + canonical helpers
   lib/            browser auth client and framework-agnostic helpers
-  server/         auth, database, session gate, actions, email, validation
+  server/         auth, database, session gate, visits, actions, email
   test/           test setup
 docs/             specification, architecture, database, security, plan, etc.
 prisma/           schema and committed migrations
+public/map/       generated public SVG geometry (no user data)
 ```
 
 ## Documentation
@@ -154,5 +158,12 @@ This is a phased solo build. Before changing code:
 
 ## License
 
-No license has been chosen yet. Treat the code as all rights reserved until one
-is added.
+No license has been chosen for the AtlasShare code yet. Treat the code as all
+rights reserved until one is added.
+
+The generated map geometry includes CC-BY-4.0 data from
+[`@svg-maps/world`](https://www.npmjs.com/package/@svg-maps/world) and a
+public-domain Natural Earth 1:10m Antarctica outline. Attribution and license
+links are shown in the map's “About the map data” disclosure. The full notice is
+in [`public/map/NOTICE.txt`](public/map/NOTICE.txt) and
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

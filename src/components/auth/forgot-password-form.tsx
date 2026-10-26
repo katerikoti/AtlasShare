@@ -65,7 +65,7 @@ export function ForgotPasswordForm() {
         link.
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+      <form onSubmit={onSubmit} method="post" className="mt-8 space-y-5" noValidate>
         <Field label="Email" htmlFor="email">
           <input
             id="email"

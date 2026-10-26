@@ -1,0 +1,31 @@
+AtlasShare map geometry — data notices
+======================================
+
+@svg-maps/world 2.0.0
+---------------------
+Source: https://github.com/VictorCazanave/svg-maps
+Package: https://www.npmjs.com/package/@svg-maps/world
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+         https://creativecommons.org/licenses/by/4.0/
+
+AtlasShare modifications: removed the non-ISO `go` and `ju` paths; merged the
+six `um-*` U.S. Minor Outlying Islands subdivisions into one `UM` path;
+normalized display names; sorted units by ISO alpha-2 code. Palestine (`PS`)
+and Israel (`IL`) remain separate paths.
+
+Antarctica outline
+------------------
+Source: Natural Earth 1:10m cultural/physical data
+        https://www.naturalearthdata.com/
+License: public domain
+        https://www.naturalearthdata.com/about/terms-of-use/
+
+AtlasShare modifications: extracted a single main-ring Antarctica outline,
+projected to the map's coordinate space, and committed it as
+`scripts/data/antarctica-path.txt`. It is an approximate visual outline, not a
+survey boundary.
+
+The generated files `public/map/countries.json` and
+`src/data/countries.generated.ts` are derived from the sources above. They
+contain only public country/territory geometry and names; no user visit data is
+included.

@@ -1,8 +1,8 @@
 # AtlasShare — Security
 
-Status: **Phase 2 auth and account management are implemented.** This document
-states the rules that every phase must satisfy. Deviations require an explicit
-decision in `DECISIONS.md`.
+Status: **Phase 3 personal map is implemented; shared maps and export are not.**
+This document states the rules that every phase must satisfy. Deviations require
+an explicit decision in `DECISIONS.md`.
 
 ## 1. Assets
 
@@ -120,14 +120,19 @@ non-member cannot perform it and cannot read the data.
   never as markup.
 - URLs derived from user input are not allowed. Invitation links are built from
   `NEXT_PUBLIC_APP_URL` + a server-generated token.
-- The SVG map only renders dataset-controlled path data. If a future feature
-  lets users import geometry, it must be sanitized and never injected raw.
+- The SVG map only renders dataset-controlled path data from the committed
+  generator. It never contains user text. If a future feature lets users import
+  geometry, it must be sanitized and never injected raw.
+- Visited codes come from the server and are validated against the 250-unit
+  dataset; the public geometry JSON contains no visit data.
 
 ## 7. CSRF and request forgery
 
 - Better Auth validates origins for its endpoints.
 - Server Actions are same-origin POSTs with Next.js's built-in action checks;
   still treat the payload as untrusted.
+- Client auth forms use `method="post"` so a failed JavaScript boot cannot
+  submit a password in a URL query string.
 - Cookies are `SameSite=Lax`, which blocks cross-site POSTs from carrying the
   session for top-level navigations.
 - No state-changing GET requests.

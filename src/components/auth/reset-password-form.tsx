@@ -103,7 +103,7 @@ export function ResetPasswordForm({ token }: { token: string | null }) {
         For your security, this link works once and expires after an hour.
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+      <form onSubmit={onSubmit} method="post" className="mt-8 space-y-5" noValidate>
         <Field
           label="New password"
           htmlFor="newPassword"

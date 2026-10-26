@@ -17,9 +17,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-line/80 bg-canvas/80 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-6 py-4 sm:px-10">
-          <div className="flex items-center gap-6">
+          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
             <Link
-              href="/account"
+              href="/map"
               className="flex items-center gap-3 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-moss"
             >
               <span
@@ -28,11 +28,25 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               >
                 A
               </span>
-              <span className="font-display text-lg tracking-tight">
+              <span className="hidden font-display text-lg tracking-tight sm:inline">
                 {brand.name}
               </span>
             </Link>
-            <span className="hidden text-sm text-ink-muted sm:inline">
+            <nav aria-label="Main" className="flex items-center gap-1">
+              <Link
+                href="/map"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
+              >
+                Map
+              </Link>
+              <Link
+                href="/account"
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
+              >
+                Account
+              </Link>
+            </nav>
+            <span className="hidden text-sm text-ink-muted lg:inline">
               Signed in as {session.user.name}
             </span>
           </div>
@@ -46,7 +60,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
       <footer className="border-t border-line/80">
         <p className="mx-auto w-full max-w-4xl px-6 py-4 text-xs text-ink-muted sm:px-10">
-          Phase 2 · Accounts are live · Your map arrives in Phase 3.
+          Private by default · Shared maps and image export arrive in later
+          phases.
         </p>
       </footer>
     </div>

@@ -1,9 +1,9 @@
 # AtlasShare — Architecture
 
-Status: **Phase 2 (accounts and authentication) is implemented.** Map, shared
-maps, export, and PWA functionality are still planned. Anything marked _planned_
-does not exist in the codebase yet. See [`PROGRESS.md`](./PROGRESS.md) for what is
-actually built.
+Status: **Phase 3 (country dataset and personal map) is implemented, pending
+approval.** Shared maps, export, and PWA functionality are still planned.
+Anything marked _planned_ does not exist in the codebase yet. See
+[`PROGRESS.md`](./PROGRESS.md) for what is actually built.
 
 ## 1. Purpose of this document
 
@@ -97,15 +97,17 @@ The real check is always server-side, in the data layer:
 
 ```ts
 const session = await requireSession();          // redirects to /sign-in when absent
-// Phase 3: const map = await requireMapMembership(mapId, session.user.id);
+// Phase 4: const map = await requireMapMembership(mapId, session.user.id);
 ```
 
 Rationale: a proxy runs before the request is resolved and is not intended for
 slow data fetching or full session management (see the Next.js Proxy docs).
 Database-backed authorization cannot be safely done there.
 
-The implemented proxy protects `/account` only. It deliberately does **not**
-redirect signed-in users away from auth pages: Better Auth rotates the session
+The implemented proxy optimistically protects `/account` only. `/map` also
+calls `requireSession()` in its server page, so it is protected without relying
+on the proxy. The proxy deliberately does **not** redirect signed-in users away
+from auth pages: Better Auth rotates the session
 cookie on password change, and a cookie-presence redirect between `/account` and
 `/sign-in` can race that rotation into a loop. A signed-in user seeing the
 sign-in form is harmless.
@@ -121,8 +123,12 @@ depends on the current user. The default is therefore dynamic rendering and no
 - `revalidate`/tags that are invalidated on writes,
 - a test proving one user cannot see another user's data.
 
-The country dataset and SVG geometry are static assets, so they can be cached
-aggressively by the CDN — they contain no user data.
+The country dataset and SVG geometry are public static assets and contain no
+user data. The generated geometry is served from `public/map/countries.json`;
+locally it is ETag-revalidated (`Cache-Control: public, max-age=0`) and
+compressed by the framework. It is ~1.2 MB raw and ~400 KB compressed. A
+deployment may apply a short CDN TTL, but should not use a long immutable cache
+at this unversioned path because a dataset/code update must stay in sync.
 
 ### 5.4 Server Actions vs. route handlers
 
@@ -141,31 +147,34 @@ src/
   app/
     layout.tsx              # root layout, metadata, fonts
     globals.css             # Tailwind v4 theme tokens (colors, radius, shadow)
-    page.tsx                # temporary Phase 1/2 placeholder (landing is Phase 7)
+    page.tsx                # temporary development placeholder (landing is Phase 7)
     not-found.tsx
     icon.svg                # app icon
     (auth)/                 # sign in, sign up, forgot/reset password
     (app)/account/          # signed-in account settings
+    (app)/map/              # personal map + route error boundary
     api/auth/[...all]/      # Better Auth handler
   components/
     auth/                   # sign-in/up, forgot/reset, sign-out forms
     account/                # name, password, delete-account forms
+    map/                    # interactive SVG map and country list
     ui/form.tsx             # field, message, button/input styles
-    (map/ and export/ are planned for Phases 3 and 6)
+    (export/ is planned for Phase 6)
   config/
     brand.ts                # product identity (source of truth)
     env.ts                  # lazy Zod validation of server env
   data/
-    countries.ts            # planned Phase 3: generated country dataset
-    world.svg.ts            # planned Phase 3: generated path data
+    countries.ts            # canonical country helpers, codes, names
+    countries.generated.ts  # generated names/codes; do not edit
   lib/
     auth-client.ts          # browser Better Auth client
   server/
     auth.ts                 # lazy Better Auth instance + options
     db.ts                   # lazy Prisma client, adapter selected by host
     session.ts              # getSession + requireSession gate
-    authorization.ts        # planned Phase 3: membership/permission helpers
-    actions/                # account Server Actions (map actions planned)
+    authorization.ts        # planned Phase 4: membership/permission helpers
+    visits.ts               # user-scoped visited-country reads/writes
+    actions/                # account + visits Server Actions
     email/                  # Brevo wrapper, templates, welcome/reset senders
     validation/             # pure Zod schemas for account forms
   test/
@@ -175,8 +184,13 @@ prisma/
   migrations/               # committed migrations
 scripts/
   better-auth-schema.config.ts
-public/                     # planned Phase 7: PWA icons, manifest
+  generate-countries.mjs    # reproducible country/geometry generator
+  data/antarctica-path.txt  # custom Antarctica outline
+public/
+  map/countries.json        # generated SVG geometry, fetched at runtime
+                            # PWA icons/manifest planned for Phase 7
 ```
+
 
 Rules:
 
@@ -200,21 +214,31 @@ Candidate sources evaluated in Phase 1:
 
 | Source | License | Shape | Problems |
 | --- | --- | --- | --- |
-| `@svg-maps/world` 2.0.0 | CC-BY-4.0 | 256 SVG paths, ISO alpha-2 ids | Missing Antarctica; includes `xk`, `ju`, `go`, and six `um-*` subdivisions; needs curation. |
-| `world-countries` 5.1.0 | ODbL | 250 country records, GeoJSON per country | No geometry for `AQ` and `XK`; ODbL share-alike is awkward for app code. |
-| Natural Earth 50m | Public domain | 242 features | Groups Palestine under Israel, misses small states; unacceptable without curation. |
+| `@svg-maps/world` 2.0.0 | CC-BY-4.0 | 256 SVG paths, ISO alpha-2 ids | **Selected base.** Missing Antarctica; includes `xk`, `ju`, `go`, and six `um-*` subdivisions; needs curation. |
+| `world-countries` 5.1.0 | ODbL | 250 country records, GeoJSON per country | No geometry for `AQ` and `XK`; ODbL share-alike is awkward for app code. Not used. |
+| Natural Earth 1:10m | Public domain | 258 features | Not a clean 250-code base in the extraction tested: 239 valid unique codes, 11 required codes missing, Palestine grouped under Israel. Used only for Antarctica. |
+| Natural Earth 1:50m | Public domain | 242 features | Groups Palestine under Israel and misses small states; rejected. |
 
-Decision: **generate** our own dataset in Phase 3 from a public-domain source
-(Natural Earth 1:50m as the geometry base, with hand-curated corrections), and
-commit the generated artefacts plus a script that reproduces them. The dataset
-must be reproducible and reviewable in a diff. Attribution for any CC-BY source
-lives in an "About the map" section.
+Decision: use **`@svg-maps/world` 2.0.0 as the geometry base**, curated by
+`scripts/generate-countries.mjs`. The generator removes the two non-ISO extras
+(`go`, `ju`), merges the six U.S. Minor Outlying Islands subdivisions into one
+`UM` path, adds Antarctica (`AQ`) from a committed Natural Earth 1:10m outline,
+normalizes display names, sorts by code, and asserts 250 units. It writes
+`src/data/countries.generated.ts` and `public/map/countries.json`; both are
+committed and deterministic. The helper in `src/data/countries.ts` is the
+single import surface for codes and names. The script fails if the installed
+source version is not exactly `2.0.0`.
+
+Natural Earth 1:50m was the original plan, but it groups Palestine under Israel
+and does not include enough small territories. Natural Earth 1:10m was also not
+clean enough as a sole base. The selected source already contains separate
+`PS` and `IL` paths; the generator still asserts both exist and are distinct.
 
 Decision (D1, 2026-10-26): the map shows **249 ISO 3166-1 entries plus Kosovo
 (250 "countries & territories")**. This fixes the dataset, count text, and
 export. Label the feature "countries & territories" everywhere. Palestine (`PS`)
-and Israel (`IL`) are separate units; the generator must assert both paths exist
-and never merge them.
+and Israel (`IL`) are separate units and are never merged. The generated
+metadata carries names only; geometry stays in the fetched JSON asset.
 
 Identifier rules:
 
@@ -224,28 +248,38 @@ Identifier rules:
 - Never key data on display names or SVG path ids that differ from the codes.
 - Validate every incoming code against the committed dataset on the server.
 - **Palestine (`PS`) is a country and is always its own map unit.** It is never
-  merged into Israel or any other path. Natural Earth's default grouping of
-  Palestine under Israel is rejected; Phase 3 curation must split it into a
-  separate, correctly labelled path. This applies to both country-set options.
+  merged into Israel or any other path.
+- Attribution for the CC-BY-4.0 source and the public-domain Antarctica outline
+  lives in the map's "About the map data" disclosure and the repository docs.
 
 ### 7.2 Rendering
 
-- A hand-built React SVG map, `viewBox="0 0 1000 500"`-style, no map library and
-  no tile server.
-- Each unit is a `<path>` with `data-country="SE"`, `role`/`aria-label` handled
-  by a parallel accessible list rather than 250 focusable SVG nodes.
+- A hand-built React SVG map with `viewBox="0 0 1010 760"`, generated from the
+  committed dataset. No map library, tile server, or runtime geo dependency.
+- Geometry is fetched after first paint from `/map/countries.json` and validated
+  against all 250 codes. It is not bundled into the client JavaScript. The map
+  has its own loading and retry states.
+- Each unit is a `<path>` with `data-country="SE"` and `data-visited`; the SVG
+  has an accessible name via `<title>`, and each path has a country title. The
+  parallel country list is the accessible control surface rather than 250
+  focusable SVG nodes.
 - Fills come from CSS classes driven by the design tokens: visited = dusty rose,
-  unvisited = warm off-white, borders = moss. Hover/focus and selected states are
-  CSS-only.
-- Interaction model: click/Enter toggles a country; a searchable country list
+  unvisited = warm off-white, borders = moss. The list is keyboard accessible;
+  map paths are pointer/touch shortcuts to the same action.
+- Interaction model: click/tap toggles a country; the searchable country list
   provides the keyboard- and screen-reader-friendly path to the same action.
-  Both routes call the same Server Action.
-- Pan/zoom, if added, uses pointer events and a transform on the SVG group. It
-  must not trap scroll on touch devices, and it must be disableable via
-  `prefers-reduced-motion` where animation is involved.
-- Performance budget: the map route should ship the geometry as cached,
-  compressible static data (gzip/brotli), not as a JS bundle string, if the size
-  makes that worthwhile. Geometry is not needed for first paint of other routes.
+  Both routes call the same Server Action and use optimistic state with rollback.
+- On narrow screens the page uses a **list-first fallback**: the country list is
+  ordered before the map, with no pan/zoom dependency. From `lg` upward the map
+  and list sit side by side. There is no pan/zoom implementation.
+- The asset is ~1.2 MB raw and ~400 KB compressed in local production, served
+  with ETag revalidation. It contains only public geometry, never visit data.
+- The map route shows a server-rendered count and progress, a Suspense skeleton
+  while the user's visits load, and a route error boundary; no private data is
+  rendered in the fallback.
+- Performance budget: geometry is cached/compressible static data, not a JS
+  bundle string. The country list can be scrolled without loading the map image
+  first; the map is a visual aid, not the only input path.
 
 ### 7.3 Counting
 
@@ -359,10 +393,12 @@ for local Postgres.
   `src/config/brand.test.ts`; non-text map borders are checked at 3:1. The map
   always has a non-visual equivalent (list + search). Focus is visible and
   never trapped. Motion respects `prefers-reduced-motion`.
-- **Responsiveness**: mobile-first. The map may pan/zoom; page chrome never
-  causes horizontal scrolling.
+- **Responsiveness**: mobile-first. On narrow screens the country list comes
+  first and the map follows; no pan/zoom is required. Page chrome and the map
+  card never cause horizontal scrolling at 320 px (verified in a browser).
 - **Performance**: map route interactive quickly on a mid-range phone; geometry
-  cached and compressed; no layout shift from late-loading fonts (system stack).
+  is compressible static data (~1.2 MB raw, ~400 KB compressed locally) and is
+  ETag-revalidated; no layout shift from late-loading fonts (system stack).
 - **Privacy**: only country-level data is stored. No IP geolocation, no
   analytics, no third-party trackers. Email addresses are visible only to the
   account owner and, where required, to a map owner who invited them.

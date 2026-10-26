@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ChangePasswordForm } from "@/components/account/change-password-form";
@@ -63,11 +64,13 @@ export default async function AccountPage() {
       </header>
 
       <div className="rounded-card border border-moss/30 bg-moss/10 p-5 text-sm leading-relaxed text-ink sm:p-6">
-        <p className="font-medium">Your map is the next phase.</p>
+        <p className="font-medium">Your map is live.</p>
         <p className="mt-1 text-ink-muted">
-          Accounts, sessions, and email are working. Marking countries, shared
-          maps, and image export are built in the phases ahead. For now this
-          page is where you can manage your details.
+          Mark the countries you have visited on{" "}
+          <Link href="/map" className="font-medium text-moss underline underline-offset-2">
+            your map
+          </Link>
+          . Shared maps and image export are built in the phases ahead.
         </p>
       </div>
 

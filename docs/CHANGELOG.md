@@ -6,6 +6,57 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ## [Unreleased]
 
+### Added — Phase 3: country dataset and personal map (2026-10-26)
+
+- Reproducible 250-unit dataset generator from exact
+  `@svg-maps/world@2.0.0` (CC-BY-4.0), plus a committed Natural Earth 1:10m
+  Antarctica outline (public domain). Removes `go`/`ju`, merges six `um-*`
+  subdivisions into `UM`, adds `AQ`, normalizes names, sorts codes, and asserts
+  separate `PS`/`IL`.
+- Generated `src/data/countries.generated.ts`, a canonical
+  `src/data/countries.ts` helper, and `public/map/countries.json` (250 SVG paths,
+  viewBox `0 0 1010 760`). `npm run data:countries` is deterministic.
+- Signed-in `/map` route with an SVG map, searchable 250-row country list,
+  visited count and progress bar, legend, empty state, geometry loading/error
+  with retry, route error boundary, and CC-BY/Natural Earth attribution.
+- `setVisitedCountryAction` and user-scoped persistence in
+  `src/server/actions/visits.ts` / `src/server/visits.ts`; optimistic mark/unmark
+  with rollback on failure.
+- Mobile-first list-first fallback (`order-first lg:order-none`) with no pan/zoom
+  dependency; map and list side by side from `lg`.
+- Local DB integration tests for idempotent set/remove and two-user isolation;
+  dataset, action authorization/validation, and map component tests.
+- `data:countries` script and exact `@svg-maps/world` dependency pin.
+- Home page and README now report Phase 3.
+
+### Changed — Phase 3
+
+- Client auth forms submit with `method="post"` (sign-in, sign-up,
+  forgot-password, reset-password), so a failed JavaScript boot cannot put a
+  password in the URL.
+- Narrow-screen map/list grid now uses `grid-cols-1` and `min-w-0`, fixing a
+  463 px document width at a 320 px viewport.
+- Map attribution includes a CC BY 4.0 licence link and explains the curated
+  dataset. The public map asset is served with ETag revalidation and compressed
+  by the framework; no private visit data is included.
+
+### Verified — Phase 3
+
+- `npm run check` passed: lint, typecheck, and **64/64 tests in 12 files**
+  (including three local PostgreSQL integration tests).
+- `npm run build` passed; `/map` is dynamic and `/map/countries.json` is public
+  static data. No new migration is required.
+- Browser QA with a signed-in production session: 250 SVG paths, 250 list rows,
+  search (`japan` → 1 of 250), mark/unmark count updates, persistence across
+  reload, and user isolation (integration test).
+- Layout measured at 320, 390, 1200, and 1280 px: no horizontal overflow; list
+  first below `lg`; map/list side by side above it.
+- Dataset generation repeated with identical output; 250 unique units, unique
+  names, complete paths, separate `PS`/`IL`.
+- Manual gaps: physical phone/touch, Safari/Firefox, keyboard/screen-reader,
+  geometry error/offline, throttled performance, and visual design approval.
+
+
 ### Added — Phase 2: Accounts and authentication (2026-10-25, updated 2026-10-26)
 
 - PostgreSQL schema and first migration:
@@ -37,7 +88,7 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ### Changed
 
-- The home page now links to sign-in/sign-up and reports Phase 2 status.
+- The home page now links to sign-in/sign-up and reports Phase 3 status.
 - Password changes sign out every session and redirect to sign-in with a notice.
 - Account deletion is enabled, password-gated, and relies on Prisma cascades.
 - Transactional email switched from Resend to Brevo's HTTP API so a verified

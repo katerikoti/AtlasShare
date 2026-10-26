@@ -65,7 +65,7 @@ export function SignUpForm() {
         Start a private map. You can share it later, one person at a time.
       </p>
 
-      <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+      <form onSubmit={onSubmit} method="post" className="mt-8 space-y-5" noValidate>
         <Field label="Name" htmlFor="name">
           <input
             id="name"

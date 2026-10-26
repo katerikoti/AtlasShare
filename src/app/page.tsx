@@ -34,7 +34,7 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-3">
           <span className="hidden rounded-full border border-moss/30 bg-surface/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-moss sm:inline">
-            Phase 2 · Accounts
+            Phase 3 · Personal map
           </span>
           <Link
             href="/sign-in"
@@ -86,11 +86,11 @@ export default function Home() {
                 className="mt-1.5 size-2.5 shrink-0 rounded-full bg-rose-deep"
               />
               <div>
-                <p className="font-medium text-ink">Accounts are open.</p>
+                <p className="font-medium text-ink">Your personal map is ready.</p>
                 <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                  You can create an account and manage your details now. Your
-                  personal map, shared maps, and image export arrive in the
-                  phases ahead. The marketing page is a later phase too.
+                  Create an account, then mark the countries and territories you
+                  have visited. Your map stays private to you; shared maps and
+                  image export arrive in the phases ahead.
                 </p>
               </div>
             </div>
@@ -161,7 +161,7 @@ export default function Home() {
               </svg>
             </div>
             <div className="flex items-center justify-between px-2 pb-1 pt-4 text-xs text-ink-muted">
-              <span>Map canvas reserved for Phase 3</span>
+              <span>Country-level and private by default</span>
               <span className="flex items-center gap-1.5">
                 <span
                   aria-hidden="true"
@@ -176,7 +176,7 @@ export default function Home() {
 
       <footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-t border-line/80 pt-5 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between">
         <p>
-          Phase 2 of 8 · Accounts are live · Maps arrive next.
+          Phase 3 of 8 · Personal map is live · Sharing comes next.
         </p>
         <a
           className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"

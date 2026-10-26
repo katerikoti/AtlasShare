@@ -1,7 +1,8 @@
 # AtlasShare — Development Plan
 
-Status: **Phase 2 implemented and awaiting approval.** Phase 1 is approved. Later
-phases are scoped but not started.
+Status: **Phase 3 implemented and awaiting approval.** Phases 1–2 are approved;
+Phase 3 is complete in code, tests, and docs. Later phases are scoped but not
+started.
 
 ## How phases work
 
@@ -122,7 +123,7 @@ remain before deployment.
 
 ---
 
-## Phase 3 — Country dataset and personal map
+## Phase 3 — Country dataset and personal map (implemented; approval pending)
 
 **Goal:** the core product moment — mark countries and see your map.
 
@@ -134,8 +135,8 @@ remain before deployment.
   paths exist; commit outputs.
 - Dataset integrity tests: unique codes, valid alpha-2, no missing names, path
   count matches the dataset.
-- `visited_countries` table + migration; idempotent toggle Server Action with
-  server-side authorization and validation.
+- Reuse the Phase 2 `visited_countries` table; no new migration is needed.
+  Idempotent toggle Server Action with server-side authorization and validation.
 - Map route (signed-in): SVG map, legend, count, progress, searchable country
   list, keyboard support, empty state, responsive layout.
 - Optimistic updates with rollback on failure; error surface.

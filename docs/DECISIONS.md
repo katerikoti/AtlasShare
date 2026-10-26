@@ -449,12 +449,42 @@ app.
 
 ---
 
+## ADR-025 — Curated `@svg-maps/world` plus a custom Antarctica outline
+
+**Status:** accepted (Phase 3)
+
+**Context:** The map needs 250 recognizable units, including separate Palestine
+and Israel paths, small territories, and Antarctica. The Phase 1 plan named
+Natural Earth 1:50m, but that dataset groups Palestine under Israel and misses
+small states. A Natural Earth 1:10m extraction was also not a clean 250-code
+base in testing (258 features, 239 valid unique codes, 11 required codes
+missing). `@svg-maps/world` already provides separate `PS`/`IL` paths and useful
+coverage.
+
+**Decision:** Generate the dataset from the exact `@svg-maps/world@2.0.0`
+package (CC-BY-4.0), remove the non-ISO `go`/`ju` paths, merge the six `um-*`
+subdivisions into one `UM` path, add `AQ` from a committed Natural Earth 1:10m
+outline (public domain), normalize names, sort by code, and assert 250 units.
+Write both `src/data/countries.generated.ts` and `public/map/countries.json`
+deterministically; commit both. The generator fails if the installed package
+version differs. Attribute the source and Antarctica outline in the map and
+repository docs.
+
+**Consequences:** The map does not depend on a runtime geo package. The
+curation is explicit and reproducible. The base geometry's projection and
+simplification are retained, and the custom Antarctica outline is approximate.
+Updating the source package requires regenerating, reviewing the output diff,
+and checking any removed codes for orphaned visit rows before deployment. The
+geometry asset is public, unversioned data (~1.2 MB raw, ~400 KB compressed
+locally) served with ETag revalidation.
+
+---
+
 ## Deferred decisions
 
 | Topic | Why deferred | Needed by |
 | --- | --- | --- |
 | Hashed password-reset tokens | Better Auth stores them raw; custom flow is larger | Before public launch |
-| Automated DB integration tests | Manual SQL used in Phase 2; wiring takes setup | Phase 3 |
 | Notes/visit dates | Removed from the initial scope by D2 (ADR-024) | New scope decision |
 | OAuth providers | Not needed for the core loop | post-launch |
 | Error monitoring vendor | Privacy review first | Phase 8 |
