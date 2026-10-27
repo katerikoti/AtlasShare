@@ -52,6 +52,11 @@ describe("MapExperience", () => {
     ).toHaveAttribute("aria-valuenow", "0");
     expect(screen.getByLabelText(/find a country/i)).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /sweden/i })).not.toBeChecked();
+    expect(screen.queryByLabelText("Show")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Sort")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/the map is a visual aid/i),
+    ).not.toBeInTheDocument();
     expect(await screen.findByRole("img", { name: /world map/i })).toBeVisible();
   });
 
@@ -67,48 +72,11 @@ describe("MapExperience", () => {
         screen.queryByRole("checkbox", { name: /norway/i }),
       ).not.toBeInTheDocument();
     });
-  });
 
-  it("filters by visited state, region, and resets the controls", async () => {
-    render(<MapExperience initialVisited={["SE"]} />);
-    await screen.findByRole("img", { name: /world map/i });
+    fireEvent.change(searchInput(), { target: { value: "zzzz" } });
 
-    fireEvent.change(screen.getByLabelText("Show"), {
-      target: { value: "visited" },
-    });
-
-    expect(screen.getByRole("checkbox", { name: /sweden/i })).toBeVisible();
-    expect(
-      screen.queryByRole("checkbox", { name: /norway/i }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText("Showing 1 of 250")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText("Region"), {
-      target: { value: "Asia" },
-    });
-    expect(screen.getByText("No countries match these filters.")).toBeVisible();
-
-    fireEvent.click(
-      screen.getAllByRole("button", { name: /reset filters/i })[0],
-    );
-
-    expect(screen.getByLabelText("Show")).toHaveValue("all");
-    expect(screen.getByLabelText("Region")).toHaveValue("all");
-    expect(screen.getByText("Showing 250 of 250")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: /japan/i })).toBeVisible();
-  });
-
-  it("sorts visited countries first", async () => {
-    render(<MapExperience initialVisited={["JP"]} />);
-    await screen.findByRole("img", { name: /world map/i });
-
-    fireEvent.change(screen.getByLabelText("Sort"), {
-      target: { value: "visited" },
-    });
-
-    const checkboxes = screen.getAllByRole("checkbox");
-    expect(checkboxes[0]).toHaveAccessibleName(/japan/i);
-    expect(checkboxes[1]).toHaveAccessibleName(/afghanistan/i);
+    expect(await screen.findByText(/no countries match/i)).toBeVisible();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
   it("shows region statistics that follow the visited set", async () => {
@@ -134,7 +102,10 @@ describe("MapExperience", () => {
         screen.getByRole("progressbar", { name: /countries marked visited/i }),
       ).toHaveAttribute("aria-valuenow", "1");
     });
-    expect(screen.getByRole("checkbox", { name: /sweden/i })).toBeChecked();
+    const sweden = screen.getByRole("checkbox", { name: /sweden/i });
+    expect(sweden).toBeChecked();
+    expect(sweden).toHaveClass("accent-rose-deep");
+    expect(screen.getByText("Sweden")).toHaveClass("text-rose-deep");
     expect(mocks.setVisitedCountryAction).toHaveBeenCalledWith("SE", true);
   });
 

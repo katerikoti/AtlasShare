@@ -17,7 +17,7 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | 2. Accounts & authentication | ✅ Complete (approved 2026-10-26) | Auth, settings, reset, email plumbing, first migration. |
 | 3. Country dataset & personal map | ✅ Complete (approved 2026-10-26) | 250-unit dataset, private map, visited toggle, integration tests, browser QA. |
 | 4. Shared maps | ✅ Complete (approved 2026-10-27) | Create/manage maps, invitations, member roles, combined read-only view, two-account QA. |
-| 5. Insights & filters | ✅ Built, awaiting approval (2026-10-27) | Region field, list filters/sorts, region stats, shared comparison, no migration. |
+| 5. Insights & filters | ✅ Built, awaiting approval (2026-10-27) | Region field, continent stats, shared comparison, no migration. |
 | 6. Image export | ⛔ Not started | — |
 | 7. Public site & PWA | ⛔ Not started | — |
 | 8. Hardening, QA & deployment | ⛔ Not started | — |
@@ -32,11 +32,11 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   the continent level; transcontinental units use their UN region and dependent
   territories follow their geographic continent. It is static code, not a table
   or migration.
-- The personal country list filters by all/visited/not-yet-visited and by
-  region, and sorts by name, region, or visited-first. Search by name or code
-  remains and combines with every control. A visible result count, empty state,
-  and explicit reset action are provided; control state is not reset when a
-  visit is toggled.
+- The personal country list stays deliberately simple after owner review: one
+  search field and the alphabetical 250-row checklist. There are no
+  visited/region/sort controls, reset action, or result count. A checked country
+  name and its checkbox use dusty rose; there is no separate "visited"/"not
+  visited" row text. The map legend and visual-aid note were removed.
 - The personal progress card shows a continent breakdown with marked/total
   values and small CSS bars. Marked values sum to the headline visited count;
   no charting library was added.
@@ -47,9 +47,10 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   per-member filter did not already send. No new server query or migration.
 - Shared and personal lists are height-limited and scroll on mobile; shared
   comparison lists show region names and remain read-only.
-- Pure helpers in `src/data/country-insights.ts` implement filtering, region
-  counts, and comparison sets; unit tests cover sorting, filter combinations,
-  region sums, and all three comparison sets.
+- Pure helpers in `src/data/country-insights.ts` implement region counts and
+  comparison sets; unit tests cover region sums, unknown codes, and all three
+  comparison sets. The initial filter/sort helpers were removed with the
+  controls.
 
 ### Shared maps (Phase 4)
 
@@ -108,10 +109,10 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   subdivisions into `UM`, adds `AQ`, normalizes names, sorts codes, asserts the
   count, creates output directories, and requires exactly `@svg-maps/world`
   `2.0.0`. `npm run data:countries` reproduces both outputs deterministically.
-- `/map` is a signed-in, user-scoped page: a 250-path SVG map, searchable and
-  filterable 250-row country list, count/progress bar, continent stats, legend,
-  empty state, geometry loading/error/retry, route error boundary, and
-  source/licence disclosure.
+- `/map` is a signed-in, user-scoped page: a 250-path SVG map, searchable
+  250-row country list, count/progress bar, continent stats, empty state,
+  geometry loading/error/retry, route error boundary, and source/licence
+  disclosure.
 - Map geometry is fetched after first paint from `/map/countries.json`, validated
   against all 250 codes, and is not bundled into JavaScript. Raw asset size is
   ~1.2 MB; local production compression measured ~398 KB. It is public data.
@@ -208,14 +209,15 @@ was occupied. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
 | --- | --- | --- |
 | Lint | `npm run lint` | ✅ exit 0 |
 | Types | `npm run typecheck` | ✅ exit 0 |
-| Tests | `npm test` | ✅ **120/120 passed (18 files)** |
+| Tests | `npm test` | ✅ **114/114 passed (18 files)** |
 | Full check | `npm run check` | ✅ exit 0 |
 | Production build | `npm run build` | ✅ exit 0; all existing routes present |
 | Dataset regions | unit test | ✅ exactly one region per 250 units; totals sum to 250 |
-| Filter combinations | unit + component tests | ✅ search + visited + region combine; reset restores all |
-| Sorts | unit + component tests | ✅ name, region order, visited-first |
+| Search | component + browser | ✅ name/code search filters the 250-row list; no-match state works |
+| Simplified list | production browser | ✅ 250 alphabetical rows; one search field; zero selects/reset buttons |
+| Checked styling | component + browser | ✅ rose country name and checkbox; no visited/not-visited row text |
 | Region sums | unit + browser | ✅ marked region counts sum to headline; 4 marked → 1 Americas + 1 Asia + 2 Europe |
-| Personal browser filters | production browser | ✅ 4 visited; 2 European visited; reset restored 250 rows |
+| Personal browser stats | production browser | ✅ 4 visited; 4 marked total in region stats; search cleared restored 250 rows |
 | Shared comparison | production browser | ✅ combined 5; everyone 2, only-you 2, nobody 245 |
 | Shared view details | production browser | ✅ list counts, map title, region stats, and empty-safe labels follow the view |
 | Read-only shared map | browser inspection | ✅ 250 paths, 0 checkboxes |
@@ -228,6 +230,11 @@ was occupied. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
 
 #### Phase 5 defects found and fixed
 
+- **The personal list became more complicated than the product needed.** Owner
+  review asked to restore the prior search-only alphabetical checklist. Removed
+  the visited/region/sort controls, reset action, result count, per-row status
+  text, region sublabel, map legend, and visual-aid note. Checked rows now show
+  the state by colouring the name and checkbox.
 - **"Visited by everyone" was ambiguous with the combined view.** Renamed the
   combined option to "Whole group" and its map/copy wording to "any member";
   "every member" is reserved for the overlap comparison.
@@ -404,15 +411,16 @@ Full records in ADR-024, ADR-025, and §5.
 
 ### Phase 5 decisions
 
-Full records in ADR-029 and ADR-030.
+Full records in ADR-029, ADR-030, and ADR-031.
 
 - Region is static dataset metadata, not a database table: UN M49 continent-level
   grouping in `src/data/country-regions.ts`, attached to the canonical country
   list, with one assignment per unit. Russia is Europe; Türkiye, Cyprus,
   Armenia, Azerbaijan, Georgia, and Kazakhstan are Asia; dependent territories
   follow geographic continent.
-- Country-list filters and sorts are client-side pure functions over the
-  authorized visit set. Search remains; controls combine; reset is explicit.
+- The personal country list is search-only and alphabetical after owner review:
+  no visited/region/sort controls. Checked names and checkboxes use rose; the
+  map legend and visual-aid note were removed. Search is local client state.
 - Statistics use marked/region-total counts and CSS bars, not a charting library.
 - The shared comparison is derived in the browser from the existing authorized
   aggregate view. It adds no server query, no identity field, and no migration.
@@ -506,7 +514,8 @@ the expected variables.
 - Phase 5 browser QA created `phase5.qa@example.com` and
   `phase5.member@example.com` plus a “Phase 5 comparison” shared map. These were
   deleted after QA; cascades removed sessions, visits, memberships, and the owned
-  map. No QA data is left in the development database.
+  map. A follow-up owner-review QA account (`phase5.review@example.com`) was also
+  deleted. No QA data is left in the development database.
 
 ## 8. Next steps
 
@@ -533,8 +542,8 @@ the expected variables.
   and Kazakhstan count as Asia and Russia counts as Europe. Territories follow
   their geographic continent. Region labels are English-only; a user expecting a
   different convention may disagree at the edges.
-- **Filter and sort state is not in the URL.** It survives visit toggles and
-  client re-renders but resets on reload. There is no saved filter preference.
+- **Search state is not in the URL.** It resets on reload and there is no saved
+  search preference. Filter/sort controls were removed after owner review.
 - **Shared comparison is derived from the loaded aggregate.** It is not real-time
   and does not re-query on a timer; opening or refreshing the page picks up new
   visits. "Visited by everyone" naturally becomes empty as members join.

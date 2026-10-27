@@ -551,11 +551,11 @@ remain single-use, 7-day, hashed, revocable, and high-entropy.
 
 **Status:** accepted (Phase 5)
 
-**Context:** Phase 5 needs region filters and counts that sum to the visited
-total. The generated dataset carried only codes and names, and the geometry
-generator should stay deterministic and unchanged. There is no single runtime
-API for continent membership, and country/territory assignment involves judgment
-calls at the edges.
+**Context:** Phase 5 needs region counts that sum to the visited total. The
+generated dataset carried only codes and names, and the geometry generator
+should stay deterministic and unchanged. There is no single runtime API for
+continent membership, and country/territory assignment involves judgment calls
+at the edges.
 
 **Decision:** Add `src/data/country-regions.ts` as the single source of truth for
 one continent-level region per unit: Africa, Americas, Asia, Europe, Oceania, or
@@ -596,6 +596,32 @@ query or migration and the data layer stays unchanged. If the shared view ever
 stops sending per-member country sets, the comparison must move server-side or
 be removed. The UI must not imply real-time updates; it reflects the loaded
 request.
+
+---
+
+## ADR-031 — Personal country list stays search-only
+
+**Status:** accepted (owner review, 2026-10-27)
+
+**Context:** The initial Phase 5 personal map added visited/region filters and
+sort controls. Owner review found the result too complicated and asked for the
+prior simple list: one search field, the alphabetical scrollable list, and a
+checkbox on the right. The owner also asked to remove the map legend and the
+visual-aid note, and to show checked state by colouring the country name and
+checkbox.
+
+**Decision:** Remove the personal visited/region/sort controls, reset action, and
+result count. Keep local search by name or code, the alphabetical 250-row
+checklist, and the transient saving state. A checked country name and its
+checkbox use dusty rose; there is no separate "visited"/"not visited" row text.
+Remove the map legend and explanatory note. Keep the continent progress bars and
+the shared comparison unchanged.
+
+**Consequences:** The personal list is simpler and closer to the Phase 3 design,
+at the cost of not being able to isolate visited or regional rows. Search state
+still lasts only for the mounted view. The filtering/sorting helpers and their
+tests were removed; `country-insights.ts` now covers region counts and shared
+comparison only. This is a product-design decision, not a privacy or data change.
 
 ---
 

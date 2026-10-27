@@ -1,8 +1,8 @@
 # AtlasShare — Testing
 
 Status: **Phase 5 built and verified (2026-10-27), awaiting approval.**
-120 automated tests in 18 files. Database persistence, auth, shared-map
-authorization, map layout, filters, region counts, and browser behavior were also
+114 automated tests in 18 files. Database persistence, auth, shared-map
+authorization, map layout, search, region counts, and browser behavior were also
 checked manually; the exact pass/blocked/not-run state is below. Results are from
 2026-10-26–27 on macOS, Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome
 148 (headless CDP and the app's browser pane). Final `npm run check` and
@@ -26,9 +26,9 @@ production rebuild results are recorded in section 5.1.
 | --- | --- | --- | --- |
 | Lint | ESLint 9 + `eslint-config-next` | Every check | ✅ configured |
 | Types | `next typegen && tsc --noEmit` | Every check | ✅ configured |
-| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 120 tests / 18 files total |
-| Component | React Testing Library + jsdom | Every check | ✅ 12 map/shared-view tests |
-| Data integrity | Vitest over the country dataset + insight helpers | Every check | ✅ 15 tests |
+| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 114 tests / 18 files total |
+| Component | React Testing Library + jsdom | Every check | ✅ 10 map/shared-view tests |
+| Data integrity | Vitest over the country dataset + insight helpers | Every check | ✅ 11 tests |
 | Integration (DB) | Vitest against `TEST_DATABASE_URL` | Every check when test DB is configured; skipped otherwise | ✅ 14 tests (visits + shared maps); local test DB |
 | End-to-end | Playwright (Phase 8) | CI / pre-release | ⬜ planned; manual browser checks done |
 | Accessibility | Lighthouse/axe + manual keyboard/screen-reader | Each UI phase; full audit Phase 8 | ⬜ partial; public pages scored 100, manual keyboard/screen-reader not run |
@@ -59,8 +59,8 @@ fails.
 
 Integration tests load `.env` and use `TEST_DATABASE_URL` (the local
 `atlasshare_test` database). They are skipped, not passed, when that variable is
-absent. `npm test` therefore reports 120 passed locally; a fresh checkout without
-the test DB reports 106 passed and 14 skipped unless the environment is set.
+absent. `npm test` therefore reports 114 passed locally; a fresh checkout without
+the test DB reports 100 passed and 14 skipped unless the environment is set.
 
 `npm run data:countries` requires `@svg-maps/world@2.0.0` exactly and rewrites
 `src/data/countries.generated.ts` and `public/map/countries.json`. Run it twice
@@ -81,8 +81,8 @@ and compare hashes when changing the generator.
 ### 4.3 `npm test`
 
 - Command: `npm test`
-- Result: **passed**, 120/120 tests in 18 files (2026-10-27, after the final
-  Phase 5 copy, comparison, and label edits).
+- Result: **passed**, 114/114 tests in 18 files (2026-10-27, after the final
+  owner-review simplification).
 - Coverage by file:
   - `src/config/brand.test.ts` — product name, WCAG text contrast, and map border contrast (4).
   - `src/config/env.test.ts` — lazy env parsing, missing/malformed values, short
@@ -103,17 +103,17 @@ and compare hashes when changing the generator.
   - `src/data/countries.test.ts` — exactly 250 unique units, names, special
     units, PS/IL separation, path completeness, lookup/sort, and exactly one
     region per unit (7).
-  - `src/data/country-insights.test.ts` — filter/sort combinations, unvisited
-    filtering, region sums and unknown-code handling, and the three shared
-    comparison sets including the single-member case (8).
+  - `src/data/country-insights.test.ts` — region sums and unknown-code
+    handling, and the three shared comparison sets including the single-member
+    case (4).
   - `src/server/visits.integration.test.ts` — idempotent set/remove, user
     isolation against local Postgres (3).
   - `src/server/actions/visits.auth.test.ts` — unauthenticated rejection,
     dataset validation, boolean validation, successful persistence, safe error
     (5).
   - `src/components/map/map-experience.test.tsx` — accessible list and count,
-    search, optimistic mark, rollback/error, visited/region filters with reset,
-    sort controls, and region statistics (7).
+    search and no-match state, optimistic mark with rose styling, rollback/error,
+    and region statistics (5).
   - `src/server/shared-maps.integration.test.ts` — combined counts, member
     privacy shape, create/invite/accept/reinvite/revoke/remove/leave, expiry,
     wrong email, single-use and concurrency, owner invariants (11).
@@ -200,29 +200,31 @@ and compare hashes when changing the generator.
 
 - `npm run lint`: **passed**, exit 0.
 - `npm run typecheck`: **passed**, exit 0.
-- `npm run check`: **passed**, lint + typecheck + **120/120 tests in 18 files**
-  (2026-10-27, after the final Phase 5 edits).
+- `npm run check`: **passed**, lint + typecheck + **114/114 tests in 18 files**
+  (2026-10-27, after the final owner-review simplification).
 - `npm run build`: **passed** on 2026-10-27. Routes are unchanged:
   `/account`, `/map`, `/shared`, `/shared/[mapId]`, `/invite/[token]`,
   `/reset-password`, `/api/auth/[...all]` dynamic, with the public pages static.
   **No new migration** was created or needed.
 
-### 5.2 Personal filters and statistics
+### 5.2 Personal list and statistics
 
 Served the production build at `http://localhost:3001` (port 3000 was occupied)
 with the runtime auth/app URLs set to that origin. Used a real signed-in account
-through headless Chrome CDP.
+through headless Chrome CDP. After owner review, this section reflects the
+simplified search-only list; the earlier filter/sort QA was superseded.
 
 | Scenario | Result |
 | --- | --- |
 | Mark four countries | **pass** — Sweden, Norway, Japan, United States; progress 4 of 250 |
-| Visited-only filter | **pass** — 4 rows, "Showing 4 of 250" |
-| Add Europe region filter | **pass** — 2 rows (Sweden, Norway), "Showing 2 of 250" |
-| Reset filters | **pass** — Show and Region returned to "all", 250 rows restored, sort reset |
-| Sort visited-first | **pass** — visited countries appeared before unvisited, then alphabetical |
+| List shape | **pass** — 250 alphabetical rows; only "Find a country" plus the checklist; zero selects and zero reset buttons |
+| No filter controls | **pass** — no Show/Region/Sort labels, no "Showing 250 of 250" text |
+| Search | **pass** — "swe" returned one row (Sweden); clearing restored 250 |
+| Search no-match | **pass (component)** — no-match copy shown and the list is empty |
+| Checked-row styling | **pass** — Sweden's name used `text-rose-deep` and its checkbox used `accent-rose-deep` |
+| Row text | **pass** — each row showed the country name and code only; no "Visited"/"Not visited" text, no region sublabel |
+| Removed map copy | **pass** — no map legend, no "Borders use moss", no "The map is a visual aid" note |
 | Region breakdown | **pass** — 4 marked total: Americas 1 of 56, Asia 1 of 53, Europe 2 of 52, others 0; sums to 4 |
-| Search + filters | **pass (unit/component)** — controls combine without replacing each other |
-| Empty state | **pass** — no-match copy and reset action; keyboard-native controls |
 
 ### 5.3 Shared comparison
 
@@ -248,9 +250,9 @@ JP. The shared view is read-only.
   `/shared/[mapId]`.
 - `document.documentElement.scrollWidth` equaled the viewport at every width; no
   page-level horizontal scroll.
-- At 320/390 px the personal map preceded the country list (map top 923/841 px
-  versus list 1394/1329 px). The filter selects fit the sidebar (238 px controls
-  inside a 272 px card at 320 px).
+- At 320/390 px the personal map preceded the country list; the simplified list
+  had no filter controls to fit. The search field and 250-row checklist stayed
+  inside the card.
 - At 1280 px the map and personal list remained side by side; shared controls and
   large lists stayed inside their cards.
 - Mobile emulation is not a physical phone; visual design approval remains
@@ -259,9 +261,9 @@ JP. The shared view is read-only.
 ### 5.5 Not run or not covered in Phase 5
 
 - Physical-phone touch, Safari, and Firefox.
-- Manual keyboard-only walkthrough and screen-reader output for the new filters,
-  region bars, and comparison views. Native selects/buttons were used and
-  component tests query by role/label, but a human pass is still needed.
+- Manual keyboard-only walkthrough and screen-reader output for the new search,
+  region bars, and comparison views. Native controls were used and component tests
+  query by role/label, but a human pass is still needed.
 - Lighthouse on authenticated `/map` or `/shared/[mapId]`; the prior public-page
   audit remains 100/100/100.
 - Visual design approval.

@@ -172,7 +172,7 @@ src/
     countries.ts            # canonical country helpers, codes, names, region
     countries.generated.ts  # generated names/codes; do not edit
     country-regions.ts      # canonical continent assignment for every code
-    country-insights.ts     # pure filters, region counts, shared comparison
+    country-insights.ts     # pure region counts and shared comparison
   lib/
     auth-client.ts          # browser Better Auth client
     safe-redirect.ts        # same-origin post-auth `next` validation
@@ -289,10 +289,11 @@ Identifier rules:
 - Interaction model: click/tap toggles a country; the searchable country list
   provides the keyboard- and screen-reader-friendly path to the same action.
   Both routes call the same Server Action and use optimistic state with rollback.
-- The country list also filters by visited state and region and sorts by name,
-  region, or visited-first. Search, filters, and sort combine; controls are
-  native form elements; resetting is explicit. Filter state lives in the client
-  and is not reset when a visit is toggled.
+- The country list stays deliberately simple: one search field and an
+  alphabetical, height-limited checklist. There are no visited/region/sort
+  controls after owner review. A checked row changes the country name and
+  checkbox to dusty rose, with no separate \"visited\" text. The map legend and
+  explanatory note were also removed as redundant.
 - On narrow screens the map comes first, followed by the country list, with no
   pan/zoom dependency. From `lg` upward the map and list sit side by side. There
   is no pan/zoom implementation.
@@ -322,8 +323,9 @@ marked" for the "not yet by anyone" comparison so the words match the set.
 
 Phase 5 adds derived views only; it stores nothing new.
 
-- Personal filters, sorts, and region statistics are pure functions in
-  `src/data/country-insights.ts`, covered by unit tests.
+- Region statistics and the shared comparison are pure functions in
+  `src/data/country-insights.ts`, covered by unit tests. Personal search
+  filtering stays local to the map component.
 - A shared comparison is derived from the already-authorized aggregate view:
   - **Visited by everyone**: combined count equals the member count.
   - **Only you**: the signed-in member's codes whose combined count is one.

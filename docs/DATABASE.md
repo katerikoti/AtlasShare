@@ -324,9 +324,9 @@ Resolved in Phase 5:
 
 1. No schema change or migration was needed. Region metadata is static
    application data and all counts are derived from existing visit rows.
-2. Personal filters, region counts, and the shared comparison are pure functions
-   tested without a database; the authorized shared view already carried the
-   inputs.
+2. Region counts and the shared comparison are pure functions tested without a
+   database; the authorized shared view already carried the inputs. The personal
+   country list keeps local search/order and adds no query.
 3. Region counts are asserted to sum to the headline visited count, and the
    comparison is asserted to expose only codes/counts.
 

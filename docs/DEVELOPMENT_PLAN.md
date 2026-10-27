@@ -23,7 +23,7 @@ Status: **Phase 5 built and verified (2026-10-27), awaiting approval.** Phases
 | 2 | Accounts & authentication | Sign up/in/out, reset, settings, DB live | FR-A1…A7 |
 | 3 | Country dataset & personal map | Mark countries, see map + count | FR-M1…M9, D1 |
 | 4 | Shared maps | Invite, join, combined view | FR-S1…S10 |
-| 5 | Insights & filters | Filters, stats, comparison | FR-T2…T4 |
+| 5 | Insights & filters | Stats, comparison, search | FR-T2…T4 |
 | 6 | Image export | Shareable PNG of your map | FR-E1…E5 |
 | 7 | Public site & PWA | Landing, privacy, installable app | FR-P1…P5, FR-W1…W4 |
 | 8 | Hardening, QA & deployment | Production launch readiness | NFR-1…8, §10 |
@@ -211,22 +211,24 @@ confusion about what "combined" means (copy must be explicit).
 ## Phase 5 — Insights and filters
 
 **Status:** implemented and verified 2026-10-27; awaiting approval. Added the
-static region field to the dataset, personal filters/sorts and region stats, and
-the derived shared comparison. No database migration was needed.
+static region field to the dataset, continent statistics, and the derived shared
+comparison. Owner review simplified the personal country list back to search
+only; the statistics and comparison remain. No database migration was needed.
 
 **Goal:** make the map informative without turning it into a social network.
 
 **Scope**
 
-- Country list filters/sorts: visited, region, name; search stays.
+- Country list: keep the original search and alphabetical checkbox list. After
+  owner review, do not add visited/region/sort controls.
 - Statistics: total, percentage, by region/continent (dataset must carry a
   region field).
 - Shared-map comparison if privacy allows: "everyone", "only you", "nobody yet".
-- Tests for filters, counts, and shared aggregates.
+- Tests for region counts and shared aggregates.
 
 **Acceptance criteria**
 
-- Filters/sorts are keyboard accessible and do not lose state unexpectedly.
+- The searchable country list is keyboard accessible and remains alphabetical.
 - Region counts sum to the total visited.
 - Shared comparison exposes only country codes and counts.
 - Empty and large lists remain usable on mobile.

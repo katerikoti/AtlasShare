@@ -8,10 +8,9 @@ map with the people you travel with.
 > **Project status: Phase 5 of 8 built and verified, awaiting approval —
 > insights and filters.**
 > You can create an account, sign in/out, reset a password, manage account
-> settings, mark visited countries on a private 250-unit world map, filter and
-> sort that list, see continent-level statistics, and combine your map with
-> invited members in a private read-only shared view with a country-level
-> comparison. There is still no image export or PWA. See
+> settings, mark visited countries on a private 250-unit world map, search that
+> list, see continent-level statistics, and combine your map with invited
+> members in a private read-only shared view with a country-level comparison. There is still no image export or PWA. See
 > [`docs/PROGRESS.md`](docs/PROGRESS.md) for exactly what exists and
 > [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md) for what comes next.
 

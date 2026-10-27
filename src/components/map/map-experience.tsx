@@ -12,21 +12,8 @@ import {
   countryCount,
   type CountryCode,
 } from "@/data/countries";
-import {
-  filterCountries,
-  type CountrySort,
-  type VisitedFilter,
-} from "@/data/country-insights";
-import {
-  countryRegionOrder,
-  type CountryRegion,
-} from "@/data/country-regions";
 import { setVisitedCountryAction } from "@/server/actions/visits";
-import {
-  inputClass,
-  secondaryButtonClass,
-  selectClass,
-} from "@/components/ui/form";
+import { inputClass, secondaryButtonClass } from "@/components/ui/form";
 import { MapAttribution } from "./map-attribution";
 import { RegionBreakdown } from "./region-breakdown";
 import { useMapGeometry } from "./use-map-geometry";
@@ -47,41 +34,23 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
   const [hovered, setHovered] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
-  const [visitedFilter, setVisitedFilter] = useState<VisitedFilter>("all");
-  const [regionFilter, setRegionFilter] = useState<CountryRegion | "all">(
-    "all",
-  );
-  const [sort, setSort] = useState<CountrySort>("name");
   const searchId = useId();
-  const visitedFilterId = useId();
-  const regionFilterId = useId();
-  const sortId = useId();
   const mapTitleId = useId();
 
-  const filteredCountries = useMemo(
-    () =>
-      filterCountries({
-        visited,
-        query: deferredQuery,
-        visitedFilter,
-        region: regionFilter,
-        sort,
-      }),
-    [deferredQuery, regionFilter, sort, visited, visitedFilter],
-  );
+  const filteredCountries = useMemo(() => {
+    const term = deferredQuery.trim().toLocaleLowerCase("en");
+    if (!term) return countriesAlphabetical;
 
-  const hasActiveFilters =
-    query.trim() !== "" ||
-    visitedFilter !== "all" ||
-    regionFilter !== "all" ||
-    sort !== "name";
-
-  function resetFilters() {
-    setQuery("");
-    setVisitedFilter("all");
-    setRegionFilter("all");
-    setSort("name");
-  }
+    return countriesAlphabetical.filter((country) => {
+      const haystack = `${country.name} ${country.code}`
+        .toLocaleLowerCase("en")
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "");
+      return haystack.includes(
+        term.normalize("NFD").replace(/\p{Diacritic}/gu, ""),
+      );
+    });
+  }, [deferredQuery]);
 
   const visitedCount = visited.size;
   const percent = Math.round((visitedCount / countryCount) * 1000) / 10;
@@ -298,28 +267,6 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
             )}
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-muted">
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="size-3 rounded-full border border-moss bg-rose"
-              />
-              Visited
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <span
-                aria-hidden="true"
-                className="size-3 rounded-full border border-moss bg-map"
-              />
-              Not visited
-            </span>
-            <span>Borders use moss; visited countries use dusty rose.</span>
-          </div>
-
-          <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-            The map is a visual aid. The country list is the keyboard- and
-            screen-reader-friendly way to change your map.
-          </p>
         </section>
 
         <section
@@ -349,99 +296,10 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
             />
           </div>
 
-          <div className="mt-4 space-y-3">
-            <div>
-              <label
-                htmlFor={visitedFilterId}
-                className="block text-sm font-medium text-ink"
-              >
-                Show
-              </label>
-              <select
-                id={visitedFilterId}
-                value={visitedFilter}
-                onChange={(event) =>
-                  setVisitedFilter(event.target.value as VisitedFilter)
-                }
-                className={selectClass}
-              >
-                <option value="all">All countries</option>
-                <option value="visited">Visited only</option>
-                <option value="unvisited">Not yet visited</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor={regionFilterId}
-                className="block text-sm font-medium text-ink"
-              >
-                Region
-              </label>
-              <select
-                id={regionFilterId}
-                value={regionFilter}
-                onChange={(event) =>
-                  setRegionFilter(event.target.value as CountryRegion | "all")
-                }
-                className={selectClass}
-              >
-                <option value="all">All regions</option>
-                {countryRegionOrder.map((region) => (
-                  <option key={region} value={region}>
-                    {region}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor={sortId}
-                className="block text-sm font-medium text-ink"
-              >
-                Sort
-              </label>
-              <select
-                id={sortId}
-                value={sort}
-                onChange={(event) =>
-                  setSort(event.target.value as CountrySort)
-                }
-                className={selectClass}
-              >
-                <option value="name">Name (A–Z)</option>
-                <option value="region">Region</option>
-                <option value="visited">Visited first</option>
-              </select>
-            </div>
-
-            {hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={resetFilters}
-                className={secondaryButtonClass}
-              >
-                Reset filters
-              </button>
-            ) : null}
-          </div>
-
-          <p className="mt-3 text-xs text-ink-muted" aria-live="polite">
-            Showing {filteredCountries.length} of {countryCount}
-          </p>
-
           {filteredCountries.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-line/70 bg-canvas/50 px-3 py-3 text-sm text-ink-muted">
-              <p>No countries match these filters.</p>
-              <button
-                type="button"
-                onClick={resetFilters}
-                className={`${secondaryButtonClass} mt-2`}
-              >
-                Reset filters
-              </button>
-            </div>
+            <p className="mt-4 rounded-xl border border-line/70 bg-canvas/50 px-3 py-3 text-sm text-ink-muted">
+              No countries match “{deferredQuery}”.
+            </p>
           ) : (
             <ul
               aria-label="Countries and territories"
@@ -461,21 +319,23 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
                       }`}
                     >
                       <span className="min-w-0">
-                        <span className="block truncate font-medium text-ink">
+                        <span
+                          className={`block truncate font-medium transition-colors ${
+                            isVisited ? "text-rose-deep" : "text-ink"
+                          }`}
+                        >
                           {country.name}
                         </span>
                         <span className="block text-[11px] text-ink-muted">
-                          {country.code} · {country.region}
+                          {country.code}
                         </span>
                       </span>
                       <span className="flex shrink-0 items-center gap-2">
-                        <span className="text-[11px] text-ink-muted">
-                          {isPending
-                            ? "Saving…"
-                            : isVisited
-                              ? "Visited"
-                              : "Not visited"}
-                        </span>
+                        {isPending ? (
+                          <span className="text-[11px] text-ink-muted">
+                            Saving…
+                          </span>
+                        ) : null}
                         <input
                           type="checkbox"
                           checked={isVisited}

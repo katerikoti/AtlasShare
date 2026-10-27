@@ -119,7 +119,9 @@ both is a comprehensive-dataset decision, not a political endorsement.
 
 ### 7.4 Insights & filters (Phase 5)
 
-- **FR-T2** Filter/sort the country list by visited state, region, and name.
+- **FR-T2** Search the country list by name or code and keep the list
+  alphabetical. After owner review, Phase 5 does not add visited/region/sort
+  controls.
 - **FR-T3** Statistics: total visited, percentage of the set, counts by region
   or continent.
 - **FR-T4** Shared map comparison: "visited by everyone", "only you", "not yet
