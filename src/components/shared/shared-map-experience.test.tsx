@@ -162,7 +162,7 @@ describe("SharedMapExperience", () => {
     expect(list.getByText("Japan")).toBeInTheDocument();
   });
 
-  it("exports only the current member's own visits from a shared map", async () => {
+  it("exports the combined shared map without member identities", async () => {
     const { container } = render(<SharedMapExperience map={map} />);
 
     await waitFor(() => {
@@ -172,19 +172,72 @@ describe("SharedMapExperience", () => {
     const exportSvg = container.querySelector("[data-export-map]");
     expect(exportSvg).toHaveAttribute(
       "aria-label",
-      "Exported map: 2 of 195 countries visited.",
+      "Exported map: 3 of 195 countries visited.",
     );
+    for (const code of ["SE", "NO", "FR"]) {
+      expect(
+        exportSvg?.querySelector(`[data-country="${code}"]`),
+      ).toHaveAttribute("data-visited", "true");
+    }
+    expect(exportSvg?.textContent).not.toContain("Ada");
+    expect(exportSvg?.textContent).not.toContain("Ben");
+    expect(exportSvg?.textContent).not.toContain("Nordics");
+    expect(exportSvg?.textContent).toContain("Our travels");
+    expect(
+      screen.getByText(/combined shared map/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the combined export when a comparison view is selected", async () => {
+    const { container } = render(<SharedMapExperience map={map} />);
+
+    await screen.findByRole("img", { name: /marked by any member/i });
+    fireEvent.change(screen.getByLabelText("Show"), {
+      target: { value: "only-you" },
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector("[data-export-map]")).toHaveAttribute(
+        "aria-label",
+        "Exported map: 3 of 195 countries visited.",
+      );
+    });
+    expect(
+      container
+        .querySelector("[data-export-map]")
+        ?.querySelector('[data-country="FR"]'),
+    ).toHaveAttribute("data-visited", "true");
+  });
+
+  it("exports a selected member's map without their name", async () => {
+    const { container } = render(<SharedMapExperience map={map} />);
+
+    await screen.findByRole("img", { name: /marked by any member/i });
+    fireEvent.change(screen.getByLabelText("Show"), {
+      target: { value: "member:member_b" },
+    });
+
+    await waitFor(() => {
+      expect(container.querySelector("[data-export-map]")).toHaveAttribute(
+        "aria-label",
+        "Exported map: 2 of 195 countries visited.",
+      );
+    });
+
+    const exportSvg = container.querySelector("[data-export-map]");
     expect(
       exportSvg?.querySelector('[data-country="SE"]'),
     ).toHaveAttribute("data-visited", "true");
     expect(
-      exportSvg?.querySelector('[data-country="NO"]'),
+      exportSvg?.querySelector('[data-country="FR"]'),
     ).toHaveAttribute("data-visited", "true");
     expect(
-      exportSvg?.querySelector('[data-country="FR"]'),
+      exportSvg?.querySelector('[data-country="NO"]'),
     ).toHaveAttribute("data-visited", "false");
+    expect(exportSvg?.textContent).not.toContain("Ben");
+    expect(exportSvg?.textContent).toContain("Their travels");
     expect(
-      screen.getByText(/only your marks are included/i),
+      screen.getByText(/selected member's map/i),
     ).toBeInTheDocument();
   });
 

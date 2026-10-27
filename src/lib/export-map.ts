@@ -3,9 +3,9 @@ import { countries, isCountryCode, type CountryCode } from "@/data/countries";
 /**
  * The complete, explicit input for an exported map image.
  *
- * Keep this type deliberately small. It must not be possible to pass a shared
- * map, another member's visits, an email address, or an account id into the
- * export renderer without adding a new field here first.
+ * Keep this type deliberately small. It must not be possible to pass an email
+ * address, account id, member name, map name, per-member breakdown, note, or
+ * visit date into the export renderer without adding a new field here first.
  */
 export type ExportMapInput = {
   visited: readonly CountryCode[];

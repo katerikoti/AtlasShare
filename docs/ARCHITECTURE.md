@@ -1,7 +1,7 @@
 # AtlasShare — Architecture
 
-Status: **Phase 6 (image export) is implemented and verified, awaiting
-approval.** Phases 1–5 are approved. PWA functionality is still planned.
+Status: **Phase 6 (image export) is complete and approved.** Phases 1–6 are
+approved. PWA functionality is still planned.
 Anything marked _planned_ does not exist in the codebase yet. See
 [`PROGRESS.md`](./PROGRESS.md) for what is actually built.
 
@@ -374,15 +374,17 @@ Design constraints:
 
 ## 9. Image export
 
-Requirement: a high-quality PNG containing **only the signed-in user's map** —
-never shared-map members' histories or private account data.
+Requirement: a high-quality PNG containing the signed-in user's personal map,
+or on a shared map the combined marks of all members (or the selected member's
+marks), without member names, emails, account ids, per-member breakdowns, map
+names, notes, visit dates, or other private account data.
 
 Implemented approach:
 
 1. `src/components/export/export-map-svg.tsx` is a pure React SVG component. It
    receives only `{ visited, count, displayName?, year }` plus public geometry;
-   it is not a screenshot of the interactive page, so hidden UI, tooltips, and
-   other members' data cannot leak into it.
+   it is not a screenshot of the interactive page, so hidden UI, tooltips,
+   member names, and private account metadata cannot leak into it.
 2. `src/lib/export-map.ts` serializes the SVG with `XMLSerializer`, wraps it in a
    blob URL, draws it to a `<canvas>` at 2× a 1600 × 1000 base (3200 × 2000),
    and converts it with `canvas.toBlob("image/png")`.
@@ -391,10 +393,11 @@ Implemented approach:
    share does not trigger a download.
 4. If canvas creation, image loading, drawing, or PNG encoding fails, the same
    SVG is downloaded instead.
-5. The panel appears on `/map` and on a shared map. The shared page passes only
-   `currentMember.countries`; it never passes the map name, other members,
-   combined data, emails, or ids. The optional title is user-entered, not
-   account metadata.
+5. The panel appears on `/map` and on a shared map. The shared page passes the
+   combined country codes by default, or the selected member's codes; comparison
+   filters are view-only and do not change the export. It never passes member
+   names, the map name, emails, ids, per-member counts, notes, or visit dates.
+   The optional title is user-entered, not account metadata.
 
 Constraints:
 

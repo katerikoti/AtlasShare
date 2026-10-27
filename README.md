@@ -5,13 +5,13 @@
 Mark the countries you have visited on a personal world map, then combine your
 map with the people you travel with.
 
-> **Project status: Phase 6 of 8 built and verified, awaiting approval —
-> image export.**
+> **Project status: Phase 6 of 8 complete — image export. Phase 7 is next.**
 > You can create an account, sign in/out, reset a password, manage account
 > settings, mark visited countries on a private 195-country world map, search
 > that list, see continent-level statistics, combine your map with invited
 > members in a private read-only shared view with a country-level comparison,
-> and export a high-resolution image of your own map. There is still no PWA. See
+> and export a high-resolution image of your personal map or the combined shared
+> map. There is still no PWA. See
 > [`docs/PROGRESS.md`](docs/PROGRESS.md) for exactly what exists and
 > [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md) for what comes next.
 

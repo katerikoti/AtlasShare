@@ -1,7 +1,7 @@
 # AtlasShare — Development Plan
 
-Status: **Phase 6 built and verified (2026-10-27), awaiting approval.** Phases
-1–5 are approved. Phase 7 has not started.
+Status: **Phase 6 complete (approved 2026-10-27, including the shared-map export
+revision).** Phases 1–6 are approved. Phase 7 has not started.
 
 ## How phases work
 
@@ -243,7 +243,7 @@ visits would require a separate visit-history model if ever added.
 
 ---
 
-## Phase 6 — Image export ✅ (built and verified 2026-10-27, awaiting approval)
+## Phase 6 — Image export ✅ (approved 2026-10-27)
 
 **Status:** built and verified on the 195-country dataset. One landscape layout
 is implemented; an aspect-ratio picker was deferred because it was not cheap
@@ -258,8 +258,8 @@ enough to justify the extra layout and QA surface.
 - Serialize → canvas at 2×–3×; PNG blob; Web Share with files; download
   fallback; SVG fallback on canvas failure.
 - Export UI with size/aspect choice if cheap; progress and error states.
-- Verify no shared-map data or account metadata can enter the component (types
-  + tests).
+- Verify no member identity, map name, per-member breakdown, or account metadata
+  can enter the component (types + tests); combined shared marks are allowed.
 - Cross-browser manual checks (iOS Safari, Android Chrome, desktop).
 
 **Implemented**
@@ -271,38 +271,46 @@ enough to justify the extra layout and QA surface.
   and all 195 country paths. It has no external assets.
 - `src/components/export/export-map-panel.tsx` provides the title field, preview,
   progress/error status, and the share button.
-- The panel appears on the personal map and the shared map. On a shared map it is
-  given only `currentMember.countries`; map names, other members, emails, and
-  ids are never passed to the renderer.
+- The panel appears on the personal map and the shared map. On a shared map it
+  receives the combined country codes by default, or the selected member's
+  codes; comparison filters are view-only and do not change the export. Member
+  names, map names, emails, ids, per-member counts, notes, and visit dates are
+  never passed to the renderer.
 - Canvas output is 3200 × 2000 (2×). If canvas creation fails, the SVG is
   downloaded instead.
 - Tests cover input sanitisation, field minimality, 0/2/all visits, no external
-  assets, title-as-text, a 195-path export, and shared-map own-visits isolation.
+  assets, title-as-text, a 195-path export, combined shared-map export,
+  comparison-view export staying combined, selected-member export, and the
+  absence of member names/map name in the image.
 
 **Verification**
 
-- `npm run check`: 20 files, 123 tests passed.
+- `npm run check`: 20 files, 125 tests passed.
 - `npm run build`: passed.
 - Production browser QA in headless Chrome: 195 list rows, 195 export paths,
-  correct own-visits (JP + SE only) in the PNG/SVG output, native-share file
+  correct personal visits (JP + SE only) in the PNG/SVG output, native-share file
   payload (PNG, 827,474 bytes), PNG download at 3200 × 2000, SVG fallback,
   mobile 320/390 px with no horizontal scroll and map → list → export order.
-- Text was read back from the PNG with macOS Vision OCR; title, count, labels,
-  tagline, and footer were legible and in the left content column.
+- Two-member shared-map browser QA: combined export contained SE, NO, FR, and JP;
+  the selected-member export contained only FR and JP; member names and the map
+  name were absent from the SVG. Native-share payload was
+  `atlasshare-map-2026-4.png` (823,448 bytes); PNG was 3200 × 2000; SVG fallback
+  retained the four combined marks.
+- Text was read back from the personal PNG with macOS Vision OCR; title, count,
+  labels, tagline, and footer were legible and in the left content column.
 
 **Not verified**
 
 - Physical iOS Safari and Android Chrome share sheets.
 - Firefox and Safari desktop canvas rendering.
 - A real attachment opened from the native share sheet.
-- A full shared-map browser fixture; shared own-visits isolation is covered by
-  component tests and the export input type.
 
 **Acceptance criteria**
 
 - PNG is crisp at phone share resolution; text is legible; no clipped paths.
-- Export of a user in a shared map contains only their own visits (test with
-  fixture data).
+- Export of a user in a shared map contains the combined visits by default, or
+  the selected member's visits, and no member names or map name (tested with a
+  two-member fixture).
 - Share sheet appears where supported; download works elsewhere.
 - No external fonts/images; canvas is not tainted (no SecurityError).
 - Export works with 0 and with all countries visited.

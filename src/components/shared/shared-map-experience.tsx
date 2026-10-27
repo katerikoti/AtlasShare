@@ -58,9 +58,12 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
     return map.members.find((member) => member.id === id) ?? null;
   }, [map.members, selected]);
 
-  const currentMember = useMemo(
-    () => map.members.find((member) => member.isCurrentUser) ?? null,
-    [map.members],
+  const exportCodes = useMemo(
+    () =>
+      selectedMember
+        ? selectedMember.countries
+        : map.combinedCountries.map((country) => country.code),
+    [map.combinedCountries, selectedMember],
   );
 
   const viewMode: ViewMode = selectedMember
@@ -450,13 +453,18 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
         </p>
       </section>
 
-      {currentMember ? (
-        <ExportMapPanel
-          visited={currentMember.countries}
-          geometry={geometry}
-          context="shared"
-        />
-      ) : null}
+      <ExportMapPanel
+        visited={exportCodes}
+        geometry={geometry}
+        context={selectedMember ? "shared-member" : "shared"}
+        defaultTitle={
+          selectedMember
+            ? selectedMember.isCurrentUser
+              ? "My travels"
+              : "Their travels"
+            : "Our travels"
+        }
+      />
 
       <MapAttribution />
     </div>

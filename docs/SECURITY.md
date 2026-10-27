@@ -1,7 +1,7 @@
 # AtlasShare — Security
 
-Status: **Phase 6 image export is implemented and verified, awaiting
-approval.** Phases 1–5 are approved. PWA is not implemented. This document
+Status: **Phase 6 image export is complete and approved.** Phases 1–6 are
+approved. PWA is not implemented. This document
 states the rules that every phase must satisfy. Deviations require an explicit
 decision in `DECISIONS.md`.
 
@@ -236,13 +236,17 @@ Production (Phase 8):
 
 ## 13. Image export
 
-- Rendered from the signed-in user's own data only. The export component takes
-  an explicit, minimal input: `visited`, `count`, optional user-entered
-  `displayName`, and `year`. It does not receive shared-map member data, map
-  names, combined counts, emails, user ids, or other account metadata.
+- Rendered from the signed-in user's personal data, or on a shared map the
+  combined members' country marks (or the selected member's marks). The export
+  component takes an explicit, minimal input: `visited`, `count`, optional
+  user-entered `displayName`, and `year`. It does not receive member names, map
+  names, emails, user ids, per-member counts or breakdowns, notes, visit dates,
+  or other account metadata.
 - The personal and shared pages both use this component. The shared page passes
-  only the current member's own country codes; tests assert that another
-  member's country stays unvisited in the export.
+  the combined country codes by default, or the selected member's codes; tests
+  assert that the combined marks are present and that member names and the map
+  name stay out of the image. A shared image can reveal the group's combined
+  travel footprint to anyone it is shared with, but not who marked a country.
 - No remote images/fonts (prevents canvas tainting and data exfiltration). The
   SVG has no `<image>`, `<foreignObject>`, or `href` elements.
 - No tokens, emails, or ids embedded in PNG metadata. Canvas output has none by

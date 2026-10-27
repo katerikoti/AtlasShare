@@ -185,18 +185,20 @@ verify separate `PS` and `IL` paths and labels.
 
 ## ADR-011 — Client-side SVG → canvas PNG export, no headless browser
 
-**Status:** accepted (Phase 1, implemented Phase 6; see ADR-033)
+**Status:** accepted (Phase 1, implemented Phase 6; see ADR-033 and ADR-034)
 
 **Context:** Users want a shareable image. Server-side rendering needs a headless
 browser, extra infrastructure, and a second authorization surface.
 
-**Decision:** A dedicated export SVG component renders the signed-in user's own
-data, is serialized and drawn to a canvas at 2×–3×, and is exported as PNG with
-Web Share/download fallbacks. No remote fonts/images.
+**Decision:** A dedicated export SVG component renders the selected visit set
+(personal marks, or shared combined/selected-member marks), is serialized and
+drawn to a canvas at 2×–3×, and is exported as PNG with Web Share/download
+fallbacks. No remote fonts/images.
 
 **Consequences:** Export quality depends on the browser canvas (cap dimensions
-for Safari). The export component's props are deliberately minimal so shared-map
-or account data cannot leak in. SVG fallback covers canvas failures.
+for Safari). The export component's props are deliberately minimal so member
+identities, map names, per-member breakdowns, and account data cannot leak in.
+SVG fallback covers canvas failures.
 
 ---
 
@@ -658,9 +660,9 @@ product decision, not a statement about contested boundaries.
 
 ---
 
-## ADR-033 — One landscape export at 2×, current user's marks only
+## ADR-033 — One landscape export at 2×
 
-**Status:** accepted (Phase 6, 2026-10-27)
+**Status:** accepted (Phase 6, 2026-10-27; shared-map scope revised by ADR-034)
 
 **Context:** ADR-011 established client-side SVG → canvas export but left the
 layout, delivery order, and shared-map behaviour open. Phase 6 needed an
@@ -672,19 +674,51 @@ would require a second full layout and QA pass.
 (3200 × 2000). Keep the input to `{ visited, count, displayName?, year }` plus
 public geometry. Offer an optional user-entered title, not an account display
 name. Show the panel on both the personal map and shared maps; on a shared map,
-pass only `currentMember.countries`, never map names, other members, or
-combined data. Deliver in this order: native file share when
+pass the combined marks or the selected member's marks (ADR-034), never member
+names, the map name, or private metadata. Deliver in this order: native file
+share when
 `navigator.canShare({ files })` supports the PNG, otherwise a download; if
 canvas fails, download the SVG. A cancelled share does not force a download.
 Use system fonts and no remote assets.
 
 **Consequences:** The image is crisp at phone-share resolution and small enough
-for mobile canvas limits. Shared-map export is explicitly a personal-map export,
-which is a privacy win but may surprise users; the panel copy says so. There is
-no aspect-ratio picker or custom theme. Physical iOS/Android share-sheet and
+for mobile canvas limits. Shared-map export uses combined marks or the selected
+member's marks but no identities (ADR-034); the panel copy says so. There is no
+aspect-ratio picker or custom theme. Physical iOS/Android share-sheet and
 cross-browser canvas checks remain manual QA gaps. The export input type is the
-boundary that keeps future shared/account fields out; adding one requires a
-deliberate type change and privacy review.
+boundary that keeps future identity/private metadata fields out; adding one
+requires a deliberate type change and privacy review.
+
+---
+
+## ADR-034 — Shared-map export includes combined marks, never member identities
+
+**Status:** accepted (owner revision, 2026-10-27)
+
+**Context:** Phase 6 initially exported only the current member's own marks from
+a shared map. Owner review found that this defeats the purpose of a shared map:
+a member wants to share the group's combined map, which the shared page already
+shows to members. The original privacy rule said the image must never contain
+shared-map members' histories. That rule needed an explicit revision, not a
+silent implementation change.
+
+**Decision:** On a shared map, export the combined marks of all members by
+default. If a specific member filter is selected, export that member's marks.
+Comparison modes are view-only and do not change the export source.
+Never include member names, emails, account ids, per-member counts or
+breakdowns, notes, visit dates, the map name, or other account metadata. The
+personal export remains the signed-in user's own marks. The export input stays
+`{ visited, count, displayName?, year }`; only the shared page's source set
+changes.
+
+**Consequences:** The privacy boundary is now "no identity or private metadata"
+rather than "no other members' marks at all." A shared image can reveal the
+group's combined travel footprint to anyone it is shared with, but not who
+marked a country. Tests cover combined marks, selected-member marks, default
+shared titles ("Our travels" / "Their travels"), and the absence of member names
+or map name. The shared-map part of ADR-033 and the earlier `AGENTS.md`,
+`SECURITY.md`, and specification wording are revised; the layout and delivery
+decisions in ADR-033 remain.
 
 ---
 

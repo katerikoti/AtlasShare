@@ -1,7 +1,8 @@
 # AtlasShare — Testing
 
-Status: **Phase 6 built and verified (2026-10-27), awaiting approval.**
-123 automated tests in 20 files, on the 195-country dataset. Database
+Status: **Phase 6 complete (approved 2026-10-27, including the shared-map export
+revision).**
+125 automated tests in 20 files, on the 195-country dataset. Database
 persistence, auth, shared-map authorization, map layout, search, region counts,
 image export, and browser behavior were also checked manually; the exact
 pass/blocked/not-run state is below. Results are from 2026-10-26–27 on macOS,
@@ -27,8 +28,8 @@ recorded in section 5.1.
 | --- | --- | --- | --- |
 | Lint | ESLint 9 + `eslint-config-next` | Every check | ✅ configured |
 | Types | `next typegen && tsc --noEmit` | Every check | ✅ configured |
-| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 123 tests / 20 files total |
-| Component | React Testing Library + jsdom | Every check | ✅ 10 map/shared-view + 4 export-rendering tests |
+| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 125 tests / 20 files total |
+| Component | React Testing Library + jsdom | Every check | ✅ 13 map/shared-view + 4 export-rendering tests |
 | Data integrity | Vitest over the country dataset + insight helpers | Every check | ✅ 11 tests |
 | Integration (DB) | Vitest against `TEST_DATABASE_URL` | Every check when test DB is configured; skipped otherwise | ✅ 14 tests (visits + shared maps); local test DB |
 | End-to-end | Playwright (Phase 8) | CI / pre-release | ⬜ planned; manual browser checks done |
@@ -60,8 +61,8 @@ fails.
 
 Integration tests load `.env` and use `TEST_DATABASE_URL` (the local
 `atlasshare_test` database). They are skipped, not passed, when that variable is
-absent. `npm test` therefore reports 123 passed locally; a fresh checkout without
-the test DB reports 109 passed and 14 skipped unless the environment is set.
+absent. `npm test` therefore reports 125 passed locally; a fresh checkout without
+the test DB reports 111 passed and 14 skipped unless the environment is set.
 
 `npm run data:countries` requires `@svg-maps/world@2.0.0` exactly and rewrites
 `src/data/countries.generated.ts` and `public/map/countries.json`. Run it twice
@@ -82,8 +83,8 @@ and compare hashes when changing the generator.
 ### 4.3 `npm test`
 
 - Command: `npm test`
-- Result: **passed**, 123/123 tests in 20 files (2026-10-27, on the 195-country
-  dataset after the Phase 6 export tests were added).
+- Result: **passed**, 125/125 tests in 20 files (2026-10-27, on the 195-country
+  dataset after the Phase 6 export and shared-export tests were added).
 - Coverage by file:
   - `src/config/brand.test.ts` — product name, WCAG text contrast, and map border contrast (4).
   - `src/config/env.test.ts` — lazy env parsing, missing/malformed values, short
@@ -123,8 +124,9 @@ and compare hashes when changing the generator.
     validates input, and handles email outcomes (17).
   - `src/components/shared/shared-map-experience.test.tsx` — combined view,
     member filter, read-only state, comparison counts, only-you and nobody views,
-    view-specific region stats, and shared-page export using only the current
-    member's countries (6).
+    view-specific region stats, combined shared-map export, comparison-view
+    export staying combined, selected-member export, and absence of member
+    names/map name (8).
   - `src/lib/export-map.test.ts` — export input minimality and sanitisation,
     visit/count derivation, title truncation, and year handling (4).
   - `src/components/export/export-map-svg.test.tsx` — 195-path render, 0/2/all
@@ -215,8 +217,8 @@ dataset, before ADR-032.
 
 - `npm run lint`: **passed**, exit 0.
 - `npm run typecheck`: **passed**, exit 0.
-- `npm run check`: **passed**, lint + typecheck + **123/123 tests in 20 files**
-  (2026-10-27, after the export tests and the 195-country conversion).
+- `npm run check`: **passed**, lint + typecheck + **125/125 tests in 20 files**
+  (2026-10-27, after the shared-map export revision).
 - `npm run build`: **passed** on 2026-10-27. Routes are unchanged. **No schema
   change or new migration for Phase 6.**
 - The 195-country data migration
@@ -258,10 +260,20 @@ authorized, which does not block the map.
 | Native file share | **pass (simulated)** — recorder received `atlasshare-map-2026-2.png`, `image/png`, 827,474 bytes; UI showed "Image shared." |
 | PNG download fallback | **pass** — downloaded PNG was 3200 × 2000 and 827,474 bytes |
 | SVG fallback when canvas is unavailable | **pass** — downloaded `atlasshare-map-2026-2.svg` (1,188,188 bytes) retained the two visited marks |
-| Shared-map data leakage | **pass (automated)** — shared-page test proves another member's country stays unvisited |
+| Shared-map combined export | **pass** — two-member fixture: 4 of 195 marked; preview visited SE, NO, FR, and JP; 195 paths; no external assets |
+| Shared-map selected-member export | **pass** — selecting the second member changed the export to 2 of 195, exactly FR and JP |
+| Shared-map share payload | **pass (simulated)** — `atlasshare-map-2026-4.png`, `image/png`, 823,448 bytes; title "Shared AtlasShare map" |
+| Shared-map PNG download | **pass** — 3200 × 2000, 823,448 bytes |
+| Shared-map SVG fallback | **pass** — 1,188,185 bytes; retained SE, NO, FR, JP; no member names or map name |
+| Shared-map identity leakage | **pass** — export SVG text contained no member name or map name; preview text uses "Our travels" for the combined view and "Their travels" for another member |
 | PNG text legibility | **pass** — macOS Vision OCR read "Phase Six QA", "2", "of 195 countries", "1.0% of the world", the tagline, and the footer in the left content column without overlap |
 | Filename | **pass** — `atlasshare-map-<year>-<count>.png` / `.svg` |
 | No server upload | **pass** — generation and delivery are client-side; no export API route exists |
+
+The shared-map rows used a seeded two-member map: the owner had SE and NO, the
+second member had FR and JP, so the combined preview showed 4 of 195. The export
+defaulted to “Our travels” for the combined view and “Their travels” for the
+other member. Both QA accounts and the map were deleted after the check.
 
 The native share path was exercised with a recorder substituted for
 `navigator.share`; this proves the file payload and status handling, not the
@@ -274,8 +286,6 @@ on a device.
 - Physical iOS Safari and Android Chrome, including the real native share sheet
   and opening the shared attachment.
 - Firefox and Safari canvas rendering, font metrics, and canvas limits.
-- A full two-member shared-map browser fixture for export. The isolation rule is
-  covered by an automated component test and by the minimal export input type.
 - Manual keyboard-only and screen-reader passes for the new title field, preview,
   status region, and share button.
 - Authenticated Lighthouse on `/map` and `/shared/[mapId]`.
@@ -288,9 +298,10 @@ on a device.
 Final commands after all code and documentation changes: see section 5.1.
 Browser QA used Chrome 148 headless CDP because the in-app automation tab runs
 hidden and pauses `requestAnimationFrame`; that is a test-tool artifact described
-in section 6.4, not an app loading bug. No Phase 6 application behavior changed
-after the successful QA run; later code changes were the title-escaping test and
-a comment cleanup.
+in section 6.4, not an app loading bug. After owner review, the shared-map export
+was revised from own-marks-only to combined marks (or the selected member's
+marks), with no identities. The personal export path was unchanged and its
+earlier QA remains valid; the shared path was re-run against a two-member fixture.
 
 ### 5.6 Phase 5 final checks
 
@@ -665,10 +676,10 @@ Phase 6:
   downloads when canvas is unavailable.
 - [x] Mobile 390 px layout has no horizontal overflow and keeps map → list →
   export order.
-- [x] Shared-page export isolation is covered by an automated component test.
+- [x] Shared-page export contains combined marks, or the selected member's
+  marks, without member names or the map name.
 - [ ] Physical iOS/Android share sheet and attachment opening.
 - [ ] Firefox/Safari export rendering and canvas limits.
-- [ ] Full shared-map browser fixture for export.
 - [ ] Keyboard/screen-reader pass and authenticated Lighthouse.
 - [ ] Human visual design approval.
 

@@ -28,6 +28,8 @@ Working rules:
   documented exception) and keep the country dataset as the single definition.
 - Keep authorization checks on the server. Hiding UI is not security.
 - Do not cache authenticated data or private API responses in the service worker.
-- The image export must contain only the signed-in user's map, never shared-map
-  members' histories or private account metadata.
+- The image export must contain only the signed-in user's personal map, or on a
+  shared map the combined members' marks (or the selected member's marks), never
+  member names, emails, account ids, per-member breakdowns, notes, visit dates,
+  map names, or other private account metadata.
 

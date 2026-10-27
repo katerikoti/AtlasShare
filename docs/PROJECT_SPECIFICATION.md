@@ -1,9 +1,8 @@
 # AtlasShare — Product Specification
 
-Status: **agreed direction; Phases 1–5 approved, Phase 6 implemented and
-verified, awaiting approval.** Requirements here are the target for the whole
-build. Each phase implements a slice; see `DEVELOPMENT_PLAN.md` and
-`PROGRESS.md`.
+Status: **agreed direction; Phases 1–6 approved.** Requirements here are the
+target for the whole build. Each phase implements a slice; see
+`DEVELOPMENT_PLAN.md` and `PROGRESS.md`.
 
 ## 1. One-sentence product
 
@@ -136,9 +135,11 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 
 - **FR-E1** Export the signed-in user's personal map as a PNG at high resolution.
   Phase 6 renders a 1600 × 1000 layout at 2× (3200 × 2000).
-- **FR-E2** The image contains only the signed-in user's visits and public brand
-  information — never other members' data, email, or ids. On a shared-map page,
-  the export still uses only the current user's marks.
+- **FR-E2** A personal export contains only the signed-in user's visits and
+  public brand information. On a shared-map page the default export contains the
+  combined marks of all members; selecting a member exports that member's marks.
+  The image never contains member names, emails, account ids, map names,
+  per-member breakdowns, notes, visit dates, or other private account metadata.
 - **FR-E3** Include the count and a small brand mark; clean typography; no
   browser chrome. The optional image title is user-entered, not account data.
 - **FR-E4** Use the native share sheet when file sharing is supported; otherwise

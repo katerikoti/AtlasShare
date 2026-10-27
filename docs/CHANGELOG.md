@@ -11,17 +11,19 @@ Notable changes, newest first. This project follows a phase-based plan; see
 - High-resolution personal map export from a pure inline SVG: one 1600 × 1000
   landscape layout rasterized at 2× (3200 × 2000) through canvas.
 - Optional user-entered image title, count/percentage, brand mark, year, and a
-  clean country map. No account display name, email, id, shared-map name, or
-  other member's data can enter the export input.
+  clean country map. No account display name, email, id, member name, map name,
+  per-member breakdown, note, or visit date can enter the export input.
 - Web Share with a PNG file when supported, download fallback, and automatic SVG
   download when canvas creation fails. A cancelled share does not trigger a
   download.
 - Export panel with live preview on the personal map and on shared maps. The
-  shared page passes only the current member's own country codes, so exporting
-  from a group view still produces a personal map.
+  shared page exports the combined marks of all members by default, or the
+  selected member's marks, without member identities (owner revision,
+  ADR-034).
 - Test coverage for input sanitisation/minimal fields, 0/2/all visited, 195
-  exported paths, no external assets, title-as-text escaping, and shared-map
-  own-visits isolation.
+  exported paths, no external assets, title-as-text escaping, combined shared
+  export, comparison-view export staying combined, selected-member export, and
+  absence of member names/map name.
 
 ### Changed — 195 recognized countries (2026-10-27)
 
@@ -42,7 +44,7 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ### Verified — Phase 6
 
-- `npm run check` passed with **123 tests in 20 files** (including local
+- `npm run check` passed with **125 tests in 20 files** (including local
   PostgreSQL integration tests); `npm run build` passed.
 - Production browser QA in headless Chrome: 195 checklist rows and 195 export
   paths; marking Sweden and Japan produced an export with exactly those two
@@ -50,6 +52,11 @@ Notable changes, newest first. This project follows a phase-based plan; see
 - Share path received `atlasshare-map-2026-2.png` (`image/png`, 827,474 bytes);
   download path produced a 3200 × 2000 PNG; canvas-disabled path downloaded the
   SVG fallback containing the two visited marks and no shared-map wording.
+- Two-member shared-map QA: combined export contained SE, NO, FR, and JP;
+  selected-member export contained FR and JP only; member names and map name were
+  absent from the SVG. Share payload was `atlasshare-map-2026-4.png` (823,448
+  bytes); PNG download was 3200 × 2000; SVG fallback retained the four combined
+  marks.
 - macOS Vision OCR read the title, count, percentage, tagline, and footer from
   the PNG without overlap; mobile 320/390 px had no horizontal scroll and kept
   the map above the list and export below it.
@@ -57,8 +64,7 @@ Notable changes, newest first. This project follows a phase-based plan; see
   the build passes. The 195-country personal browser QA covered list length,
   export preview, and counts.
 - Not verified: physical iOS Safari/Android Chrome share sheets, Firefox/Safari
-  canvas output, opening the shared attachment, and a full two-member browser
-  fixture for shared-map export. Shared isolation has automated coverage.
+  canvas output, and opening the shared attachment.
 
 ### Added — Phase 5: insights and filters (2026-10-27)
 

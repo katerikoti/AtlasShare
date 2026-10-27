@@ -1,10 +1,11 @@
 # AtlasShare — Progress
 
-**Current phase:** Phase 6 — Image export (**built and verified, awaiting
-approval**).
-**Status:** Phases 1–5 are approved. Phase 6 is implemented, checked, and
-browser-tested in production mode on the 195-country dataset. It needs owner
-approval before Phase 7 starts.
+**Current phase:** Phase 6 — Image export (**complete and approved
+2026-10-27**). Phase 7 has not started.
+**Status:** Phases 1–6 are approved. Phase 6 was implemented, checked, and
+browser-tested in production mode on the 195-country dataset. Owner review
+approved it and asked for shared-map exports to contain the combined marks of
+all members; that revision is implemented, tested, and browser-checked.
 **Last updated:** 2026-10-27.
 
 This is the first file to read when resuming work. It reflects what is actually
@@ -19,7 +20,7 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | 3. Country dataset & personal map | ✅ Complete (approved 2026-10-26) | Private map, visited toggle, integration tests, browser QA. Dataset revised to 195 on 2026-10-27. |
 | 4. Shared maps | ✅ Complete (approved 2026-10-27) | Create/manage maps, invitations, member roles, combined read-only view, two-account QA. |
 | 5. Insights & filters | ✅ Complete (approved 2026-10-27) | Region field, continent stats, shared comparison, no schema change. |
-| 6. Image export | ✅ Built, awaiting approval (2026-10-27) | 3200 × 2000 PNG, share/download/SVG fallback, own-visits privacy, browser QA. |
+| 6. Image export | ✅ Complete (approved 2026-10-27) | 3200 × 2000 PNG, share/download/SVG fallback, combined shared export without identities, browser QA. |
 | 7. Public site & PWA | ⛔ Not started | — |
 | 8. Hardening, QA & deployment | ⛔ Not started | — |
 
@@ -41,14 +42,17 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   fails, download the same inline SVG.
 - `src/components/export/export-map-panel.tsx` renders on the personal map and on
   shared maps. It has a title field, visible preview, progress/status/error
-  states, and privacy copy. On a shared map it receives only
-  `currentMember.countries`; map names, other members, combined counts, emails,
-  ids, and visit rows are never passed to the renderer.
+  states, and privacy copy. On a shared map it receives the combined country
+  codes by default, or the selected member's codes; member names, map names,
+  emails, ids, per-member counts, notes, and visit dates are never passed to the
+  renderer.
 - The export is one landscape layout. There is no aspect-ratio picker, PDF,
   animated export, server-side render, custom theme, or region breakdown in the
   image.
 - Tests cover input minimality/sanitisation, 0/2/all visited, 195 exported paths,
-  no external assets, escaped title text, and shared-map own-visits isolation.
+  no external assets, escaped title text, combined shared export, comparison-view
+  export staying combined, selected-member export, and the absence of member
+  names or the map name.
 
 ### Country dataset revision (2026-10-27)
 
@@ -260,7 +264,7 @@ the map.
 | --- | --- | --- |
 | Lint | `npm run lint` | ✅ exit 0 |
 | Types | `npm run typecheck` | ✅ exit 0 |
-| Tests | `npm test` | ✅ **123/123 passed (20 files)** |
+| Tests | `npm test` | ✅ **125/125 passed (20 files)** |
 | Full check | `npm run check` | ✅ exit 0 |
 | Production build | `npm run build` | ✅ exit 0; routes unchanged |
 | Dataset count | generator + tests + browser | ✅ 195 rows, 195 interactive paths, 195 export paths |
@@ -275,12 +279,15 @@ the map.
 | Native share payload | headless Chrome with recorder | ✅ PNG `atlasshare-map-2026-2.png`, 827,474 bytes |
 | PNG download | headless Chrome | ✅ 3200 × 2000, 827,474 bytes |
 | SVG fallback | canvas disabled | ✅ 1,188,188-byte SVG with the two own visits |
-| Shared-map isolation | component test | ✅ another member's country stays unvisited; own marks only |
+| Shared combined export | two-member browser fixture | ✅ SE, NO, FR, JP; 4 of 195; 195 paths; no external assets |
+| Shared selected member | two-member browser fixture | ✅ FR, JP only; 2 of 195 |
+| Shared share payload | headless Chrome with recorder | ✅ PNG `atlasshare-map-2026-4.png`, 823,448 bytes |
+| Shared PNG download | headless Chrome | ✅ 3200 × 2000, 823,448 bytes |
+| Shared SVG fallback | canvas disabled | ✅ 1,188,185-byte SVG; SE, NO, FR, JP; no member or map names |
 | OCR legibility | macOS Vision on PNG | ✅ title, 2, of 195, 1.0%, tagline, footer; no overlap |
 | Responsive layout | headless Chrome CDP | ✅ 320/390 px no horizontal overflow; map → list → export order |
 | Physical share sheet | manual | ⬜ not run; no physical iOS/Android device |
 | Safari/Firefox | manual | ⬜ not run |
-| Shared export browser fixture | manual | ⬜ not run; automated isolation test passes |
 | Keyboard/screen reader | manual | ⬜ not run |
 | Visual design approval | human review | ⬜ delegated to owner |
 
@@ -538,15 +545,17 @@ Full records in ADR-024, ADR-032, and §5. ADR-025 recorded the original
 
 ### Phase 6 decisions
 
-Full records in ADR-011 (original approach) and ADR-033 (implementation).
+Full records in ADR-011 (original approach), ADR-033 (implementation), and
+ADR-034 (shared-map scope revision).
 
 - One 1600 × 1000 landscape export rendered at 2× (3200 × 2000). No
   aspect-ratio picker, PDF, animation, or server-side rendering.
 - The export input is exactly `{ visited, count, displayName?, year }`. The title
   is user-entered and optional; the account display name is not used.
-- The panel appears on personal and shared maps. A shared-map export uses only
-  `currentMember.countries`; it is intentionally a personal-map export and the
-  copy says so.
+- The panel appears on personal and shared maps. A shared-map export uses the
+  combined marks of all members by default, or the selected member's marks;
+  comparison filters are view-only and do not change the export. The image never
+  contains member names, the map name, per-member counts, notes, or visit dates.
 - Delivery order: native file share when supported, then PNG download, then SVG
   download if canvas fails. A cancelled share does not force a download.
 - No external fonts/images; system font stacks and inline paths only.
@@ -628,7 +637,7 @@ Full records in ADR-012, ADR-013, and ADR-026.
 
 | Item | Status | Needed for |
 | --- | --- | --- |
-| Phase 6 approval | built and verified; not yet approved | Starting Phase 7 |
+| Phase 7 start | Phase 6 approved; no Phase 7 work started | Next planning/implementation step |
 | Neon dev branch + connection strings | connected; both migrations applied | Deployment verification |
 | Brevo account + verified sender | configured; delivery previously verified, but the local QA egress IP now gets 401 | Reset/invitation email validation |
 | Brevo production domain authentication | optional; not configured | Better deliverability in Phase 8 |
@@ -636,8 +645,8 @@ Full records in ADR-012, ADR-013, and ADR-026.
 | Approval to push to `origin` | not given | Sharing the repository |
 | Domain name (optional) | undecided | Phase 8 |
 
-Phases 1–5 are approved. Phase 6 is built and verified and awaits explicit
-approval before Phase 7. No credentials are committed; `.env.example` documents
+Phases 1–6 are approved. Phase 7 has not started. Pushing still needs explicit
+permission. No credentials are committed; `.env.example` documents
 the expected variables.
 
 ## 7. Repository state
@@ -646,9 +655,10 @@ the expected variables.
   the Phase 2 documentation commit is `6ae3b7c`.
 - Phase 3 is committed locally in `0abebaf` plus the map-order follow-up; Phase
   4 is committed locally; Phase 5 is committed locally in `511a42c` and
-  `669e806`. The 195-country conversion and Phase 6 are committed separately
-  after this documentation update; run `git log --oneline` for the exact hashes.
-  **Not pushed** — pushing needs explicit approval.
+  `669e806`; the 195-country conversion is `740cb4e`; the initial Phase 6 export
+  is `3931d72`. The shared-map export revision and its documentation are
+  committed separately after this update; run `git log --oneline` for the exact
+  hashes. **Not pushed** — pushing needs explicit approval.
 - Remote `origin` = `https://github.com/katerikoti/AtlasShare.git`.
 - `gh` CLI is not installed; git credentials are cached.
 - `package-lock.json` is committed; `node_modules`, `.next`, `.env*`,
@@ -663,23 +673,24 @@ the expected variables.
   map. A follow-up owner-review QA account (`phase5.review@example.com`) was also
   deleted.
 - Phase 6 browser QA used `phase6.qa.20261027@example.com`; it was deleted after
-  the export checks, so no QA data is left in the development database. The
-  temporary headless Chrome profiles and downloaded QA images live outside the
-  repository.
+  the export checks. The shared-export revision used
+  `phase6.shared.owner@example.com`, `phase6.shared.member@example.com`, and the
+  “Shared export QA” map; these were deleted after the two-member check, so no QA
+  data is left in the development database. The temporary headless Chrome
+  profiles and downloaded QA images live outside the repository.
 
 ## 8. Next steps
 
-1. Owner reviews Phase 6 and explicitly approves or requests changes.
-2. Do not start Phase 7 until that approval; do not push without permission.
-3. Complete the remaining manual checks if desired: physical iOS/Android share
-   sheets, Safari/Firefox export rendering, a two-member shared-map browser
-   export, keyboard-only and screen-reader passes, authenticated Lighthouse, and
-   visual design approval.
-4. Decide before launch whether to remove the unused `note` /
+1. Phase 7 (public site & PWA) is next. Do not start it or push to `origin`
+   without explicit permission.
+2. Complete the remaining manual checks if desired: physical iOS/Android share
+   sheets, Safari/Firefox export rendering, keyboard-only and screen-reader
+   passes, authenticated Lighthouse, and visual design approval.
+3. Decide before launch whether to remove the unused `note` /
    `firstVisitedAt` columns or keep them reserved.
-5. Keep the shared-rate-limit, email-verification, and invitation-token log
+4. Keep the shared-rate-limit, email-verification, and invitation-token log
    concerns on the pre-launch/Phase 8 list.
-6. Clean up any future QA accounts and maps before using real data.
+5. Clean up any future QA accounts and maps before using real data.
 
 ## 9. Known limitations and debt
 
@@ -695,7 +706,9 @@ the expected variables.
 - **The export is one fixed landscape layout.** It is 3200 × 2000, with an
   optional 40-character title; there is no aspect-ratio picker, custom theme,
   PDF, animation, or region breakdown. A shared-map export intentionally contains
-  only the current member's own marks, which may surprise users despite the copy.
+  the combined marks of all members by default (or the selected member's marks),
+  but never member identities; sharing the image can reveal the group's combined
+  travel footprint.
 - **Region grouping is a travel-map convention, not a political statement.**
   It follows UN M49 continents, so Cyprus, Türkiye, Armenia, Azerbaijan, Georgia,
   and Kazakhstan count as Asia and Russia counts as Europe. Region labels are

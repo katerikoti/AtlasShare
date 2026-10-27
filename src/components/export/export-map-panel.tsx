@@ -15,7 +15,8 @@ import {
 type ExportMapPanelProps = {
   visited: Iterable<string>;
   geometry: MapGeometry | null;
-  context?: "personal" | "shared";
+  context?: "personal" | "shared" | "shared-member";
+  defaultTitle?: string;
 };
 
 type Status = {
@@ -27,6 +28,7 @@ export function ExportMapPanel({
   visited,
   geometry,
   context = "personal",
+  defaultTitle = "My travels",
 }: ExportMapPanelProps) {
   const [displayName, setDisplayName] = useState("");
   const [status, setStatus] = useState<Status>({ tone: "idle" });
@@ -35,14 +37,41 @@ export function ExportMapPanel({
   const inputId = useId();
   const hintId = useId();
   const year = new Date().getFullYear();
+  const fallbackTitle = defaultTitle.trim() || "My travels";
 
   const input = useMemo(
-    () => createExportMapInput({ visited, displayName, year }),
-    [visited, displayName, year],
+    () =>
+      createExportMapInput({
+        visited,
+        displayName: displayName.trim() ? displayName : fallbackTitle,
+        year,
+      }),
+    [visited, displayName, fallbackTitle, year],
   );
 
   const busy = status.tone === "working";
   const ready = geometry !== null && !busy;
+  const copy =
+    context === "personal"
+      ? {
+          intro:
+            "Create a high-resolution image of your map. On supported devices the share sheet opens; elsewhere the PNG downloads.",
+          privacy:
+            "The image is built from your country marks, the title you choose, the year, and the count. It never includes your email or account id.",
+        }
+      : context === "shared"
+        ? {
+            intro:
+              "Create a high-resolution image of the combined shared map. All members' marks are included, but member names are not.",
+            privacy:
+              "The image is built from the combined country marks of this shared map, the title you choose, the year, and the count. It never includes member names, emails, account ids, notes, or visit dates.",
+          }
+        : {
+            intro:
+              "Create a high-resolution image of the selected member's map. The image does not include their name.",
+            privacy:
+              "The image is built from the selected member's country marks, the title you choose, the year, and the count. It never includes member names, emails, account ids, notes, or visit dates.",
+          };
 
   async function handleExport() {
     if (!geometry || !svgRef.current) return;
@@ -58,7 +87,10 @@ export function ExportMapPanel({
       const outcome = await exportMapImage({
         svg,
         fileName: `${fileStem}-map-${input.year}-${input.count}`,
-        shareTitle: `My ${brand.name} map`,
+        shareTitle:
+          context === "personal"
+            ? `My ${brand.name} map`
+            : `Shared ${brand.name} map`,
       });
 
       if (outcome === "shared") {
@@ -93,9 +125,7 @@ export function ExportMapPanel({
             Share your map
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-            {context === "shared"
-              ? "Create a high-resolution image of your own map. Only your marks are included — never the group's combined view or another member's map."
-              : "Create a high-resolution image of your map. On supported devices the share sheet opens; elsewhere the PNG downloads."}
+            {copy.intro}
           </p>
 
           <div className="mt-5 max-w-md">
@@ -115,12 +145,12 @@ export function ExportMapPanel({
                 setStatus({ tone: "idle" });
               }}
               aria-describedby={hintId}
-              placeholder="My travels"
+              placeholder={fallbackTitle}
               className={`${inputClass} py-2.5`}
             />
             <p id={hintId} className="mt-1.5 text-xs text-ink-muted">
-              Leave blank to use “My travels”. The image also includes the year
-              and your count.
+              Leave blank to use “{fallbackTitle}”. The image also includes the
+              year and the country count.
             </p>
           </div>
 
@@ -145,9 +175,7 @@ export function ExportMapPanel({
           ) : null}
 
           <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-            The image contains only your country marks, the title you choose,
-            the year, and public map information. It never includes your email,
-            account id, another member&apos;s visits, or shared-map data.
+            {copy.privacy}
           </p>
         </div>
 
