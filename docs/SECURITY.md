@@ -1,9 +1,9 @@
 # AtlasShare — Security
 
-Status: **Phase 5 insights and filters are implemented and verified, awaiting
-approval.** Phases 1–4 are approved. Export and PWA are not implemented. This
-document states the rules that every phase must satisfy. Deviations require an
-explicit decision in `DECISIONS.md`.
+Status: **Phase 6 image export is implemented and verified, awaiting
+approval.** Phases 1–5 are approved. PWA is not implemented. This document
+states the rules that every phase must satisfy. Deviations require an explicit
+decision in `DECISIONS.md`.
 
 ## 1. Assets
 
@@ -132,10 +132,13 @@ non-member cannot perform it and cannot read the data.
   never as markup.
 - URLs derived from user input are not allowed. Invitation links are built from
   `NEXT_PUBLIC_APP_URL` + a server-generated token.
-- The SVG map only renders dataset-controlled path data from the committed
-  generator. It never contains user text. If a future feature lets users import
-  geometry, it must be sanitized and never injected raw.
-- Visited codes come from the server and are validated against the 250-unit
+- The interactive SVG map only renders dataset-controlled path data from the
+  committed generator. It never contains user text. If a future feature lets
+  users import geometry, it must be sanitized and never injected raw.
+- The export SVG contains the optional user-entered image title only as a React
+  text node; markup characters are escaped, and tests assert that a
+  `<script>`-shaped title does not create an element.
+- Visited codes come from the server and are validated against the 195-country
   dataset; the public geometry JSON contains no visit data.
 
 ## 7. CSRF and request forgery
@@ -234,12 +237,20 @@ Production (Phase 8):
 ## 13. Image export
 
 - Rendered from the signed-in user's own data only. The export component takes
-  an explicit, minimal input: display name (optional), visit set, count, map
-  year. It must not receive shared-map member data or account metadata.
-- No remote images/fonts (prevents canvas tainting and data exfiltration).
+  an explicit, minimal input: `visited`, `count`, optional user-entered
+  `displayName`, and `year`. It does not receive shared-map member data, map
+  names, combined counts, emails, user ids, or other account metadata.
+- The personal and shared pages both use this component. The shared page passes
+  only the current member's own country codes; tests assert that another
+  member's country stays unvisited in the export.
+- No remote images/fonts (prevents canvas tainting and data exfiltration). The
+  SVG has no `<image>`, `<foreignObject>`, or `href` elements.
 - No tokens, emails, or ids embedded in PNG metadata. Canvas output has none by
   default; do not add custom metadata.
-- The export runs locally in the browser; no server-side headless browser.
+- The PNG is 3200 × 2000 (2× a 1600 × 1000 base). Canvas failure downloads the
+  same inline SVG instead; it does not send data to a server.
+- The export runs locally in the browser; no server-side headless browser, no
+  upload, and no URL containing the user's visit set.
 
 ## 14. Email
 

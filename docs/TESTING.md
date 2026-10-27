@@ -1,12 +1,13 @@
 # AtlasShare — Testing
 
-Status: **Phase 5 built and verified (2026-10-27), awaiting approval.**
-114 automated tests in 18 files. Database persistence, auth, shared-map
-authorization, map layout, search, region counts, and browser behavior were also
-checked manually; the exact pass/blocked/not-run state is below. Results are from
-2026-10-26–27 on macOS, Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome
-148 (headless CDP and the app's browser pane). Final `npm run check` and
-production rebuild results are recorded in section 5.1.
+Status: **Phase 6 built and verified (2026-10-27), awaiting approval.**
+123 automated tests in 20 files, on the 195-country dataset. Database
+persistence, auth, shared-map authorization, map layout, search, region counts,
+image export, and browser behavior were also checked manually; the exact
+pass/blocked/not-run state is below. Results are from 2026-10-26–27 on macOS,
+Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome 148 (headless CDP and
+the app's browser pane). Final `npm run check` and production rebuild results are
+recorded in section 5.1.
 
 ## 1. Principles
 
@@ -26,8 +27,8 @@ production rebuild results are recorded in section 5.1.
 | --- | --- | --- | --- |
 | Lint | ESLint 9 + `eslint-config-next` | Every check | ✅ configured |
 | Types | `next typegen && tsc --noEmit` | Every check | ✅ configured |
-| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 114 tests / 18 files total |
-| Component | React Testing Library + jsdom | Every check | ✅ 10 map/shared-view tests |
+| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 123 tests / 20 files total |
+| Component | React Testing Library + jsdom | Every check | ✅ 10 map/shared-view + 4 export-rendering tests |
 | Data integrity | Vitest over the country dataset + insight helpers | Every check | ✅ 11 tests |
 | Integration (DB) | Vitest against `TEST_DATABASE_URL` | Every check when test DB is configured; skipped otherwise | ✅ 14 tests (visits + shared maps); local test DB |
 | End-to-end | Playwright (Phase 8) | CI / pre-release | ⬜ planned; manual browser checks done |
@@ -59,14 +60,14 @@ fails.
 
 Integration tests load `.env` and use `TEST_DATABASE_URL` (the local
 `atlasshare_test` database). They are skipped, not passed, when that variable is
-absent. `npm test` therefore reports 114 passed locally; a fresh checkout without
-the test DB reports 100 passed and 14 skipped unless the environment is set.
+absent. `npm test` therefore reports 123 passed locally; a fresh checkout without
+the test DB reports 109 passed and 14 skipped unless the environment is set.
 
 `npm run data:countries` requires `@svg-maps/world@2.0.0` exactly and rewrites
 `src/data/countries.generated.ts` and `public/map/countries.json`. Run it twice
 and compare hashes when changing the generator.
 
-## 4. Automated tests through Phase 5
+## 4. Automated tests through Phase 6
 
 ### 4.1 `npm run lint`
 
@@ -81,8 +82,8 @@ and compare hashes when changing the generator.
 ### 4.3 `npm test`
 
 - Command: `npm test`
-- Result: **passed**, 114/114 tests in 18 files (2026-10-27, after the final
-  owner-review simplification).
+- Result: **passed**, 123/123 tests in 20 files (2026-10-27, on the 195-country
+  dataset after the Phase 6 export tests were added).
 - Coverage by file:
   - `src/config/brand.test.ts` — product name, WCAG text contrast, and map border contrast (4).
   - `src/config/env.test.ts` — lazy env parsing, missing/malformed values, short
@@ -100,9 +101,9 @@ and compare hashes when changing the generator.
   - `src/server/actions/account.auth.test.ts` — account actions reject
     unauthenticated callers before Better Auth; validation and password-change
     session revocation (8).
-  - `src/data/countries.test.ts` — exactly 250 unique units, names, special
-    units, PS/IL separation, path completeness, lookup/sort, and exactly one
-    region per unit (7).
+  - `src/data/countries.test.ts` — exactly 195 unique countries, names, special
+    countries, retired-code exclusions, PS/IL separation, path completeness,
+    lookup/sort, and exactly one region per country (7).
   - `src/data/country-insights.test.ts` — region sums and unknown-code
     handling, and the three shared comparison sets including the single-member
     case (4).
@@ -122,7 +123,12 @@ and compare hashes when changing the generator.
     validates input, and handles email outcomes (17).
   - `src/components/shared/shared-map-experience.test.tsx` — combined view,
     member filter, read-only state, comparison counts, only-you and nobody views,
-    view-specific region stats (5).
+    view-specific region stats, and shared-page export using only the current
+    member's countries (6).
+  - `src/lib/export-map.test.ts` — export input minimality and sanitisation,
+    visit/count derivation, title truncation, and year handling (4).
+  - `src/components/export/export-map-svg.test.tsx` — 195-path render, 0/2/all
+    visited, no external assets, and user title rendered as escaped text (4).
   - `src/server/invitations.test.ts` — token entropy/format, hash/TTL, URL and
     path handling (5).
   - `src/lib/safe-redirect.test.ts` — same-origin redirects accepted; absolute,
@@ -160,9 +166,11 @@ and compare hashes when changing the generator.
   npx prisma migrate deploy
   ```
 
-- Result: **passed**. One migration
-  (`20261025141145_init_auth_and_accounts`) applied; nine tables exist including
-  `_prisma_migrations`.
+- Result: **passed**. Two migrations applied
+  (`20261025141145_init_auth_and_accounts` and
+  `20261027120000_limit_to_recognized_countries`); nine tables exist including
+  `_prisma_migrations`. The second migration is a data-only delete of retired
+  country codes.
 
 ### 4.6 Neon dev branch
 
@@ -170,6 +178,9 @@ and compare hashes when changing the generator.
   the connected Neon `dev` branch.
 - `npm run db:deploy` applied `20261025141145_init_auth_and_accounts` using the
   direct connection.
+- The 195-country conversion added
+  `20261027120000_limit_to_recognized_countries`; it was applied to the Neon dev
+  branch and the local test database.
 - Re-running `npx prisma migrate status` reported: **Database schema is up to
   date.**
 - The production branch and Vercel deployment remain unverified.
@@ -194,9 +205,94 @@ and compare hashes when changing the generator.
 - Visual rendering of transactional email and password-reset delivery are still
   not confirmed.
 
-## 5. Phase 5 automated and manual verification
+## 5. Phase 6 and Phase 5 automated and manual verification
 
-### 5.1 Final checks
+Phase 6 is the current result set and uses the 195-country dataset. Phase 5 is
+historical: its browser counts below were measured on the original 250-unit
+dataset, before ADR-032.
+
+### 5.1 Phase 6 final checks
+
+- `npm run lint`: **passed**, exit 0.
+- `npm run typecheck`: **passed**, exit 0.
+- `npm run check`: **passed**, lint + typecheck + **123/123 tests in 20 files**
+  (2026-10-27, after the export tests and the 195-country conversion).
+- `npm run build`: **passed** on 2026-10-27. Routes are unchanged. **No schema
+  change or new migration for Phase 6.**
+- The 195-country data migration
+  `20261027120000_limit_to_recognized_countries` was applied with
+  `prisma migrate deploy` to the Neon development database and the local test
+  database.
+- `npm run data:countries` emits 195 metadata entries and 195 geometry paths.
+  The generated asset is ~1.1 MB raw / ~377 KB compressed.
+- `npm audit` still reports 8 advisories in development/nested tooling; runtime
+  Better Auth 1.7.12 remains outside the affected range. This is unchanged from
+  Phase 4 and is not hidden by the Phase 6 pass.
+
+### 5.2 Phase 6 dataset and map QA
+
+Served the production build at `http://localhost:3001` with
+`BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` set to that origin. Used a real
+signed-in QA account through headless Chrome 148 CDP. Account creation succeeded;
+the welcome email send failed with Brevo 401 because the local egress IP was not
+authorized, which does not block the map.
+
+| Scenario | Result |
+| --- | --- |
+| Country checklist | **pass** — 195 rows, zero retired codes |
+| Interactive map | **pass** — 195 interactive paths |
+| Export preview | **pass** — 195 paths, label "Exported map: 0 of 195 countries visited." |
+| Empty export state | **pass** — 0 of 195 rendered in the preview; automated test covers the 0-state image |
+| Mark two countries | **pass** — Sweden + Japan; progress and preview label became 2 of 195 |
+| Export visit isolation | **pass** — preview `data-visited="true"` paths were exactly `JP` and `SE` |
+| Optional title | **pass** — "Phase Six QA" rendered as text |
+| External export assets | **pass** — zero `<image>`, `<foreignObject>`, or `href` elements |
+| Full-visited state | **pass (component)** — all 195 paths render visited |
+| Narrow layout | **pass** — 320/390 px had no horizontal overflow; map above list; export below list. At 320 px the export card was 272 px, the preview/button 230 px. |
+| Page errors | **pass** — no application console errors |
+
+### 5.3 Phase 6 export delivery QA
+
+| Scenario | Result |
+| --- | --- |
+| Native file share | **pass (simulated)** — recorder received `atlasshare-map-2026-2.png`, `image/png`, 827,474 bytes; UI showed "Image shared." |
+| PNG download fallback | **pass** — downloaded PNG was 3200 × 2000 and 827,474 bytes |
+| SVG fallback when canvas is unavailable | **pass** — downloaded `atlasshare-map-2026-2.svg` (1,188,188 bytes) retained the two visited marks |
+| Shared-map data leakage | **pass (automated)** — shared-page test proves another member's country stays unvisited |
+| PNG text legibility | **pass** — macOS Vision OCR read "Phase Six QA", "2", "of 195 countries", "1.0% of the world", the tagline, and the footer in the left content column without overlap |
+| Filename | **pass** — `atlasshare-map-<year>-<count>.png` / `.svg` |
+| No server upload | **pass** — generation and delivery are client-side; no export API route exists |
+
+The native share path was exercised with a recorder substituted for
+`navigator.share`; this proves the file payload and status handling, not the
+physical iOS/Android share sheet. A cancelled share returning `AbortError` is
+handled without a forced download by the implementation, but was not exercised
+on a device.
+
+### 5.4 Phase 6 not run or not covered
+
+- Physical iOS Safari and Android Chrome, including the real native share sheet
+  and opening the shared attachment.
+- Firefox and Safari canvas rendering, font metrics, and canvas limits.
+- A full two-member shared-map browser fixture for export. The isolation rule is
+  covered by an automated component test and by the minimal export input type.
+- Manual keyboard-only and screen-reader passes for the new title field, preview,
+  status region, and share button.
+- Authenticated Lighthouse on `/map` and `/shared/[mapId]`.
+- Visual design approval. The exported PNG was read with OCR and measured, and
+  the preview is available to the owner in the Review pane, but the agent does
+  not approve the design.
+
+### 5.5 Phase 6 result
+
+Final commands after all code and documentation changes: see section 5.1.
+Browser QA used Chrome 148 headless CDP because the in-app automation tab runs
+hidden and pauses `requestAnimationFrame`; that is a test-tool artifact described
+in section 6.4, not an app loading bug. No Phase 6 application behavior changed
+after the successful QA run; later code changes were the title-escaping test and
+a comment cleanup.
+
+### 5.6 Phase 5 final checks
 
 - `npm run lint`: **passed**, exit 0.
 - `npm run typecheck`: **passed**, exit 0.
@@ -207,7 +303,7 @@ and compare hashes when changing the generator.
   `/reset-password`, `/api/auth/[...all]` dynamic, with the public pages static.
   **No new migration** was created or needed.
 
-### 5.2 Personal list and statistics
+### 5.7 Phase 5 personal list and statistics
 
 Served the production build at `http://localhost:3001` (port 3000 was occupied)
 with the runtime auth/app URLs set to that origin. Used a real signed-in account
@@ -226,7 +322,7 @@ simplified search-only list; the earlier filter/sort QA was superseded.
 | Removed map copy | **pass** — no map legend, no "Borders use moss", no "The map is a visual aid" note |
 | Region breakdown | **pass** — 4 marked total: Americas 1 of 56, Asia 1 of 53, Europe 2 of 52, others 0; sums to 4 |
 
-### 5.3 Shared comparison
+### 5.8 Phase 5 shared comparison
 
 A second member and a shared map were seeded in the local development database
 for this phase's UI check. Owner visits: SE, NO, JP, US. Member visits: SE, FR,
@@ -244,7 +340,7 @@ JP. The shared view is read-only.
 | Read-only behavior | **pass** — zero checkboxes; no mutation controls on the shared view |
 | Large-list usability | **pass** — 245 rows rendered in a height-limited scroll card |
 
-### 5.4 Responsive and layout checks
+### 5.9 Phase 5 responsive and layout checks
 
 - Headless Chrome CDP at **320, 390, and 1280 px** measured `/map` and
   `/shared/[mapId]`.
@@ -258,7 +354,7 @@ JP. The shared view is read-only.
 - Mobile emulation is not a physical phone; visual design approval remains
   delegated to the owner.
 
-### 5.5 Not run or not covered in Phase 5
+### 5.10 Not run or not covered in Phase 5
 
 - Physical-phone touch, Safari, and Firefox.
 - Manual keyboard-only walkthrough and screen-reader output for the new search,
@@ -274,6 +370,10 @@ JP. The shared view is read-only.
 - Export of statistics or charts; Phase 5 intentionally uses CSS bars only.
 
 ## 6. Phase 4 automated and manual verification
+
+Historical note: the browser checks in this section ran on the original 250-unit
+dataset. The country/geometry counts are retained as the recorded result; the
+current dataset is 195 after ADR-032.
 
 ### 6.1 Final checks
 
@@ -364,6 +464,10 @@ Suspense boundary.
   implemented and are recorded as accepted risks.
 
 ## 7. Phase 3 automated and manual verification
+
+Historical note: this section records the original 250-unit dataset QA. The
+generator and committed outputs now contain 195 countries after ADR-032; the
+current automated counts and migration results are in section 5.
 
 ### 7.1 Dataset generation
 
@@ -541,13 +645,32 @@ Per UI phase:
 5. Zoom to 200% and 320 px width; no content loss or horizontal scroll.
 6. `prefers-reduced-motion` on: no essential animation.
 
-The map needs special attention: the SVG is not 250 tab stops. The country list
+The map needs special attention: the SVG is not 195 tab stops. The country list
 is the accessible control surface; the SVG has an accessible name and reflects
 state via text alternatives.
 
 ## 11. Manual QA checklist (feature phases)
 
 Phase 4 additions are checked separately from the historical Phase 2/3 items.
+References to 250 rows/paths in the Phase 3/4 checklists are the historical
+result before the 195-country revision.
+
+Phase 6:
+
+- [x] Personal export preview renders all 195 paths and the correct 0-of-195 and
+  marked states.
+- [x] Marked-country export contains exactly the signed-in user's marks (SE, JP).
+- [x] Optional title appears as text; no external export assets.
+- [x] Share payload is a PNG; download fallback is 3200 × 2000; SVG fallback
+  downloads when canvas is unavailable.
+- [x] Mobile 390 px layout has no horizontal overflow and keeps map → list →
+  export order.
+- [x] Shared-page export isolation is covered by an automated component test.
+- [ ] Physical iOS/Android share sheet and attachment opening.
+- [ ] Firefox/Safari export rendering and canvas limits.
+- [ ] Full shared-map browser fixture for export.
+- [ ] Keyboard/screen-reader pass and authenticated Lighthouse.
+- [ ] Human visual design approval.
 
 Phase 4:
 

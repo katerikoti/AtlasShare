@@ -58,6 +58,12 @@ describe("MapExperience", () => {
       screen.queryByText(/the map is a visual aid/i),
     ).not.toBeInTheDocument();
     expect(await screen.findByRole("img", { name: /world map/i })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Share your map" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: /share or download image/i }),
+    ).toBeEnabled();
   });
 
   it("searches by name and removes non-matching rows", async () => {

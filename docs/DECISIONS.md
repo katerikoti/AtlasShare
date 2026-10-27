@@ -148,7 +148,7 @@ the same code.
 
 ## ADR-009 — ISO 3166-1 alpha-2 identifiers, Kosovo as `XK`
 
-**Status:** accepted (Phase 1)
+**Status:** superseded by ADR-032 (2026-10-27)
 
 **Context:** Display names are ambiguous and change; SVG ids from libraries vary.
 
@@ -163,7 +163,7 @@ explained. Never store names as keys.
 
 ## ADR-010 — Country set: 250 countries & territories
 
-**Status:** accepted (2026-10-26)
+**Status:** superseded by ADR-032 (2026-10-27)
 
 **Context:** 195 sovereign states is tidy but makes common travel destinations
 (Hong Kong, Greenland, Puerto Rico, Réunion, Curaçao) unmarkable. 249 ISO
@@ -185,7 +185,7 @@ verify separate `PS` and `IL` paths and labels.
 
 ## ADR-011 — Client-side SVG → canvas PNG export, no headless browser
 
-**Status:** accepted (Phase 1)
+**Status:** accepted (Phase 1, implemented Phase 6; see ADR-033)
 
 **Context:** Users want a shareable image. Server-side rendering needs a headless
 browser, extra infrastructure, and a second authorization surface.
@@ -451,7 +451,7 @@ app.
 
 ## ADR-025 — Curated `@svg-maps/world` plus a custom Antarctica outline
 
-**Status:** accepted (Phase 3)
+**Status:** superseded by ADR-032 (2026-10-27)
 
 **Context:** The map needs 250 recognizable units, including separate Palestine
 and Israel paths, small territories, and Antarctica. The Phase 1 plan named
@@ -554,19 +554,20 @@ remain single-use, 7-day, hashed, revocable, and high-entropy.
 **Context:** Phase 5 needs region counts that sum to the visited total. The
 generated dataset carried only codes and names, and the geometry generator
 should stay deterministic and unchanged. There is no single runtime API for
-continent membership, and country/territory assignment involves judgment calls
-at the edges.
+continent membership, and country assignment involves judgment calls at the
+edges.
 
 **Decision:** Add `src/data/country-regions.ts` as the single source of truth for
-one continent-level region per unit: Africa, Americas, Asia, Europe, Oceania, or
-Antarctica. It follows the United Nations M49 geoscheme at the continent level.
+one continent-level region per country: Africa, Americas, Asia, Europe, or
+Oceania. It follows the United Nations M49 geoscheme at the continent level.
 Russia is Europe; Türkiye, Cyprus, Armenia, Azerbaijan, Georgia, and Kazakhstan
-are Asia; dependent territories follow their geographic continent. The mapping
-is attached to the generated list by `src/data/countries.ts`, so consumers keep
-one `countries` import and no extra country table or migration is needed.
+are Asia. The mapping is attached to the generated list by
+`src/data/countries.ts`, so consumers keep one `countries` import and no extra
+country table or migration is needed.
 
-**Consequences:** Every unit gets exactly one assignment, enforced at startup and
-by a dataset test; the region totals sum to 250. Region names are display labels,
+**Consequences:** Every country gets exactly one assignment, enforced at startup
+and by a dataset test; after ADR-032 the region totals sum to 195 (Africa 54,
+Americas 35, Asia 48, Europe 44, Oceania 14). Region names are display labels,
 not localized. Changing the grouping is a code change plus test update, not a
 data migration, because no region value is stored in Postgres. The grouping is a
 travel-map aid, not a political statement.
@@ -611,7 +612,7 @@ visual-aid note, and to show checked state by colouring the country name and
 checkbox.
 
 **Decision:** Remove the personal visited/region/sort controls, reset action, and
-result count. Keep local search by name or code, the alphabetical 250-row
+result count. Keep local search by name or code, the alphabetical 195-row
 checklist, and the transient saving state. A checked country name and its
 checkbox use dusty rose; there is no separate "visited"/"not visited" row text.
 Remove the map legend and explanatory note. Keep the continent progress bars and
@@ -622,6 +623,68 @@ at the cost of not being able to isolate visited or regional rows. Search state
 still lasts only for the mounted view. The filtering/sorting helpers and their
 tests were removed; `country-insights.ts` now covers region counts and shared
 comparison only. This is a product-design decision, not a privacy or data change.
+
+---
+
+## ADR-032 — Exactly 195 recognized countries; retire territories and `XK`
+
+**Status:** accepted (owner revision, 2026-10-27)
+
+**Context:** The Phase 3–5 dataset used 250 units: 249 ISO 3166-1 entries plus
+Kosovo (`XK`). The owner asked for the recognized-country scope instead: only
+UN member states plus the two UN observer states. The old set made dependent
+territories, Kosovo, Taiwan, and Western Sahara selectable and labelled the
+feature "countries & territories". It also required a custom Antarctica outline
+from Natural Earth.
+
+**Decision:** Use exactly **195 recognized countries**: the 193 UN member states
+plus the Holy See (`VA`) and Palestine (`PS`). Exclude all dependent territories,
+Kosovo (`XK`), Taiwan (`TW`), Western Sahara (`EH`), Antarctica (`AQ`), and other
+non-state units. Filter `@svg-maps/world@2.0.0` through a single canonical
+195-code list in `scripts/generate-countries.mjs`; no custom geometry. Display
+`VA` as "Holy See (Vatican City)" so both terms are searchable. Continue to keep
+`PS` and `IL` as separate units. The five-region taxonomy totals 54 + 35 + 48 +
+44 + 14 = 195. Delete visits to retired codes with
+`20261027120000_limit_to_recognized_countries`, and filter unknown codes at the
+server read boundary as defence in depth.
+
+**Consequences:** Count copy, list length, region totals, tests, notices, and
+metadata all say 195 countries. The old Antarctica asset and Natural Earth
+attribution were removed. The data migration is destructive for visits to
+retired codes; it was reviewed and applied to the development and test
+databases. Existing shared maps keep working, but their combined view is limited
+to the new set. This supersedes ADR-009, ADR-010, and ADR-025. The scope is a
+product decision, not a statement about contested boundaries.
+
+---
+
+## ADR-033 — One landscape export at 2×, current user's marks only
+
+**Status:** accepted (Phase 6, 2026-10-27)
+
+**Context:** ADR-011 established client-side SVG → canvas export but left the
+layout, delivery order, and shared-map behaviour open. Phase 6 needed an
+implementation that is privacy-safe, works on phones, and does not add a server
+rendering surface. An aspect-ratio picker was considered but is optional and
+would require a second full layout and QA pass.
+
+**Decision:** Render one 1600 × 1000 landscape export SVG, rasterized at 2×
+(3200 × 2000). Keep the input to `{ visited, count, displayName?, year }` plus
+public geometry. Offer an optional user-entered title, not an account display
+name. Show the panel on both the personal map and shared maps; on a shared map,
+pass only `currentMember.countries`, never map names, other members, or
+combined data. Deliver in this order: native file share when
+`navigator.canShare({ files })` supports the PNG, otherwise a download; if
+canvas fails, download the SVG. A cancelled share does not force a download.
+Use system fonts and no remote assets.
+
+**Consequences:** The image is crisp at phone-share resolution and small enough
+for mobile canvas limits. Shared-map export is explicitly a personal-map export,
+which is a privacy win but may surprise users; the panel copy says so. There is
+no aspect-ratio picker or custom theme. Physical iOS/Android share-sheet and
+cross-browser canvas checks remain manual QA gaps. The export input type is the
+boundary that keeps future shared/account fields out; adding one requires a
+deliberate type change and privacy review.
 
 ---
 

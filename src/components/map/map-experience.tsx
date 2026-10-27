@@ -13,6 +13,7 @@ import {
   type CountryCode,
 } from "@/data/countries";
 import { setVisitedCountryAction } from "@/server/actions/visits";
+import { ExportMapPanel } from "@/components/export/export-map-panel";
 import { inputClass, secondaryButtonClass } from "@/components/ui/form";
 import { MapAttribution } from "./map-attribution";
 import { RegionBreakdown } from "./region-breakdown";
@@ -352,6 +353,8 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
           )}
         </section>
       </div>
+
+      <ExportMapPanel visited={visited} geometry={geometry} />
 
       <MapAttribution />
     </div>

@@ -1,9 +1,10 @@
 # AtlasShare — Progress
 
-**Current phase:** Phase 5 — Insights and filters (**built and verified,
-awaiting approval**).
-**Status:** Phases 1–4 are approved. Phase 5 is implemented, checked, and
-browser-tested in production mode; it needs owner approval before Phase 6 starts.
+**Current phase:** Phase 6 — Image export (**built and verified, awaiting
+approval**).
+**Status:** Phases 1–5 are approved. Phase 6 is implemented, checked, and
+browser-tested in production mode on the 195-country dataset. It needs owner
+approval before Phase 7 starts.
 **Last updated:** 2026-10-27.
 
 This is the first file to read when resuming work. It reflects what is actually
@@ -15,25 +16,70 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | --- | --- | --- |
 | 1. Foundation & planning | ✅ Complete (approved) | Runnable branded skeleton + full docs. Commit `ad7746c`. |
 | 2. Accounts & authentication | ✅ Complete (approved 2026-10-26) | Auth, settings, reset, email plumbing, first migration. |
-| 3. Country dataset & personal map | ✅ Complete (approved 2026-10-26) | 250-unit dataset, private map, visited toggle, integration tests, browser QA. |
+| 3. Country dataset & personal map | ✅ Complete (approved 2026-10-26) | Private map, visited toggle, integration tests, browser QA. Dataset revised to 195 on 2026-10-27. |
 | 4. Shared maps | ✅ Complete (approved 2026-10-27) | Create/manage maps, invitations, member roles, combined read-only view, two-account QA. |
-| 5. Insights & filters | ✅ Built, awaiting approval (2026-10-27) | Region field, continent stats, shared comparison, no migration. |
-| 6. Image export | ⛔ Not started | — |
+| 5. Insights & filters | ✅ Complete (approved 2026-10-27) | Region field, continent stats, shared comparison, no schema change. |
+| 6. Image export | ✅ Built, awaiting approval (2026-10-27) | 3200 × 2000 PNG, share/download/SVG fallback, own-visits privacy, browser QA. |
 | 7. Public site & PWA | ⛔ Not started | — |
 | 8. Hardening, QA & deployment | ⛔ Not started | — |
 
 ## 2. What exists today
 
+### Image export (Phase 6)
+
+- `src/components/export/export-map-svg.tsx` is a pure inline SVG export layout:
+  1600 × 1000 landscape, system fonts only, all 195 country paths, count,
+  percentage, progress bar, optional title, brand mark, year, and footer. It has
+  no external images, fonts, or links, so canvas is not tainted.
+- `src/lib/export-map.ts` accepts only `{ visited, count, displayName?, year }`.
+  It drops unknown/retired/duplicate codes, derives the count from the cleaned
+  set, collapses whitespace, caps the title at 40 characters, and normalises the
+  year.
+- Delivery: rasterize at 2× with canvas to a 3200 × 2000 PNG. If
+  `navigator.canShare({ files })` supports the file, open the native share sheet;
+  otherwise download. A cancelled share does not force a download. If canvas
+  fails, download the same inline SVG.
+- `src/components/export/export-map-panel.tsx` renders on the personal map and on
+  shared maps. It has a title field, visible preview, progress/status/error
+  states, and privacy copy. On a shared map it receives only
+  `currentMember.countries`; map names, other members, combined counts, emails,
+  ids, and visit rows are never passed to the renderer.
+- The export is one landscape layout. There is no aspect-ratio picker, PDF,
+  animated export, server-side render, custom theme, or region breakdown in the
+  image.
+- Tests cover input minimality/sanitisation, 0/2/all visited, 195 exported paths,
+  no external assets, escaped title text, and shared-map own-visits isolation.
+
+### Country dataset revision (2026-10-27)
+
+- The canonical dataset is now exactly **195 recognized countries**: the 193 UN
+  member states plus the Holy See (`VA`) and Palestine (`PS`). The scope excludes
+  dependent territories, Kosovo (`XK`), Taiwan (`TW`), Western Sahara (`EH`),
+  Antarctica (`AQ`), and all other non-state units.
+- `scripts/generate-countries.mjs` filters `@svg-maps/world@2.0.0` through one
+  canonical code list. It emits 195 metadata entries and 195 paths, rejects any
+  other package version, and is deterministic. No Natural Earth or custom
+  Antarctica geometry remains.
+- Holy See's display name is **"Holy See (Vatican City)"** so both terms are
+  searchable. `PS` and `IL` remain separate units.
+- Five continent regions total 195: Africa 54, Americas 35, Asia 48, Europe 44,
+  Oceania 14. The old Antarctica region and dependent-territory assignments are
+  gone.
+- Migration `20261027120000_limit_to_recognized_countries` deletes visits to
+  retired codes. It was applied to the Neon development database and the local
+  test database. The server read boundary also filters unknown codes.
+- The public geometry asset is ~1.1 MB raw / ~377 KB compressed. Copyright
+  attribution now names only `@svg-maps/world` (CC-BY-4.0).
+
 ### Insights and filters (Phase 5)
 
-- Every one of the 250 units now carries a continent-level region from
-  `src/data/country-regions.ts` (Africa, Americas, Asia, Europe, Oceania,
-  Antarctica), attached by `src/data/countries.ts`. The grouping uses UN M49 at
-  the continent level; transcontinental units use their UN region and dependent
-  territories follow their geographic continent. It is static code, not a table
-  or migration.
+- Every one of the 195 countries now carries a continent-level region from
+  `src/data/country-regions.ts` (Africa, Americas, Asia, Europe, Oceania),
+  attached by `src/data/countries.ts`. The grouping uses UN M49 at the continent
+  level; transcontinental countries use their UN region. It is static code, not a
+  table or migration.
 - The personal country list stays deliberately simple after owner review: one
-  search field and the alphabetical 250-row checklist. There are no
+  search field and the alphabetical 195-row checklist. There are no
   visited/region/sort controls, reset action, or result count. A checked country
   name and its checkbox use dusty rose; there is no separate "visited"/"not
   visited" row text. The map legend and visual-aid note were removed.
@@ -99,23 +145,23 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 
 ### Country dataset and personal map (Phase 3)
 
-- Canonical dataset: 250 units (249 ISO 3166-1 entries plus Kosovo `XK`),
-  generated from `@svg-maps/world@2.0.0` (CC-BY-4.0) plus a committed Natural
-  Earth 1:10m Antarctica outline (public domain). Palestine (`PS`) and Israel
-  (`IL`) are separate units. Generated codes/names are in
-  `src/data/countries.generated.ts`; the hand-authored continent assignment is
-  in `src/data/country-regions.ts`; geometry is in `public/map/countries.json`.
-- `scripts/generate-countries.mjs` removes `go`/`ju`, merges six `um-*`
-  subdivisions into `UM`, adds `AQ`, normalizes names, sorts codes, asserts the
-  count, creates output directories, and requires exactly `@svg-maps/world`
-  `2.0.0`. `npm run data:countries` reproduces both outputs deterministically.
-- `/map` is a signed-in, user-scoped page: a 250-path SVG map, searchable
-  250-row country list, count/progress bar, continent stats, empty state,
-  geometry loading/error/retry, route error boundary, and source/licence
+- The current canonical dataset is the revised 195 recognized countries described
+  above. It was originally built as 250 units on 2026-10-26 and converted on
+  2026-10-27. Palestine (`PS`) and Israel (`IL`) are separate units. Generated
+  codes/names are in `src/data/countries.generated.ts`; the hand-authored
+  continent assignment is in `src/data/country-regions.ts`; geometry is in
+  `public/map/countries.json`.
+- `scripts/generate-countries.mjs` filters the source to the canonical 195,
+  normalizes names, sorts codes, asserts the count, creates output directories,
+  and requires exactly `@svg-maps/world` `2.0.0`. `npm run data:countries`
+  reproduces both outputs deterministically.
+- `/map` is a signed-in, user-scoped page: a 195-path SVG map, searchable
+  195-row country list, count/progress bar, continent stats, export panel, empty
+  state, geometry loading/error/retry, route error boundary, and source/licence
   disclosure.
 - Map geometry is fetched after first paint from `/map/countries.json`, validated
-  against all 250 codes, and is not bundled into JavaScript. Raw asset size is
-  ~1.2 MB; local production compression measured ~398 KB. It is public data.
+  against all 195 codes, and is not bundled into JavaScript. Raw asset size is
+  ~1.1 MB; local production compression measured ~377 KB. It is public data.
 - Visits are stored in `visited_countries` with a unique `(userId, countryCode)`
   constraint. `setVisitedCountryAction` rejects unauthenticated callers and
   codes outside the dataset; reads/writes are scoped to the session user.
@@ -191,14 +237,85 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 
 ### Not built (do not assume otherwise)
 
-No image export (Phase 6), no final landing page or PWA (Phase 7), no CI, and no
-deployment. Phases 4 and 5 added no migrations; the Phase 2 schema is in use.
-Visited state has no notes or dates (D2), and there are no charts beyond the
-small CSS region bars.
+No final landing page or PWA (Phase 7), no CI, and no deployment. Phases 4–6
+added no schema change; the Phase 2 schema is in use, plus the 195-country data
+migration. Visited state has no notes or dates (D2), there are no charts beyond
+the small CSS region bars, and the export does not include region statistics,
+aspect-ratio choices, PDF, or animation.
 
 ## 3. Verification
 
+### Phase 6 verification (2026-10-27)
+
+Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
+(headless CDP), production build served on `localhost:3001` because port 3000
+was occupied. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
+`http://localhost:3001`. The in-app automation tab was hidden and paused
+`requestAnimationFrame`, so export QA used a visible-equivalent headless Chrome
+session. The QA account was created successfully; the welcome email failed with
+Brevo 401 because the local egress IP was not authorized, which did not affect
+the map.
+
+| Check | Command / method | Result |
+| --- | --- | --- |
+| Lint | `npm run lint` | ✅ exit 0 |
+| Types | `npm run typecheck` | ✅ exit 0 |
+| Tests | `npm test` | ✅ **123/123 passed (20 files)** |
+| Full check | `npm run check` | ✅ exit 0 |
+| Production build | `npm run build` | ✅ exit 0; routes unchanged |
+| Dataset count | generator + tests + browser | ✅ 195 rows, 195 interactive paths, 195 export paths |
+| Retired codes | tests + browser | ✅ no `AQ`, `XK`, `TW`, `EH`, or territories; `VA` and `PS` present |
+| Region totals | unit test | ✅ 54 + 35 + 48 + 44 + 14 = 195 |
+| Migration | `prisma migrate deploy` + status | ✅ applied to Neon dev and local test; schema up to date |
+| Export empty state | browser + component | ✅ 0 of 195; every export path unvisited |
+| Export marked state | production browser | ✅ SE + JP; exactly those two paths visited in preview |
+| Export all-visited state | component | ✅ all 195 paths visited |
+| Optional title | production browser | ✅ "Phase Six QA" rendered as text |
+| External export assets | browser + component | ✅ zero `<image>`, `<foreignObject>`, or `href` |
+| Native share payload | headless Chrome with recorder | ✅ PNG `atlasshare-map-2026-2.png`, 827,474 bytes |
+| PNG download | headless Chrome | ✅ 3200 × 2000, 827,474 bytes |
+| SVG fallback | canvas disabled | ✅ 1,188,188-byte SVG with the two own visits |
+| Shared-map isolation | component test | ✅ another member's country stays unvisited; own marks only |
+| OCR legibility | macOS Vision on PNG | ✅ title, 2, of 195, 1.0%, tagline, footer; no overlap |
+| Responsive layout | headless Chrome CDP | ✅ 320/390 px no horizontal overflow; map → list → export order |
+| Physical share sheet | manual | ⬜ not run; no physical iOS/Android device |
+| Safari/Firefox | manual | ⬜ not run |
+| Shared export browser fixture | manual | ⬜ not run; automated isolation test passes |
+| Keyboard/screen reader | manual | ⬜ not run |
+| Visual design approval | human review | ⬜ delegated to owner |
+
+#### Phase 6 defects found and fixed
+
+- No application defect was found in the export flow. The initial “Loading your
+  map…” state in the automation pane was the known hidden-tab streaming artifact
+  (section 6.4 of `TESTING.md`), not an export or map bug. A normal headless page
+  revealed the content and completed all export checks.
+- The export title is rendered through React as text; a dedicated test now proves
+  a `<script>`-shaped title cannot create markup.
+
+### Dataset revision verification (2026-10-27)
+
+- `npm run data:countries` completed with 195 metadata entries, 195 paths, and no
+  Antarctica/custom geometry dependency. Running twice produced identical output.
+- `src/data/countries.test.ts` asserts exactly 195 unique alpha-2 countries,
+  non-empty unique names, separate `PS`/`IL`, the Holy See display name, retired
+  code exclusions, a path for every country, and exactly one region per country.
+- `src/data/country-insights.test.ts` asserts region sums and unknown-code
+  handling; the region totals are 54/35/48/44/14.
+- Migration `20261027120000_limit_to_recognized_countries` deletes rows outside
+  the 195 set. It was applied successfully to the Neon dev branch and local
+  `atlasshare_test`; `prisma migrate status` reports up to date.
+- Browser QA confirmed a 195-row list, 195 interactive map paths, 195 export
+  paths, and counts reading "of 195".
+- The previous Phase 5 browser numbers in this file were measured on the old
+  250-unit dataset and are retained as historical results below.
+
 ### Phase 5 verification (2026-10-27)
+
+Historical note: the browser counts in this section were measured on the original
+250-unit dataset, before the 195-country revision. The region tests and copy were
+subsequently updated to 195. Automated results in this section are the Phase 5
+run; the current full suite is in Phase 6 above.
 
 Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
 (headless CDP), production build served on `localhost:3001` because port 3000
@@ -246,6 +363,9 @@ was occupied. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
   page apart.
 
 ### Phase 4 verification (2026-10-26)
+
+Historical note: these browser checks ran on the original 250-unit dataset. Their
+counts are retained as recorded; the current dataset is 195 after ADR-032.
 
 Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
 (headless CDP, the app browser pane, and a separate headless Chrome CDP session),
@@ -299,6 +419,9 @@ another project. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
 - **Single-member shared maps said “1 of 1 members”.** Corrected the plural.
 
 ### Phase 3 verification (2026-10-26)
+
+Historical note: these browser checks ran on the original 250-unit dataset. Their
+counts are retained as recorded; the current dataset is 195 after ADR-032.
 
 Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
 (headless CDP and the app's browser pane), production build served on
@@ -396,18 +519,37 @@ Full records in `DECISIONS.md` (ADR-017 onwards).
 
 ### Phase 3 decisions
 
-Full records in ADR-024, ADR-025, and §5.
+Full records in ADR-024, ADR-032, and §5. ADR-025 recorded the original
+250-unit/Antarctica source and is superseded by ADR-032.
 
-- Use the curated `@svg-maps/world@2.0.0` dataset plus a custom Natural Earth
-  1:10m Antarctica outline; keep the generator database-free and deterministic.
+- Use the curated `@svg-maps/world@2.0.0` dataset filtered to 195 recognized
+  countries; keep the generator database-free and deterministic. The former
+  Natural Earth Antarctica outline is removed.
 - Keep visited state only (ADR-024): no notes, dates, or history UI.
-- Fetch public geometry at runtime instead of bundling it; validate all 250 codes
-  before rendering; never put visit data in the asset.
+- Fetch public geometry at runtime instead of bundling it; validate all 195
+  codes before rendering; never put visit data in the asset.
 - On narrow screens, put the map first and the country list below it; from `lg`
   upward, place them side by side. Keep the list keyboard-accessible.
-- No new database migration; `visited_countries` from Phase 2 is sufficient.
+- No new schema change; `visited_countries` from Phase 2 is sufficient. The
+  2026-10-27 dataset revision adds one data-only migration to delete retired
+  codes.
 - Auth forms submit with `method="post"`; this is a hardening fix, not a new auth
   flow.
+
+### Phase 6 decisions
+
+Full records in ADR-011 (original approach) and ADR-033 (implementation).
+
+- One 1600 × 1000 landscape export rendered at 2× (3200 × 2000). No
+  aspect-ratio picker, PDF, animation, or server-side rendering.
+- The export input is exactly `{ visited, count, displayName?, year }`. The title
+  is user-entered and optional; the account display name is not used.
+- The panel appears on personal and shared maps. A shared-map export uses only
+  `currentMember.countries`; it is intentionally a personal-map export and the
+  copy says so.
+- Delivery order: native file share when supported, then PNG download, then SVG
+  download if canvas fails. A cancelled share does not force a download.
+- No external fonts/images; system font stacks and inline paths only.
 
 ### Phase 5 decisions
 
@@ -415,9 +557,9 @@ Full records in ADR-029, ADR-030, and ADR-031.
 
 - Region is static dataset metadata, not a database table: UN M49 continent-level
   grouping in `src/data/country-regions.ts`, attached to the canonical country
-  list, with one assignment per unit. Russia is Europe; Türkiye, Cyprus,
-  Armenia, Azerbaijan, Georgia, and Kazakhstan are Asia; dependent territories
-  follow geographic continent.
+  list, with one assignment per country. Russia is Europe; Türkiye, Cyprus,
+  Armenia, Azerbaijan, Georgia, and Kazakhstan are Asia. After ADR-032, the five
+  regions total 54/35/48/44/14 = 195.
 - The personal country list is search-only and alphabetical after owner review:
   no visited/region/sort controls. Checked names and checkboxes use rose; the
   map legend and visual-aid note were removed. Search is local client state.
@@ -458,18 +600,21 @@ Full records in ADR-012, ADR-013, and ADR-026.
 
 ## 5. Resolved decisions
 
-### D1 — Country set (resolved 2026-10-26)
+### D1 — Country set (revised 2026-10-27)
 
-- Use **250 countries & territories**: 249 ISO 3166-1 entries + Kosovo,
-  labelled consistently, with territories counted separately.
+- Use exactly **195 recognized countries**: the 193 UN member states plus the
+  Holy See (`VA`) and Palestine (`PS`). Exclude dependent territories, Kosovo
+  (`XK`), Taiwan (`TW`), Western Sahara (`EH`), Antarctica (`AQ`), and other
+  non-state units. Label the feature "countries".
 - Palestine (`PS`) and Israel (`IL`) are both standalone map units and must never
-  be merged. The dataset generator must explicitly verify both paths and labels.
-- Implemented source: `@svg-maps/world@2.0.0` (CC-BY-4.0), removing `go`/`ju`,
-  merging six `um-*` paths into `UM`, and adding `AQ` from a committed Natural
-  Earth 1:10m outline (public domain). The generator asserts separate `PS` and
-  `IL` paths and a total of 250.
-- This is a comprehensive dataset, not a political endorsement. Changing the set
-  later needs a data migration, orphan-row review, and copy changes.
+  be merged. Holy See is displayed as "Holy See (Vatican City)" so both terms are
+  searchable; its code remains `VA`.
+- Implemented source: `@svg-maps/world@2.0.0` (CC-BY-4.0), filtered through the
+  canonical 195-code list in `scripts/generate-countries.mjs`. No custom
+  Antarctica outline or Natural Earth dependency remains.
+- The revision is a product-scope decision, not a statement about contested
+  boundaries. It needed a data migration, orphan-row review, and copy changes,
+  all of which are recorded above.
 
 ### D2 — Notes/dates (resolved 2026-10-26)
 
@@ -483,26 +628,27 @@ Full records in ADR-012, ADR-013, and ADR-026.
 
 | Item | Status | Needed for |
 | --- | --- | --- |
-| Phase 5 approval | built and verified; not yet approved | Starting Phase 6 |
-| Neon dev branch + connection strings | connected; Phase 2 migration applied | Deployment verification |
-| Brevo account + verified sender | configured; prior test delivered/opened | Reset/invitation email validation |
+| Phase 6 approval | built and verified; not yet approved | Starting Phase 7 |
+| Neon dev branch + connection strings | connected; both migrations applied | Deployment verification |
+| Brevo account + verified sender | configured; delivery previously verified, but the local QA egress IP now gets 401 | Reset/invitation email validation |
 | Brevo production domain authentication | optional; not configured | Better deliverability in Phase 8 |
+| Physical iOS/Android + Safari/Firefox QA | not available | Confirming native share sheets and canvas limits |
 | Approval to push to `origin` | not given | Sharing the repository |
 | Domain name (optional) | undecided | Phase 8 |
 
-Phases 1–4 are approved. Phase 5 is built and verified and awaits explicit
-approval before Phase 6. No credentials are committed; `.env.example` documents
+Phases 1–5 are approved. Phase 6 is built and verified and awaits explicit
+approval before Phase 7. No credentials are committed; `.env.example` documents
 the expected variables.
 
 ## 7. Repository state
 
 - Local git repository on `main`. Phase 1 is `ad7746c`; Phase 2 is `3065b2f`;
   the Phase 2 documentation commit is `6ae3b7c`.
-- Phase 3 is committed locally in `0abebaf` plus the map-order follow-up; run
-  `git log --oneline` for the exact history. Phase 4 is committed locally after
-  its final check. Phase 5 is committed locally after its final check; run
-  `git log --oneline` for the exact hash. **Not pushed** — pushing needs explicit
-  approval.
+- Phase 3 is committed locally in `0abebaf` plus the map-order follow-up; Phase
+  4 is committed locally; Phase 5 is committed locally in `511a42c` and
+  `669e806`. The 195-country conversion and Phase 6 are committed separately
+  after this documentation update; run `git log --oneline` for the exact hashes.
+  **Not pushed** — pushing needs explicit approval.
 - Remote `origin` = `https://github.com/katerikoti/AtlasShare.git`.
 - `gh` CLI is not installed; git credentials are cached.
 - `package-lock.json` is committed; `node_modules`, `.next`, `.env*`,
@@ -515,15 +661,20 @@ the expected variables.
   `phase5.member@example.com` plus a “Phase 5 comparison” shared map. These were
   deleted after QA; cascades removed sessions, visits, memberships, and the owned
   map. A follow-up owner-review QA account (`phase5.review@example.com`) was also
-  deleted. No QA data is left in the development database.
+  deleted.
+- Phase 6 browser QA used `phase6.qa.20261027@example.com`; it was deleted after
+  the export checks, so no QA data is left in the development database. The
+  temporary headless Chrome profiles and downloaded QA images live outside the
+  repository.
 
 ## 8. Next steps
 
-1. Owner reviews Phase 5 and explicitly approves or requests changes.
-2. Do not start Phase 6 until that approval; do not push without permission.
-3. Complete the remaining manual checks if desired: physical touch, Safari and
-   Firefox, keyboard-only, screen reader, invite-email rendering, authenticated
-   Lighthouse, and visual design approval.
+1. Owner reviews Phase 6 and explicitly approves or requests changes.
+2. Do not start Phase 7 until that approval; do not push without permission.
+3. Complete the remaining manual checks if desired: physical iOS/Android share
+   sheets, Safari/Firefox export rendering, a two-member shared-map browser
+   export, keyboard-only and screen-reader passes, authenticated Lighthouse, and
+   visual design approval.
 4. Decide before launch whether to remove the unused `note` /
    `firstVisitedAt` columns or keep them reserved.
 5. Keep the shared-rate-limit, email-verification, and invitation-token log
@@ -537,27 +688,37 @@ the expected variables.
   visually approve the rendered map. Physical-phone touch, Safari/Firefox,
   keyboard-only navigation, screen-reader output, geometry error/retry, offline,
   and throttled-mobile performance remain unverified.
+- **Export cross-browser and physical-share QA are incomplete.** The native share
+  payload, PNG download, and SVG fallback were exercised in headless Chrome, but
+  no physical iOS/Android device, Safari, or Firefox run has confirmed the share
+  sheet, attachment opening, font metrics, or canvas limits.
+- **The export is one fixed landscape layout.** It is 3200 × 2000, with an
+  optional 40-character title; there is no aspect-ratio picker, custom theme,
+  PDF, animation, or region breakdown. A shared-map export intentionally contains
+  only the current member's own marks, which may surprise users despite the copy.
 - **Region grouping is a travel-map convention, not a political statement.**
   It follows UN M49 continents, so Cyprus, Türkiye, Armenia, Azerbaijan, Georgia,
-  and Kazakhstan count as Asia and Russia counts as Europe. Territories follow
-  their geographic continent. Region labels are English-only; a user expecting a
-  different convention may disagree at the edges.
+  and Kazakhstan count as Asia and Russia counts as Europe. Region labels are
+  English-only; a user expecting a different convention may disagree at the
+  edges. The 195-country scope excludes territories and several contested or
+  non-recognised units; that is a product decision, not a boundary claim.
 - **Search state is not in the URL.** It resets on reload and there is no saved
   search preference. Filter/sort controls were removed after owner review.
 - **Shared comparison is derived from the loaded aggregate.** It is not real-time
   and does not re-query on a timer; opening or refreshing the page picks up new
   visits. "Visited by everyone" naturally becomes empty as members join.
-- **No charting library or exportable stats.** Region bars are CSS; statistics
-  are not included in a CSV/PNG export.
-- **Authenticated pages were not Lighthouse-audited in Phase 5.** The earlier
+- **No charting library.** Region bars are CSS. The image export includes the
+  count, percentage, and map, but not the region breakdown; there is no CSV
+  export.
+- **Authenticated pages were not Lighthouse-audited in Phase 6.** The earlier
   100/100/100 result applies only to the public landing and invitation pages.
-- **Geometry is a public 1.2 MB asset.** Local production compresses it to
-  ~398 KB; it is ETag-revalidated (`max-age=0`) at an unversioned path. A CDN
+- **Geometry is a public 1.1 MB asset.** Local production compresses it to
+  ~377 KB; it is ETag-revalidated (`max-age=0`) at an unversioned path. A CDN
   should use a short TTL or a versioned URL if long caching is desired. It never
   contains visit data.
-- **Antarctica uses an approximate projection** from Natural Earth 1:10m; the
-  left edge is slightly clipped by the `0 0 1010 760` viewBox. It is a visual
-  outline, not a survey boundary.
+- **The 195-country map has no Antarctica outline and no dependent territories.**
+  This is deliberate after ADR-032; do not reintroduce a "countries & territories"
+  toggle without a new product decision, migration review, and copy update.
 - **No pan/zoom.** Narrow screens show the map first and the list below; the map
   is a visual shortcut, not the only input.
 - **Shared maps are read-only and not real-time.** Members update their own map
@@ -617,6 +778,6 @@ the expected variables.
 2. Run `npm ci` and `npm run check`; confirm `TEST_DATABASE_URL` for integration.
 3. Start local Postgres if needed and confirm `DATABASE_URL` / `DIRECT_URL`.
 4. Check the blockers and known limitations above.
-5. Do not start Phase 6 without explicit approval; do not push without approval.
+5. Do not start Phase 7 without explicit approval; do not push without approval.
 6. At the end of any work: update this file, run `npm run check` and
    `npm run build`, report honestly, and stop.

@@ -1,8 +1,9 @@
 # AtlasShare — Product Specification
 
-Status: **agreed direction, Phase 4 implemented and verified; awaiting
-approval.** Requirements here are the target for the whole build. Each phase
-implements a slice; see `DEVELOPMENT_PLAN.md` and `PROGRESS.md`.
+Status: **agreed direction; Phases 1–5 approved, Phase 6 implemented and
+verified, awaiting approval.** Requirements here are the target for the whole
+build. Each phase implements a slice; see `DEVELOPMENT_PLAN.md` and
+`PROGRESS.md`.
 
 ## 1. One-sentence product
 
@@ -51,16 +52,18 @@ loggers, or people who want street-level location tracking.
 
 ## 6. Country definition (resolved)
 
-**Decision (D1, 2026-10-26):** Use **250 countries & territories**: 249 ISO
-3166-1 entries plus Kosovo. Label the feature "countries & territories"
-consistently, and count territories separately from their sovereign state.
-Kosovo is included as `XK` (documented exception).
+**Decision (D1 revision, 2026-10-27):** Use exactly **195 recognized
+countries**: the 193 UN member states plus the Holy See (`VA`) and Palestine
+(`PS`). Do not include dependent territories, Kosovo (`XK`), Taiwan (`TW`),
+Western Sahara (`EH`), or Antarctica (`AQ`). Use the label "countries"
+consistently. This is a product-scope decision based on recognised statehood; it
+is not a statement about contested boundaries or recognition politics.
 
 **Palestine and Israel:** Palestine (`PS`) and Israel (`IL`) are both standalone
 map units with their own visited state. Palestine must never be merged into
-Israel or any other entry. The dataset generator must explicitly verify separate
-paths and labels (Natural Earth's default grouping is not acceptable). Including
-both is a comprehensive-dataset decision, not a political endorsement.
+Israel or any other entry. The dataset generator explicitly verifies separate
+paths and labels. The Holy See is displayed as "Holy See (Vatican City)" so both
+terms are searchable; its code remains `VA`.
 
 ## 7. Functional requirements
 
@@ -88,8 +91,7 @@ both is a comprehensive-dataset decision, not a political endorsement.
   off-white; borders use moss. Legend explains the states.
 - **FR-M4** A searchable, keyboard-accessible country list offers the same
   toggle action as the map.
-- **FR-M5** Show a count ("23 of 250 countries & territories") and a progress
-  indicator.
+- **FR-M5** Show a count ("23 of 195 countries") and a progress indicator.
 - **FR-M6** The initial release stores only visited/unvisited state. Notes and
   visit dates are out of scope (D2).
 - **FR-M7** The map is usable on a phone (map first, with the full list below)
@@ -133,10 +135,12 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 ### 7.5 Image export (Phase 6)
 
 - **FR-E1** Export the signed-in user's personal map as a PNG at high resolution.
-- **FR-E2** The image contains only that user's visits and public brand
-  information — never other members' data, email, or ids.
+  Phase 6 renders a 1600 × 1000 layout at 2× (3200 × 2000).
+- **FR-E2** The image contains only the signed-in user's visits and public brand
+  information — never other members' data, email, or ids. On a shared-map page,
+  the export still uses only the current user's marks.
 - **FR-E3** Include the count and a small brand mark; clean typography; no
-  browser chrome.
+  browser chrome. The optional image title is user-entered, not account data.
 - **FR-E4** Use the native share sheet when file sharing is supported; otherwise
   download the PNG. Fall back to SVG if canvas fails.
 - **FR-E5** Export works on mobile Safari and Chrome.
@@ -227,7 +231,7 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 
 | # | Decision | Status / needed by | Outcome or recommendation |
 | --- | --- | --- | --- |
-| D1 | Country set | Resolved 2026-10-26; source in ADR-025 | 250 countries & territories; `PS` and `IL` both standalone; `@svg-maps/world` + Natural Earth AQ |
+| D1 | Country set | Resolved 2026-10-27; source in ADR-032 (supersedes ADR-009/010/025) | 195 recognized countries; `PS`, `IL`, and `VA` standalone; `@svg-maps/world` filtered |
 | D2 | Notes and visit dates | Resolved 2026-10-26 | Visited state only; notes/dates out of scope |
 | D3 | Shared map roles beyond owner/member | Resolved at Phase 4 start (ADR-013) | Owner + member only |
 | D4 | Rate-limit storage | Resolved in Phase 2 | In-memory, production-only; move to a shared store if abuse appears |

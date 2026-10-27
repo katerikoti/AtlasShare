@@ -1,7 +1,7 @@
 # AtlasShare — Development Plan
 
-Status: **Phase 5 built and verified (2026-10-27), awaiting approval.** Phases
-1–4 are approved; Phase 6 has not started.
+Status: **Phase 6 built and verified (2026-10-27), awaiting approval.** Phases
+1–5 are approved. Phase 7 has not started.
 
 ## How phases work
 
@@ -128,10 +128,11 @@ remain before deployment.
 
 **Scope**
 
-- D1 is resolved: 250 countries & territories, with Palestine (`PS`) and Israel
-  (`IL`) as separate units. Generate the country dataset + SVG paths with a
-  reproducible script; validate codes, names, and path coverage; assert both
-  paths exist; commit outputs.
+- D1 was resolved for the phase build as 250 countries & territories, with
+  Palestine (`PS`) and Israel (`IL`) as separate units. It was revised on
+  2026-10-27 to exactly 195 recognized countries (ADR-032). Generate the country
+  dataset + SVG paths with a reproducible script; validate codes, names, and
+  path coverage; assert the special paths exist; commit outputs.
 - Dataset integrity tests: unique codes, valid alpha-2, no missing names, path
   count matches the dataset.
 - Reuse the Phase 2 `visited_countries` table; no new migration is needed.
@@ -208,12 +209,13 @@ confusion about what "combined" means (copy must be explicit).
 
 ---
 
-## Phase 5 — Insights and filters
+## Phase 5 — Insights and filters ✅ (approved 2026-10-27)
 
-**Status:** implemented and verified 2026-10-27; awaiting approval. Added the
-static region field to the dataset, continent statistics, and the derived shared
-comparison. Owner review simplified the personal country list back to search
-only; the statistics and comparison remain. No database migration was needed.
+**Status:** approved 2026-10-27. Added the static region field to the dataset,
+continent statistics, and the derived shared comparison. Owner review simplified
+the personal country list back to search only; the statistics and comparison
+remain. No database migration was needed. The dataset was subsequently revised
+from 250 units to 195 recognized countries; region totals now sum to 195.
 
 **Goal:** make the map informative without turning it into a social network.
 
@@ -241,7 +243,11 @@ visits would require a separate visit-history model if ever added.
 
 ---
 
-## Phase 6 — Image export
+## Phase 6 — Image export ✅ (built and verified 2026-10-27, awaiting approval)
+
+**Status:** built and verified on the 195-country dataset. One landscape layout
+is implemented; an aspect-ratio picker was deferred because it was not cheap
+enough to justify the extra layout and QA surface.
 
 **Goal:** a map worth sharing.
 
@@ -255,6 +261,42 @@ visits would require a separate visit-history model if ever added.
 - Verify no shared-map data or account metadata can enter the component (types
   + tests).
 - Cross-browser manual checks (iOS Safari, Android Chrome, desktop).
+
+**Implemented**
+
+- `src/lib/export-map.ts` cleans the visit set, derives the count, caps the
+  optional title, and owns PNG/share/download/SVG-fallback delivery.
+- `src/components/export/export-map-svg.tsx` renders a 1600 × 1000 inline SVG
+  with system fonts, the brand palette, count/percentage, progress, brand mark,
+  and all 195 country paths. It has no external assets.
+- `src/components/export/export-map-panel.tsx` provides the title field, preview,
+  progress/error status, and the share button.
+- The panel appears on the personal map and the shared map. On a shared map it is
+  given only `currentMember.countries`; map names, other members, emails, and
+  ids are never passed to the renderer.
+- Canvas output is 3200 × 2000 (2×). If canvas creation fails, the SVG is
+  downloaded instead.
+- Tests cover input sanitisation, field minimality, 0/2/all visits, no external
+  assets, title-as-text, a 195-path export, and shared-map own-visits isolation.
+
+**Verification**
+
+- `npm run check`: 20 files, 123 tests passed.
+- `npm run build`: passed.
+- Production browser QA in headless Chrome: 195 list rows, 195 export paths,
+  correct own-visits (JP + SE only) in the PNG/SVG output, native-share file
+  payload (PNG, 827,474 bytes), PNG download at 3200 × 2000, SVG fallback,
+  mobile 320/390 px with no horizontal scroll and map → list → export order.
+- Text was read back from the PNG with macOS Vision OCR; title, count, labels,
+  tagline, and footer were legible and in the left content column.
+
+**Not verified**
+
+- Physical iOS Safari and Android Chrome share sheets.
+- Firefox and Safari desktop canvas rendering.
+- A real attachment opened from the native share sheet.
+- A full shared-map browser fixture; shared own-visits isolation is covered by
+  component tests and the export input type.
 
 **Acceptance criteria**
 

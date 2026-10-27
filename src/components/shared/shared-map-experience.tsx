@@ -12,6 +12,7 @@ import { getSharedComparison } from "@/data/country-insights";
 import type { CountryRegion } from "@/data/country-regions";
 import { secondaryButtonClass, selectClass } from "@/components/ui/form";
 import type { SharedMapView } from "@/server/shared-maps";
+import { ExportMapPanel } from "@/components/export/export-map-panel";
 import { MapAttribution } from "@/components/map/map-attribution";
 import { RegionBreakdown } from "@/components/map/region-breakdown";
 import { useMapGeometry } from "@/components/map/use-map-geometry";
@@ -56,6 +57,11 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
     const id = selected.slice("member:".length);
     return map.members.find((member) => member.id === id) ?? null;
   }, [map.members, selected]);
+
+  const currentMember = useMemo(
+    () => map.members.find((member) => member.isCurrentUser) ?? null,
+    [map.members],
+  );
 
   const viewMode: ViewMode = selectedMember
     ? "member"
@@ -443,6 +449,14 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
           addresses, account details, notes, and visit dates are not shared.
         </p>
       </section>
+
+      {currentMember ? (
+        <ExportMapPanel
+          visited={currentMember.countries}
+          geometry={geometry}
+          context="shared"
+        />
+      ) : null}
 
       <MapAttribution />
     </div>

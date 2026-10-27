@@ -1,8 +1,8 @@
 # AtlasShare — Architecture
 
-Status: **Phase 5 (insights and filters) is implemented and verified, awaiting
-approval.** Phases 1–4 are approved. Export and PWA functionality are still
-planned. Anything marked _planned_ does not exist in the codebase yet. See
+Status: **Phase 6 (image export) is implemented and verified, awaiting
+approval.** Phases 1–5 are approved. PWA functionality is still planned.
+Anything marked _planned_ does not exist in the codebase yet. See
 [`PROGRESS.md`](./PROGRESS.md) for what is actually built.
 
 ## 1. Purpose of this document
@@ -15,7 +15,7 @@ document needs an explicit update (and, for significant choices, an ADR in
 
 ## 2. Stack
 
-Versions are the ones installed at the end of Phase 2. Pin exact versions for
+Versions are the ones installed at the end of Phase 6. Pin exact versions for
 anything that affects the database, auth, or build output.
 
 | Layer | Choice | Version | Notes |
@@ -128,7 +128,7 @@ depends on the current user. The default is therefore dynamic rendering and no
 The country dataset and SVG geometry are public static assets and contain no
 user data. The generated geometry is served from `public/map/countries.json`;
 locally it is ETag-revalidated (`Cache-Control: public, max-age=0`) and
-compressed by the framework. It is ~1.2 MB raw and ~400 KB compressed. A
+compressed by the framework. It is ~1.1 MB raw and ~377 KB compressed. A
 deployment may apply a short CDN TTL, but should not use a long immutable cache
 at this unversioned path because a dataset/code update must stay in sync.
 
@@ -162,9 +162,9 @@ src/
     auth/                   # sign-in/up, forgot/reset, sign-out forms
     account/                # name, password, delete-account forms
     map/                    # SVG map, country list, region bars, geometry hook
+    export/                 # pure export SVG + export panel
     shared/                 # shared view, create/invite/settings/member forms
     ui/form.tsx             # field, message, button/input styles
-    (export/ is planned for Phase 6)
   config/
     brand.ts                # product identity (source of truth)
     env.ts                  # lazy Zod validation of server env
@@ -175,6 +175,7 @@ src/
     country-insights.ts     # pure region counts and shared comparison
   lib/
     auth-client.ts          # browser Better Auth client
+    export-map.ts           # export input, canvas/share/download helpers
     safe-redirect.ts        # same-origin post-auth `next` validation
   server/
     auth.ts                 # lazy Better Auth instance + options
@@ -195,7 +196,6 @@ prisma/
 scripts/
   better-auth-schema.config.ts
   generate-countries.mjs    # reproducible country/geometry generator
-  data/antarctica-path.txt  # custom Antarctica outline
 public/
   map/countries.json        # generated SVG geometry, fetched at runtime
                             # PWA icons/manifest planned for Phase 7
@@ -225,63 +225,60 @@ Candidate sources evaluated in Phase 1:
 
 | Source | License | Shape | Problems |
 | --- | --- | --- | --- |
-| `@svg-maps/world` 2.0.0 | CC-BY-4.0 | 256 SVG paths, ISO alpha-2 ids | **Selected base.** Missing Antarctica; includes `xk`, `ju`, `go`, and six `um-*` subdivisions; needs curation. |
+| `@svg-maps/world` 2.0.0 | CC-BY-4.0 | 256 SVG paths, ISO alpha-2 ids | **Selected base.** Contains territories, Kosovo (`XK`), and non-ISO extras; needs curation to the 195-country set. |
 | `world-countries` 5.1.0 | ODbL | 250 country records, GeoJSON per country | No geometry for `AQ` and `XK`; ODbL share-alike is awkward for app code. Not used. |
-| Natural Earth 1:10m | Public domain | 258 features | Not a clean 250-code base in the extraction tested: 239 valid unique codes, 11 required codes missing, Palestine grouped under Israel. Used only for Antarctica. |
+| Natural Earth 1:10m | Public domain | 258 features | Not a clean code base: missing small states and Palestine grouped under Israel in the tested extraction. Not used. |
 | Natural Earth 1:50m | Public domain | 242 features | Groups Palestine under Israel and misses small states; rejected. |
 
-Decision: use **`@svg-maps/world` 2.0.0 as the geometry base**, curated by
-`scripts/generate-countries.mjs`. The generator removes the two non-ISO extras
-(`go`, `ju`), merges the six U.S. Minor Outlying Islands subdivisions into one
-`UM` path, adds Antarctica (`AQ`) from a committed Natural Earth 1:10m outline,
-normalizes display names, sorts by code, and asserts 250 units. It writes
-`src/data/countries.generated.ts` and `public/map/countries.json`; both are
-committed and deterministic. The helper in `src/data/countries.ts` is the
-single import surface for codes and names. The script fails if the installed
-source version is not exactly `2.0.0`.
+Decision: use **`@svg-maps/world` 2.0.0 as the geometry base**, filtered by
+`scripts/generate-countries.mjs` to exactly **195 recognized countries**: the
+193 UN member states plus the Holy See (`VA`) and Palestine (`PS`). The
+generator has a single canonical code list, rejects any installed source version
+other than `2.0.0`, normalizes display names, sorts by code, and asserts 195
+metadata entries and 195 SVG paths. It writes `src/data/countries.generated.ts`
+and `public/map/countries.json`; both are committed and deterministic. The
+helper in `src/data/countries.ts` is the single import surface for codes and
+names.
 
-Natural Earth 1:50m was the original plan, but it groups Palestine under Israel
-and does not include enough small territories. Natural Earth 1:10m was also not
-clean enough as a sole base. The selected source already contains separate
-`PS` and `IL` paths; the generator still asserts both exist and are distinct.
+The filtered set excludes dependent territories, Kosovo (`XK`), Taiwan (`TW`),
+Western Sahara (`EH`), Antarctica (`AQ`), and all other non-state units. This is
+a product-scope decision (ADR-032), not a statement about contested boundaries.
+The Holy See's display name is **"Holy See (Vatican City)"** so both terms are
+searchable; its code is `VA`. Palestine (`PS`) and Israel (`IL`) remain separate
+units and are never merged.
 
-Decision (D1, 2026-10-26): the map shows **249 ISO 3166-1 entries plus Kosovo
-(250 "countries & territories")**. This fixes the dataset, count text, and
-export. Label the feature "countries & territories" everywhere. Palestine (`PS`)
-and Israel (`IL`) are separate units and are never merged. The generated
-metadata carries codes and names; geometry stays in the fetched JSON asset.
-
-Decision (Phase 5, ADR-029): every unit also carries one continent-level
+Decision (Phase 5, ADR-029): every country also carries one continent-level
 `region`. The assignment lives in `src/data/country-regions.ts`, follows the
 United Nations M49 geoscheme at the continent level, and is attached to the
 generated list by `src/data/countries.ts`. Transcontinental units use their UN
-region (Russia → Europe, Türkiye → Asia); dependent territories follow their
-geographic continent. This keeps `countries` as the single import surface while
-leaving the geometry generator unchanged. A test asserts exactly one assignment
-per unit and that region totals sum to 250.
+region (Russia → Europe, Türkiye → Asia). This keeps `countries` as the single
+import surface while leaving the geometry generator unchanged. A test asserts
+exactly one assignment per country and that region totals sum to 195 (Africa 54,
+Americas 35, Asia 48, Europe 44, Oceania 14).
 
 Identifier rules:
 
 - Store ISO 3166-1 alpha-2 codes, uppercase, as the primary key of a visit.
-- The only documented exception is Kosovo, stored as `XK` (a user-assigned code
-  used by the EU and widely by software; not an official ISO assignment).
+- Every code must be one of the 195 canonical countries. There is no
+  user-assigned-code exception after the dataset revision.
 - Never key data on display names or SVG path ids that differ from the codes.
 - Validate every incoming code against the committed dataset on the server.
 - **Palestine (`PS`) is a country and is always its own map unit.** It is never
   merged into Israel or any other path.
-- Attribution for the CC-BY-4.0 source and the public-domain Antarctica outline
-  lives in the map's "About the map data" disclosure and the repository docs.
+- Attribution for the CC-BY-4.0 source lives in the map's "About the map data"
+  disclosure and the repository docs. The former Antarctica outline and its
+  Natural Earth attribution were removed with the 195-country conversion.
 
 ### 7.2 Rendering
 
 - A hand-built React SVG map with `viewBox="0 0 1010 760"`, generated from the
   committed dataset. No map library, tile server, or runtime geo dependency.
 - Geometry is fetched after first paint from `/map/countries.json` and validated
-  against all 250 codes. It is not bundled into the client JavaScript. The map
+  against all 195 codes. It is not bundled into the client JavaScript. The map
   has its own loading and retry states.
 - Each unit is a `<path>` with `data-country="SE"` and `data-visited`; the SVG
   has an accessible name via `<title>`, and each path has a country title. The
-  parallel country list is the accessible control surface rather than 250
+  parallel country list is the accessible control surface rather than 195
   focusable SVG nodes.
 - Fills come from CSS classes driven by the design tokens: visited = dusty rose,
   unvisited = warm off-white, borders = moss. The list is keyboard accessible;
@@ -297,7 +294,7 @@ Identifier rules:
 - On narrow screens the map comes first, followed by the country list, with no
   pan/zoom dependency. From `lg` upward the map and list sit side by side. There
   is no pan/zoom implementation.
-- The asset is ~1.2 MB raw and ~400 KB compressed in local production, served
+- The asset is ~1.1 MB raw and ~377 KB compressed in local production, served
   with ETag revalidation. It contains only public geometry, never visit data.
 - The map route shows a server-rendered count and progress, a Suspense skeleton
   while the user's visits load, and a route error boundary; no private data is
@@ -308,7 +305,7 @@ Identifier rules:
 
 ### 7.3 Counting
 
-Counts are derived from the user's own visits (e.g. "23 of 250"). They are
+Counts are derived from the user's own visits (e.g. "23 of 195"). They are
 computed on the server for the initial render and updated optimistically on the
 client. Counts never include other members' visits unless the UI explicitly says
 so (e.g. "combined: 61").
@@ -380,28 +377,38 @@ Design constraints:
 Requirement: a high-quality PNG containing **only the signed-in user's map** —
 never shared-map members' histories or private account data.
 
-Approach:
+Implemented approach:
 
-1. A dedicated, pure React component renders the export SVG from the same
-   country dataset and the user's own visit set. It is not a screenshot of the
-   interactive page, so hidden UI, tooltips, and other members' data cannot leak
-   into it.
-2. Serialize the SVG with `XMLSerializer`, encode it as a data URL, draw it to a
-   `<canvas>` at a fixed high resolution (e.g. 2×–3× a 1600×1000 base).
-3. Export with `canvas.toBlob("image/png")`.
-4. Share via the Web Share API (`navigator.canShare({ files })`) on supported
-   mobile browsers; otherwise trigger a download with `<a download>`.
-5. If canvas rendering fails, fall back to downloading the SVG.
+1. `src/components/export/export-map-svg.tsx` is a pure React SVG component. It
+   receives only `{ visited, count, displayName?, year }` plus public geometry;
+   it is not a screenshot of the interactive page, so hidden UI, tooltips, and
+   other members' data cannot leak into it.
+2. `src/lib/export-map.ts` serializes the SVG with `XMLSerializer`, wraps it in a
+   blob URL, draws it to a `<canvas>` at 2× a 1600 × 1000 base (3200 × 2000),
+   and converts it with `canvas.toBlob("image/png")`.
+3. The PNG is offered through the Web Share API (`navigator.canShare({ files })`)
+   when supported; otherwise it is downloaded with `<a download>`. A cancelled
+   share does not trigger a download.
+4. If canvas creation, image loading, drawing, or PNG encoding fails, the same
+   SVG is downloaded instead.
+5. The panel appears on `/map` and on a shared map. The shared page passes only
+   `currentMember.countries`; it never passes the map name, other members,
+   combined data, emails, or ids. The optional title is user-entered, not
+   account metadata.
 
 Constraints:
 
 - No external fonts or images inside the SVG: they taint the canvas or fail to
-  load. Use system font stacks and inline paths only.
+  load. Use system font stacks and inline paths only. Tests assert there are no
+  `<image>`, `<foreignObject>`, or `href` elements.
 - Include the product mark and a small "made with <brand>" line, the map year,
   and the count. Do not include the user's email or user id.
 - The export runs client-side from data the user is already authorized to see.
   The server does not need a headless browser, which keeps hosting simple and
   avoids a second authorization surface.
+- The export is one landscape layout; an aspect-ratio picker was deferred as
+  unnecessary extra layout/QA surface. The 3200 × 2000 output is below typical
+  mobile canvas limits.
 
 ## 10. Email
 
@@ -461,7 +468,7 @@ for local Postgres.
   the country list follows; no pan/zoom is required. Page chrome and the map
   card never cause horizontal scrolling at 320 px (verified in a browser).
 - **Performance**: map route interactive quickly on a mid-range phone; geometry
-  is compressible static data (~1.2 MB raw, ~400 KB compressed locally) and is
+  is compressible static data (~1.1 MB raw, ~377 KB compressed locally) and is
   ETag-revalidated; no layout shift from late-loading fonts (system stack).
 - **Privacy**: only country-level data is stored. No IP geolocation, no
   analytics, no third-party trackers. Email addresses are visible only to the

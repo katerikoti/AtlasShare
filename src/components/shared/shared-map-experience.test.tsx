@@ -162,6 +162,32 @@ describe("SharedMapExperience", () => {
     expect(list.getByText("Japan")).toBeInTheDocument();
   });
 
+  it("exports only the current member's own visits from a shared map", async () => {
+    const { container } = render(<SharedMapExperience map={map} />);
+
+    await waitFor(() => {
+      expect(container.querySelector("[data-export-map]")).toBeInTheDocument();
+    });
+
+    const exportSvg = container.querySelector("[data-export-map]");
+    expect(exportSvg).toHaveAttribute(
+      "aria-label",
+      "Exported map: 2 of 195 countries visited.",
+    );
+    expect(
+      exportSvg?.querySelector('[data-country="SE"]'),
+    ).toHaveAttribute("data-visited", "true");
+    expect(
+      exportSvg?.querySelector('[data-country="NO"]'),
+    ).toHaveAttribute("data-visited", "true");
+    expect(
+      exportSvg?.querySelector('[data-country="FR"]'),
+    ).toHaveAttribute("data-visited", "false");
+    expect(
+      screen.getByText(/only your marks are included/i),
+    ).toBeInTheDocument();
+  });
+
   it("filters to one member without exposing mutation controls", async () => {
     render(<SharedMapExperience map={map} />);
     await screen.findByRole("img", { name: /marked by any member/i });

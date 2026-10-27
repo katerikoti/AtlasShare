@@ -5,12 +5,13 @@
 Mark the countries you have visited on a personal world map, then combine your
 map with the people you travel with.
 
-> **Project status: Phase 5 of 8 built and verified, awaiting approval —
-> insights and filters.**
+> **Project status: Phase 6 of 8 built and verified, awaiting approval —
+> image export.**
 > You can create an account, sign in/out, reset a password, manage account
-> settings, mark visited countries on a private 250-unit world map, search that
-> list, see continent-level statistics, and combine your map with invited
-> members in a private read-only shared view with a country-level comparison. There is still no image export or PWA. See
+> settings, mark visited countries on a private 195-country world map, search
+> that list, see continent-level statistics, combine your map with invited
+> members in a private read-only shared view with a country-level comparison,
+> and export a high-resolution image of your own map. There is still no PWA. See
 > [`docs/PROGRESS.md`](docs/PROGRESS.md) for exactly what exists and
 > [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md) for what comes next.
 
@@ -31,8 +32,10 @@ tracking, no feed.
 - **Better Auth** with email/password and database sessions
 - **Brevo** for transactional email (disabled automatically without a key)
 - **Vitest** + React Testing Library; Playwright planned for Phase 8
-- **Map data:** `@svg-maps/world` 2.0.0 (CC-BY-4.0) plus a public-domain
-  Natural Earth 1:10m Antarctica outline; generated locally, no map library
+- **Map data:** `@svg-maps/world` 2.0.0 (CC-BY-4.0), filtered to the 195
+  recognized countries; generated locally, no runtime map library
+- **Image export:** inline SVG → canvas PNG at 2× (3200 × 2000), Web Share with
+  files, download fallback, and an SVG fallback when canvas is unavailable
 - Hosting: Vercel (planned, Phase 8)
 
 ## Getting started
@@ -96,10 +99,10 @@ an “unrecognised IP address” message, authorize the current IP in Brevo’s
 ```
 src/
   app/            App Router routes, metadata, auth/account/map/shared/invite
-  components/     auth, account, map, shared, and UI primitives
+  components/     auth, account, map, export, shared, and UI primitives
   config/         brand identity and lazy environment validation
   data/           generated country metadata + canonical helpers
-  lib/            browser auth client, safe redirects, pure helpers
+  lib/            browser auth client, export helpers, safe redirects
   server/         auth, database, authorization, shared maps, actions, email
   test/           test setup
 docs/             specification, architecture, database, security, plan, etc.
@@ -164,8 +167,8 @@ No license has been chosen for the AtlasShare code yet. Treat the code as all
 rights reserved until one is added.
 
 The generated map geometry includes CC-BY-4.0 data from
-[`@svg-maps/world`](https://www.npmjs.com/package/@svg-maps/world) and a
-public-domain Natural Earth 1:10m Antarctica outline. Attribution and license
-links are shown in the map's “About the map data” disclosure. The full notice is
-in [`public/map/NOTICE.txt`](public/map/NOTICE.txt) and
+[`@svg-maps/world`](https://www.npmjs.com/package/@svg-maps/world), filtered to
+the 195 recognized countries. Attribution and license links are shown in the
+map's “About the map data” disclosure. The full notice is in
+[`public/map/NOTICE.txt`](public/map/NOTICE.txt) and
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

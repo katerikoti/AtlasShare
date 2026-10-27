@@ -1,8 +1,9 @@
 # AtlasShare — Deployment
 
 Status: **not deployed.** This is the Phase 8 target. Nothing here has been
-executed against a real host yet. Phases 2–3 are implemented locally; a Neon dev
-branch is connected and migrated, and Brevo has delivered test email.
+executed against a real host yet. Phases 2–6 are implemented locally; a Neon dev
+branch is connected and both migrations are applied, and Brevo has delivered
+test email. The export is client-side and adds no server service.
 
 ## 1. Target topology
 
@@ -140,7 +141,9 @@ Notes:
   violations, then enforce.
 - `style-src 'unsafe-inline'` is commonly needed for React inline styles; avoid
   widening `script-src`.
-- Verify the export (canvas/blob) works under the final CSP.
+- Verify the export (canvas/blob) works under the final CSP; it uses a blob URL
+  for the SVG and canvas, so `img-src`/`connect-src` must allow what the final
+  policy requires. The current Phase 6 browser QA ran without a production CSP.
 - Invite pages should send `Referrer-Policy: no-referrer` so tokens do not leak
   to third parties.
 
