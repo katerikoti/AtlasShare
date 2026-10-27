@@ -103,6 +103,13 @@ scoped by the authenticated user or by a verified membership.**
   query and discloses no field that the per-member filter did not already send.
   Region statistics are counts over the current view, not another person's raw
   rows.
+- The shared-map page builds its Members panel (member list, Remove/Leave,
+  Invite someone, Pending invitations) on the server and hands it to the client
+  view as rendered content (ADR-035). Owner-only parts are produced only when
+  `requireMapAccess` returns the `OWNER` role, so a member's response contains no
+  invitation emails or invite controls; the Server Actions still re-check the
+  role on every call. Moving these controls inside a collapsed "Show more"
+  dropdown is presentation only.
 
 Test requirement: for each new server action, at least one test proves a
 non-member cannot perform it and cannot read the data.

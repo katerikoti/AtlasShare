@@ -13,7 +13,6 @@ import { MapSettingsForm } from "@/components/shared/map-settings-form";
 import { RevokeInvitationButton } from "@/components/shared/revoke-invitation-button";
 import { SharedMapExperience } from "@/components/shared/shared-map-experience";
 import { brand } from "@/config/brand";
-import { countryCount } from "@/data/countries";
 import { requireMapAccess } from "@/server/authorization";
 import {
   getPendingInvitationsForMap,
@@ -77,53 +76,18 @@ export default async function SharedMapPage({
     ? await getPendingInvitationsForMap(mapId, session.user.id)
     : [];
 
-  return (
-    <div className="space-y-8">
-      <header>
-        <Link
-          href="/shared"
-          className="text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 hover:text-ink"
-        >
-          ← All shared maps
-        </Link>
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-moss">
-              Shared map · {isOwner ? "Owner" : "Member"}
-            </p>
-            <h1 className="mt-2 break-words font-display text-4xl tracking-tight">
-              {map.name}
-            </h1>
-            {map.description ? (
-              <p className="mt-3 max-w-2xl leading-relaxed text-ink-muted">
-                {map.description}
-              </p>
-            ) : null}
-          </div>
-          <p className="rounded-full border border-line/80 bg-surface/70 px-4 py-2 text-sm text-ink-muted">
-            {map.memberCount} {map.memberCount === 1 ? "member" : "members"} ·{" "}
-            {map.combinedCount} of {countryCount} marked
-          </p>
-        </div>
-      </header>
-
-      {query.joined === "1" ? (
-        <p
-          role="status"
-          className="rounded-card border border-moss/30 bg-moss/10 px-5 py-4 text-sm text-ink"
-        >
-          You joined this shared map. Your marked countries are now included in
-          the combined view.
+  const membersPanel = (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
+          Members
+        </h3>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
+          Each member&apos;s private map stays private. This view only combines
+          which countries are marked; it never changes anyone&apos;s personal
+          visits.
         </p>
-      ) : null}
-
-      <SharedMapExperience map={map} />
-
-      <Section
-        title="Members"
-        description="Each member's private map stays private. This view only combines which countries are marked; it never changes anyone's personal visits."
-      >
-        <ul className="mt-5 divide-y divide-line/70">
+        <ul className="mt-4 divide-y divide-line/70">
           {map.members.map((member) => (
             <li
               key={member.id}
@@ -157,32 +121,41 @@ export default async function SharedMapPage({
         {!isOwner ? <LeaveMapButton mapId={map.id} mapName={map.name} /> : null}
 
         {isOwner ? (
-          <p className="mt-5 text-xs leading-relaxed text-ink-muted">
+          <p className="mt-4 text-xs leading-relaxed text-ink-muted">
             Removing a member removes their contribution from this combined
             view immediately. Their personal map and visits are not deleted.
           </p>
         ) : null}
-      </Section>
+      </div>
 
       {isOwner ? (
         <>
-          <Section
-            title="Invite someone"
-            description="Invitations are single-use, expire after 7 days, and only work for the email address they are sent to. The email contains the link; you can also copy it here."
-          >
+          <div className="border-t border-line/70 pt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
+              Invite someone
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
+              Invitations are single-use, expire after 7 days, and only work for
+              the email address they are sent to. The email contains the link;
+              you can also copy it here.
+            </p>
             <InviteMemberForm mapId={map.id} />
-          </Section>
+          </div>
 
-          <Section
-            title="Pending invitations"
-            description="Revoke a link if it was sent to the wrong address or is no longer needed. Accepted invitations disappear from this list."
-          >
+          <div className="border-t border-line/70 pt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
+              Pending invitations
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
+              Revoke a link if it was sent to the wrong address or is no longer
+              needed. Accepted invitations disappear from this list.
+            </p>
             {pendingInvitations.length === 0 ? (
-              <p className="mt-5 rounded-xl border border-line/70 bg-canvas/50 px-4 py-3 text-sm text-ink-muted">
+              <p className="mt-4 rounded-xl border border-line/70 bg-canvas/50 px-4 py-3 text-sm text-ink-muted">
                 No pending invitations.
               </p>
             ) : (
-              <ul className="mt-5 divide-y divide-line/70">
+              <ul className="mt-4 divide-y divide-line/70">
                 {pendingInvitations.map((invitation) => (
                   <li
                     key={invitation.id}
@@ -204,8 +177,52 @@ export default async function SharedMapPage({
                 ))}
               </ul>
             )}
-          </Section>
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
 
+  return (
+    <div className="space-y-8">
+      <header>
+        <Link
+          href="/shared"
+          className="text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 hover:text-ink"
+        >
+          ← All shared maps
+        </Link>
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-moss">
+              Shared map · {isOwner ? "Owner" : "Member"}
+            </p>
+            <h1 className="mt-2 break-words font-display text-4xl tracking-tight">
+              {map.name}
+            </h1>
+            {map.description ? (
+              <p className="mt-3 max-w-2xl leading-relaxed text-ink-muted">
+                {map.description}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </header>
+
+      {query.joined === "1" ? (
+        <p
+          role="status"
+          className="rounded-card border border-moss/30 bg-moss/10 px-5 py-4 text-sm text-ink"
+        >
+          You joined this shared map. Your marked countries are now included in
+          the combined view.
+        </p>
+      ) : null}
+
+      <SharedMapExperience map={map} membersPanel={membersPanel} />
+
+      {isOwner ? (
+        <>
           <Section
             title="Map details"
             description="Rename the map or update its description. Everyone in the map sees these details."
@@ -228,7 +245,8 @@ export default async function SharedMapPage({
       ) : (
         <p className="rounded-card border border-line/80 bg-surface/60 p-5 text-sm leading-relaxed text-ink-muted">
           Only the owner can invite or remove people and change the map details.
-          You can leave the map above; your personal map will not be changed.
+          You can leave the map from the Show more section above; your personal
+          map will not be changed.
         </p>
       )}
     </div>

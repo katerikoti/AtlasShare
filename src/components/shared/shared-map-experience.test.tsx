@@ -49,6 +49,15 @@ const map = {
   updatedAt: new Date("2026-10-02T00:00:00.000Z"),
 } satisfies SharedMapView;
 
+function chooseInsight(name: "Visited by everyone" | "Only you" | "Not yet by anyone") {
+  fireEvent.click(screen.getByRole("button", { name: new RegExp(name) }));
+}
+
+function chooseOnlyMember(name: string) {
+  fireEvent.click(screen.getByRole("checkbox", { name: "All" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: new RegExp(name) }));
+}
+
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
@@ -93,18 +102,18 @@ describe("SharedMapExperience", () => {
     await screen.findByRole("img", { name: /marked by any member/i });
 
     expect(
-      screen.getByRole("option", { name: /visited by everyone · 1/i }),
+      screen.getByRole("button", { name: /visited by everyone/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /only you · 1/i }),
+      screen.getByRole("button", { name: /only you/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /not yet by anyone · 192/i }),
+      screen.getByRole("button", { name: /not yet by anyone/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Visited by everyone", { selector: "dt" }),
+      screen.getByRole("button", { name: /visited by everyone/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText("This view by region")).toBeInTheDocument();
+    expect(screen.getByText("By region")).toBeInTheDocument();
     expect(screen.getByText("3 of 44")).toBeInTheDocument();
   });
 
@@ -112,9 +121,7 @@ describe("SharedMapExperience", () => {
     render(<SharedMapExperience map={map} />);
     await screen.findByRole("img", { name: /marked by any member/i });
 
-    fireEvent.change(screen.getByLabelText("Show"), {
-      target: { value: "only-you" },
-    });
+    chooseInsight("Only you");
 
     await waitFor(() => {
       expect(
@@ -138,9 +145,7 @@ describe("SharedMapExperience", () => {
     render(<SharedMapExperience map={map} />);
     await screen.findByRole("img", { name: /marked by any member/i });
 
-    fireEvent.change(screen.getByLabelText("Show"), {
-      target: { value: "nobody" },
-    });
+    chooseInsight("Not yet by anyone");
 
     await waitFor(() => {
       expect(
@@ -151,8 +156,8 @@ describe("SharedMapExperience", () => {
     expect(
       screen.getByText("Countries no member has marked yet."),
     ).toBeInTheDocument();
-    expect(screen.getByText("Not marked yet")).toBeInTheDocument();
-    expect(screen.getByText("Marked by someone")).toBeInTheDocument();
+    expect(screen.queryByText("Not marked yet")).not.toBeInTheDocument();
+    expect(screen.queryByText("Marked by someone")).not.toBeInTheDocument();
 
     const list = within(
       screen.getByRole("region", { name: /countries in this view/i }),
@@ -192,9 +197,7 @@ describe("SharedMapExperience", () => {
     const { container } = render(<SharedMapExperience map={map} />);
 
     await screen.findByRole("img", { name: /marked by any member/i });
-    fireEvent.change(screen.getByLabelText("Show"), {
-      target: { value: "only-you" },
-    });
+    chooseInsight("Only you");
 
     await waitFor(() => {
       expect(container.querySelector("[data-export-map]")).toHaveAttribute(
@@ -213,9 +216,7 @@ describe("SharedMapExperience", () => {
     const { container } = render(<SharedMapExperience map={map} />);
 
     await screen.findByRole("img", { name: /marked by any member/i });
-    fireEvent.change(screen.getByLabelText("Show"), {
-      target: { value: "member:member_b" },
-    });
+    chooseOnlyMember("Ben");
 
     await waitFor(() => {
       expect(container.querySelector("[data-export-map]")).toHaveAttribute(
@@ -245,9 +246,7 @@ describe("SharedMapExperience", () => {
     render(<SharedMapExperience map={map} />);
     await screen.findByRole("img", { name: /marked by any member/i });
 
-    fireEvent.change(screen.getByLabelText("Show"), {
-      target: { value: "member:member_b" },
-    });
+    chooseOnlyMember("Ben");
 
     await waitFor(() => {
       expect(
@@ -265,6 +264,110 @@ describe("SharedMapExperience", () => {
     expect(list.getByText("France")).toBeInTheDocument();
     expect(list.queryByText("Norway")).not.toBeInTheDocument();
     expect(list.getByText("2 of 195 marked")).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Ben" })).toBeInTheDocument();
+  });
+
+  it("summarizes members, countries, and percentage before the map", async () => {
+    render(<SharedMapExperience map={map} />);
+    await screen.findByRole("img", { name: /marked by any member/i });
+
+    const summary = within(
+      screen.getByRole("region", { name: /combined progress/i }),
+    );
+    expect(summary.getByText("2 members ·", { exact: false })).toBeInTheDocument();
+    expect(summary.getByText("1.5% of the world", { exact: false })).toBeInTheDocument();
+    expect(
+      summary.getByRole("progressbar", { name: /countries in this view/i }),
+    ).toHaveAttribute("aria-valuenow", "3");
+    expect(summary.getByText("Show more")).toBeInTheDocument();
+  });
+
+  it("keeps all members checked by default and renders the members panel", async () => {
+    render(
+      <SharedMapExperience
+        map={map}
+        membersPanel={<p>Invite someone panel</p>}
+      />,
+    );
+    await screen.findByRole("img", { name: /marked by any member/i });
+
+    expect(screen.getByRole("checkbox", { name: "All" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /Ada/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Ben" })).toBeChecked();
+    expect(screen.getByText("Invite someone panel")).toBeInTheDocument();
+  });
+
+  it("returns to the combined view when a comparison is toggled off", async () => {
+    render(<SharedMapExperience map={map} />);
+    await screen.findByRole("img", { name: /marked by any member/i });
+
+    chooseInsight("Only you");
+    await screen.findByRole("img", { name: /marked by only you/i });
+    expect(screen.getByRole("button", { name: /only you/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    chooseInsight("Only you");
+    expect(
+      await screen.findByRole("img", { name: /marked by any member/i }),
+    ).toBeVisible();
+  });
+
+  it("returns to the combined view when members are changed after a comparison", async () => {
+    render(<SharedMapExperience map={map} />);
+    await screen.findByRole("img", { name: /marked by any member/i });
+
+    chooseInsight("Not yet by anyone");
+    await screen.findByRole("img", { name: /not yet marked by anyone/i });
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Ben" }));
+
+    expect(
+      await screen.findByRole("img", { name: /marked by Ada/i }),
+    ).toBeVisible();
+  });
+
+  it("treats a one-member map with All checked as the combined view", async () => {
+    const solo = {
+      ...map,
+      memberCount: 1,
+      members: [map.members[0]],
+      combinedCountries: [
+        { code: "SE", count: 1 },
+        { code: "NO", count: 1 },
+      ],
+      combinedCount: 2,
+    } satisfies SharedMapView;
+    render(<SharedMapExperience map={solo} />);
+
+    expect(
+      await screen.findByRole("img", { name: /marked by any member/i }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("region", { name: /combined progress/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("1 member ·", { exact: false })).toBeInTheDocument();
+  });
+
+  it("hides the export preview until the rose Preview button is pressed", async () => {
+    const { container } = render(<SharedMapExperience map={map} />);
+    await screen.findByRole("img", { name: /marked by any member/i });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Preview" })).toBeEnabled();
+    });
+
+    const exportSvg = container.querySelector("[data-export-map]");
+    expect(exportSvg).toBeInTheDocument();
+    expect(exportSvg).not.toBeVisible();
+    expect(screen.queryByText(/never includes member names/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+
+    expect(exportSvg).toBeVisible();
+    expect(screen.getByRole("button", { name: "Hide preview" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 });

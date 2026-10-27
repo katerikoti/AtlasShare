@@ -23,7 +23,7 @@ describe("service worker cache policy", () => {
     expect(isCacheableAsset("/icons/icon-192.png")).toBe(true);
     expect(isCacheableAsset("/map/countries.json")).toBe(true);
     expect(isCacheableAsset("/manifest.webmanifest")).toBe(true);
-    expect(isCacheableAsset("/icon.svg")).toBe(true);
+    expect(isCacheableAsset("/icon.png")).toBe(true);
 
     expect(isCacheableAsset("/api/auth/session")).toBe(false);
     expect(isCacheableAsset("/invite/raw-token")).toBe(false);

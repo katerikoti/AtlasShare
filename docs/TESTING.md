@@ -1,14 +1,16 @@
 # AtlasShare — Testing
 
 Status: **Phase 6 complete (approved 2026-10-27, including the shared-map export
-revision).**
-125 automated tests in 20 files, on the 195-country dataset. Database
+revision); Phase 7 implemented and awaiting review.**
+144 automated tests in 25 files (section 4.8), on the 195-country dataset.
+Database
 persistence, auth, shared-map authorization, map layout, search, region counts,
 image export, and browser behavior were also checked manually; the exact
-pass/blocked/not-run state is below. Results are from 2026-10-26–27 on macOS,
+pass/blocked/not-run state is below. Results from the earlier phases are from
+2026-10-26–27 on macOS,
 Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome 148 (headless CDP and
-the app's browser pane). Final `npm run check` and production rebuild results are
-recorded in section 5.1.
+the app's browser pane). Section 4.8 holds the latest `npm run check` and
+build results; section 5.1 records the Phase 6 final checks.
 
 ## 1. Principles
 
@@ -206,6 +208,39 @@ and compare hashes when changing the generator.
   address, so inbox delivery/rendering was not verified.
 - Visual rendering of transactional email and password-reset delivery are still
   not confirmed.
+
+### 4.8 Phase 7 and owner-revision checks (2026-10-27)
+
+Latest results, after the owner UI revisions (ADR-035). Command results:
+
+| Check | Result |
+| --- | --- |
+| `npm run check` | ✅ exit 0; lint clean, typecheck clean, **144/144 tests in 25 files** |
+| `npm run build` | ✅ exit 0; `/install` prerendered static; `/shared` and `/shared/[mapId]` dynamic |
+
+New or changed automated coverage (all in jsdom):
+
+- `shared-map-experience.test.tsx` (now 14 tests): summary card with member count,
+  percentage, and progress bar; "Show more"; all members checked by default; the
+  server-built members panel renders inside the dropdown; comparison toggle-off
+  returns to the combined view; changing members after a comparison returns to
+  the combined view; a one-member map with All checked is "Combined progress";
+  the export SVG is hidden until Preview is pressed and the old privacy sentence
+  is absent; the earlier export-identity tests (combined, selected member, no
+  names) still pass. The legend assertions were removed with the legend.
+- `map-experience.test.tsx`: the export preview is hidden until Preview is
+  pressed, can be hidden again, and the old privacy sentence is absent.
+- `service-worker.test.ts`: `/icon.png` (replacing `/icon.svg`) is cacheable.
+
+Dev-browser checks (the existing signed-in account, one-member map): the shared
+page order and contents, the Preview toggle (hidden → visible → hidden), the
+rose button colour, `/shared` ordering, the closed "By region" dropdown, and the
+public landing/install pages and footers.
+
+Not run: a shared map with two real members in a browser, the page as a
+non-owner, mobile widths (320/390 px) for the new shared-map layout, keyboard-
+only and screen-reader passes for the new checkboxes/dropdowns, Lighthouse on
+`/install`, and physical-device installation.
 
 ## 5. Phase 6 and Phase 5 automated and manual verification
 
@@ -605,7 +640,7 @@ page.
 | Headings | **one `h1`** per page |
 | Language | `lang="en"` |
 | Background/text colors | canvas `rgb(233, 227, 221)`, ink `rgb(43, 48, 44)` |
-| Console errors | none after adding `src/app/icon.svg`; only the deliberately requested missing page returns 404 |
+| Console errors | none after adding `src/app/icon.png`; only the deliberately requested missing page returns 404 |
 | Focus visibility | Phase 1 outline styles still apply; not re-measured this phase |
 
 ### 8.3 Not run or blocked in Phase 2

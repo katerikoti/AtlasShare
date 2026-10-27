@@ -66,6 +66,25 @@ describe("MapExperience", () => {
     ).toBeEnabled();
   });
 
+  it("keeps the export preview hidden until Preview is pressed", async () => {
+    const { container } = render(<MapExperience initialVisited={["SE"]} />);
+    await screen.findByRole("img", { name: /world map/i });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Preview" })).toBeEnabled();
+    });
+
+    const exportSvg = container.querySelector("[data-export-map]");
+    expect(exportSvg).toBeInTheDocument();
+    expect(exportSvg).not.toBeVisible();
+    expect(screen.queryByText(/never includes your email/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+    expect(exportSvg).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Hide preview" }));
+    expect(exportSvg).not.toBeVisible();
+  });
+
   it("searches by name and removes non-matching rows", async () => {
     render(<MapExperience initialVisited={[]} />);
     await screen.findByRole("img", { name: /world map/i });

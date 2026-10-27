@@ -6,7 +6,7 @@
  * A new version is how the update prompt and activate-time cleanup discover an
  * old cache. Next's hashed build assets are versioned by their own filenames.
  */
-export const SW_CACHE_VERSION = "2026-10-27.2";
+export const SW_CACHE_VERSION = "2026-10-27.3";
 export const SW_CACHE_PREFIX = "atlas-pwa-";
 export const SW_SHELL_CACHE = `${SW_CACHE_PREFIX}shell-${SW_CACHE_VERSION}`;
 export const SW_RUNTIME_CACHE_PREFIX = `${SW_CACHE_PREFIX}runtime-`;
@@ -21,7 +21,7 @@ export const OFFLINE_URL = "/offline";
  */
 export const PRECACHE_ASSETS = [
   OFFLINE_URL,
-  "/icon.svg",
+  "/icon.png",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -34,7 +34,7 @@ export const CACHEABLE_PREFIXES = ["/_next/static/", "/icons/"] as const;
 /** Exact public files that are safe to cache despite not matching a prefix. */
 export const CACHEABLE_PATHS = [
   "/map/countries.json",
-  "/icon.svg",
+  "/icon.png",
   "/manifest.webmanifest",
 ] as const;
 

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { ExportMapSvg } from "@/components/export/export-map-svg";
 import type { MapGeometry } from "@/components/map/use-map-geometry";
 import { brand } from "@/config/brand";
-import { countriesAlphabetical, type CountryCode } from "@/data/countries";
+import { type CountryCode } from "@/data/countries";
 import type { ExportMapInput } from "@/lib/export-map";
 import { getSession } from "@/server/session";
 
@@ -39,35 +39,32 @@ const sampleExport: ExportMapInput = {
 
 const features = [
   {
-    title: "Mark countries, not trips",
-    body: "A country-level map with no routes, photos, live location, or trip journals. The question is simple: where have you been?",
+    title: "Private map",
+    body: "Track the countries you have visited. The question is simple: where have you been?",
   },
   {
-    title: "Share by invitation",
-    body: "Private shared maps are invite-only. Members can see country marks and names, never email addresses or account settings.",
+    title: "Create shared maps",
+    body: "Invite your friends or family to shared maps, to see how much of the world you have covered between you.",
   },
   {
-    title: "Keep a copy",
-    body: "Export a 3200 × 2000 PNG or an SVG. The image contains country marks and public brand information, not member identities.",
-  },
-  {
-    title: "Install it, then go offline",
-    body: "Add AtlasShare to your home screen. The app shell opens offline; your map still needs a connection to load and save.",
+    title: "Export",
+    body: "Download a copy of your maps to share online or print!",
   },
 ];
 
-const steps = [
+const steps: Array<{ title: string; body: string; linkText?: string }> = [
   {
     title: "Create your private map",
     body: "Sign up with an email address and mark the countries you have visited.",
   },
   {
-    title: "Invite the people you travel with",
-    body: "Start a shared map and see your combined world without making anything public.",
+    title: "Download the app",
+    body: "Add AtlasShare to your phone's home screen.",
+    linkText: "Here's how!",
   },
   {
-    title: "Export or keep exploring",
-    body: "Keep a high-resolution image, or come back whenever you add another country.",
+    title: "Keep exploring",
+    body: "Remember to come back and add more countries as you continue your adventures!",
   },
 ];
 
@@ -95,7 +92,7 @@ export default async function Home() {
           <div className="mt-9 flex flex-wrap items-center gap-3">
             <Link
               href="/sign-up"
-              className="inline-flex rounded-full bg-moss px-5 py-3 text-sm font-semibold text-canvas transition-colors hover:bg-ink"
+              className="inline-flex rounded-full bg-rose-deep px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-rose"
             >
               Create your account
             </Link>
@@ -107,17 +104,6 @@ export default async function Home() {
             </Link>
           </div>
 
-          <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-muted">
-            <li>195 countries</li>
-            <li aria-hidden="true" className="text-line">
-              ·
-            </li>
-            <li>Private by default</li>
-            <li aria-hidden="true" className="text-line">
-              ·
-            </li>
-            <li>No location tracking</li>
-          </ul>
         </div>
 
         <figure className="relative">
@@ -130,10 +116,8 @@ export default async function Home() {
               />
             </div>
           </div>
-          <figcaption className="mx-auto mt-5 max-w-xl px-1 text-xs leading-relaxed text-ink-muted">
-            A sample export from the same layout you can share. It shows{" "}
-            {sampleVisited.length} of {countriesAlphabetical.length} countries
-            and no account details.
+          <figcaption className="mx-auto mt-5 max-w-xl px-1 text-sm font-semibold text-ink-muted">
+            Share your map!
           </figcaption>
         </figure>
       </section>
@@ -147,16 +131,14 @@ export default async function Home() {
             id="features-heading"
             className="mt-4 font-display text-3xl tracking-tight sm:text-4xl"
           >
-            Small on purpose. Private by design.
+            See where you&apos;ve been
           </h2>
           <p className="mt-4 text-base leading-relaxed text-ink-muted">
-            AtlasShare is a country checklist and a shared map — not a trip
-            tracker. That keeps the product useful without asking for more than
-            it needs.
+            Fill the map with the countries you&apos;ve visited, then share it if you want.
           </p>
         </div>
 
-        <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+        <ul className="mt-8 grid gap-4 sm:grid-cols-3">
           {features.map((feature, index) => (
             <li
               key={feature.title}
@@ -181,7 +163,7 @@ export default async function Home() {
 
       <section
         aria-labelledby="how-heading"
-        className="rounded-card border border-line/80 bg-surface/65 p-6 shadow-soft sm:p-10"
+        className="rounded-card border border-moss/25 bg-moss/10 p-6 shadow-soft sm:p-10"
       >
         <div className="max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-moss">
@@ -205,6 +187,17 @@ export default async function Home() {
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                 {step.body}
+                {step.linkText ? (
+                  <>
+                    {" "}
+                    <Link
+                      href="/install"
+                      className="font-medium text-moss underline decoration-moss/40 underline-offset-2 transition-colors hover:text-ink"
+                    >
+                      {step.linkText}
+                    </Link>
+                  </>
+                ) : null}
               </p>
             </li>
           ))}
@@ -232,7 +225,7 @@ export default async function Home() {
           </Link>
         </div>
 
-        <div className="rounded-card border border-moss/25 bg-moss/10 p-6 sm:p-8">
+        <div className="rounded-card border border-rose-deep/30 bg-rose/25 p-6 sm:p-8">
           <p className="font-display text-2xl tracking-tight">
             Start with one country.
           </p>
@@ -243,7 +236,7 @@ export default async function Home() {
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href="/sign-up"
-              className="inline-flex rounded-full bg-moss px-5 py-3 text-sm font-semibold text-canvas transition-colors hover:bg-ink"
+              className="inline-flex rounded-full bg-rose-deep px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-rose"
             >
               Create your account
             </Link>

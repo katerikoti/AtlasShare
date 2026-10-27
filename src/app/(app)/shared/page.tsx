@@ -38,7 +38,7 @@ export default async function SharedMapsPage({
           Shared maps
         </p>
         <h1 className="mt-3 font-display text-4xl tracking-tight">
-          Travel together, privately.
+          See where the others have been.
         </h1>
         <p className="mt-3 max-w-2xl leading-relaxed text-ink-muted">
           A shared map combines the countries each member has marked, without
@@ -56,15 +56,13 @@ export default async function SharedMapsPage({
         </p>
       ) : null}
 
-      <CreateMapForm />
-
       <section aria-labelledby="shared-map-list-heading">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2
             id="shared-map-list-heading"
             className="font-display text-2xl tracking-tight"
           >
-            Maps you belong to
+            Maps you belong to:
           </h2>
           <p className="text-sm text-ink-muted">
             {plural(maps.length, "map", "maps")}
@@ -75,7 +73,7 @@ export default async function SharedMapsPage({
           <div className="mt-4 rounded-card border border-dashed border-line bg-surface/60 p-6 text-sm leading-relaxed text-ink-muted sm:p-8">
             <p className="font-medium text-ink">No shared maps yet.</p>
             <p className="mt-1 max-w-xl">
-              Create one above, then invite someone by email. When they accept,
+              Create one below, then invite someone by email. When they accept,
               their marked countries appear in the combined view.
             </p>
           </div>
@@ -138,6 +136,8 @@ export default async function SharedMapsPage({
           </ul>
         )}
       </section>
+
+      <CreateMapForm />
     </div>
   );
 }

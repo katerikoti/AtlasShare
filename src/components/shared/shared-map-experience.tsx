@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useId, useMemo, useState, type ReactNode } from "react";
 
 import {
   countriesAlphabetical,
@@ -10,7 +10,7 @@ import {
 } from "@/data/countries";
 import { getSharedComparison } from "@/data/country-insights";
 import type { CountryRegion } from "@/data/country-regions";
-import { secondaryButtonClass, selectClass } from "@/components/ui/form";
+import { secondaryButtonClass } from "@/components/ui/form";
 import type { SharedMapView } from "@/server/shared-maps";
 import { ExportMapPanel } from "@/components/export/export-map-panel";
 import { MapAttribution } from "@/components/map/map-attribution";
@@ -22,6 +22,8 @@ type SharedMapExperienceProps = {
     SharedMapView,
     "name" | "members" | "combinedCountries" | "combinedCount"
   >;
+  /** Server-built member list, invitations, and owner actions for the dropdown. */
+  membersPanel?: ReactNode;
 };
 
 type VisibleCountry = {
@@ -32,6 +34,7 @@ type VisibleCountry = {
 };
 
 type ComparisonMode = "everyone" | "only-you" | "nobody";
+type InsightMode = "combined" | ComparisonMode;
 type ViewMode = "combined" | "member" | ComparisonMode;
 
 const comparisonModes = new Set<string>([
@@ -44,32 +47,49 @@ function isComparisonMode(value: string): value is ComparisonMode {
   return comparisonModes.has(value);
 }
 
-export function SharedMapExperience({ map }: SharedMapExperienceProps) {
-  const [selected, setSelected] = useState("combined");
+export function SharedMapExperience({
+  map,
+  membersPanel,
+}: SharedMapExperienceProps) {
+  const [selectedMemberIds, setSelectedMemberIds] = useState(
+    () => new Set(map.members.map((member) => member.id)),
+  );
+  const [insightMode, setInsightMode] = useState<InsightMode>("combined");
   const { geometry, error, retry } = useMapGeometry();
-  const filterId = useId();
   const mapHeadingId = useId();
+  const summaryHeadingId = useId();
   const mapTitleId = useId();
   const listHeadingId = useId();
 
-  const selectedMember = useMemo(() => {
-    if (!selected.startsWith("member:")) return null;
-    const id = selected.slice("member:".length);
-    return map.members.find((member) => member.id === id) ?? null;
-  }, [map.members, selected]);
+  const allMembersSelected = selectedMemberIds.size === map.members.length;
+  const selectedMembers = useMemo(
+    () => map.members.filter((member) => selectedMemberIds.has(member.id)),
+    [map.members, selectedMemberIds],
+  );
+  const selectedMember =
+    insightMode === "combined" &&
+    !allMembersSelected &&
+    selectedMembers.length === 1
+      ? selectedMembers[0]
+      : null;
 
   const exportCodes = useMemo(
-    () =>
-      selectedMember
-        ? selectedMember.countries
-        : map.combinedCountries.map((country) => country.code),
-    [map.combinedCountries, selectedMember],
+    () => {
+      if (insightMode !== "combined" || allMembersSelected) {
+        return map.combinedCountries.map((country) => country.code);
+      }
+
+      return [
+        ...new Set(selectedMembers.flatMap((member) => member.countries)),
+      ];
+    },
+    [allMembersSelected, insightMode, map.combinedCountries, selectedMembers],
   );
 
   const viewMode: ViewMode = selectedMember
     ? "member"
-    : isComparisonMode(selected)
-      ? selected
+    : isComparisonMode(insightMode)
+      ? insightMode
       : "combined";
 
   const comparison = useMemo(
@@ -88,8 +108,8 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
     if (viewMode === "everyone") return new Set(comparison.everyone);
     if (viewMode === "only-you") return new Set(comparison.onlyYou);
     if (viewMode === "nobody") return new Set(comparison.nobody);
-    return new Set(map.combinedCountries.map((country) => country.code));
-  }, [comparison, map.combinedCountries, selectedMember, viewMode]);
+    return new Set(selectedMembers.flatMap((member) => member.countries));
+  }, [comparison, selectedMember, selectedMembers, viewMode]);
 
   const visibleCountries = useMemo<VisibleCountry[]>(() => {
     const counts = new Map(
@@ -125,7 +145,9 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
           ? "only you"
           : viewMode === "nobody"
             ? "no one yet"
-            : "any member";
+            : allMembersSelected
+              ? "any member"
+              : "selected members";
 
   const progressLabel =
     viewMode === "member"
@@ -136,7 +158,9 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
           ? "Only you"
           : viewMode === "nobody"
             ? "Still unmarked"
-            : "Combined progress";
+            : allMembersSelected
+              ? "Combined progress"
+              : "Selected progress";
 
   const progressDescription =
     viewMode === "member" && selectedMember
@@ -147,7 +171,9 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
           ? "countries marked only by you"
           : viewMode === "nobody"
             ? "countries not yet marked by anyone"
-            : "countries marked by any member";
+            : allMembersSelected
+              ? "countries marked by any member"
+              : "countries marked by the selected members";
 
   const mapDescription =
     viewMode === "member"
@@ -158,28 +184,14 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
           ? "Countries you have marked that no other member has."
           : viewMode === "nobody"
             ? "Countries no member has marked yet."
-            : "Countries marked by at least one member. Use the filter to switch views.";
-
-  const legendNote =
-    viewMode === "member"
-      ? "This view shows one member's country-level marks."
-      : viewMode === "everyone"
-        ? "A country is marked when every member has visited it."
-        : viewMode === "only-you"
-          ? "Countries are marked here only when you visited them and no other member has."
-          : viewMode === "nobody"
-            ? "These are the countries no member has marked yet."
-            : "A country is marked when at least one member has visited it.";
+            : allMembersSelected
+              ? "Countries marked by at least one member. Use the filter to switch views."
+              : "Countries marked by the selected members.";
 
   const listCountLabel =
     viewMode === "nobody"
       ? `${visibleCount} of ${countryCount} not marked yet`
       : `${visibleCount} of ${countryCount} marked`;
-
-  const legendLabels =
-    viewMode === "nobody"
-      ? { marked: "Not marked yet", unmarked: "Marked by someone" }
-      : { marked: "Marked", unmarked: "Not marked" };
 
   const emptyMessage =
     viewMode === "member" && selectedMember
@@ -190,72 +202,42 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
           ? "No countries are marked only by you."
           : viewMode === "nobody"
             ? "Every country has been marked by at least one member."
-            : "No one in this map has marked a country yet.";
+            : "The selected members have not marked a country yet.";
+
+  function toggleMember(id: string) {
+    setInsightMode("combined");
+    setSelectedMemberIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllMembers() {
+    setInsightMode("combined");
+    setSelectedMemberIds(
+      allMembersSelected
+        ? new Set()
+        : new Set(map.members.map((member) => member.id)),
+    );
+  }
 
   return (
     <div className="space-y-5">
       <section
-        aria-labelledby={mapHeadingId}
-        className="min-w-0 rounded-card border border-line/80 bg-surface/80 p-4 shadow-soft sm:p-6"
+        aria-labelledby={summaryHeadingId}
+        className="rounded-card border border-line/80 bg-surface/80 p-5 shadow-soft sm:p-6"
       >
-        <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <h2
-              id={mapHeadingId}
-              className="font-display text-2xl tracking-tight"
+              id={summaryHeadingId}
+              className="text-xs font-semibold uppercase tracking-[0.18em] text-moss"
             >
-              Shared map
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-muted">
-              {mapDescription}
-            </p>
-          </div>
-          <div className="min-w-52">
-            <label
-              htmlFor={filterId}
-              className="block text-xs font-semibold uppercase tracking-[0.16em] text-moss"
-            >
-              Show
-            </label>
-            <select
-              id={filterId}
-              value={selected}
-              onChange={(event) => setSelected(event.target.value)}
-              className={selectClass}
-            >
-              <option value="combined">
-                Whole group · {map.combinedCount} marked
-              </option>
-              <optgroup label="Comparison">
-                <option value="everyone">
-                  Visited by everyone · {comparison.everyone.length}
-                </option>
-                <option value="only-you">
-                  Only you · {comparison.onlyYou.length}
-                </option>
-                <option value="nobody">
-                  Not yet by anyone · {comparison.nobody.length}
-                </option>
-              </optgroup>
-              <optgroup label="Members">
-                {map.members.map((member) => (
-                  <option key={member.id} value={`member:${member.id}`}>
-                    {member.name}
-                    {member.isCurrentUser ? " (you)" : ""} · {member.count}{" "}
-                    marked
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-y border-line/70 py-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-moss">
               {progressLabel}
-            </p>
-            <p className="mt-1 font-display text-3xl tracking-tight">
+            </h2>
+            <p className="mt-2 font-display text-4xl tracking-tight">
               <span aria-live="polite">{visibleCount}</span> of {countryCount}
             </p>
             <p className="mt-1 text-sm text-ink-muted">
@@ -263,46 +245,126 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
             </p>
           </div>
           <p className="text-sm font-medium text-moss">
+            {map.members.length}{" "}
+            {map.members.length === 1 ? "member" : "members"} ·{" "}
             {percent.toLocaleString("en", { maximumFractionDigits: 1 })}% of the
             world
           </p>
         </div>
-
-        <dl className="mt-4 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-line/70 bg-canvas/45 px-3 py-2.5">
-            <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-moss">
-              Visited by everyone
-            </dt>
-            <dd className="mt-0.5 font-display text-xl tracking-tight">
-              {comparison.everyone.length}
-            </dd>
-          </div>
-          <div className="rounded-xl border border-line/70 bg-canvas/45 px-3 py-2.5">
-            <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-moss">
-              Only you
-            </dt>
-            <dd className="mt-0.5 font-display text-xl tracking-tight">
-              {comparison.onlyYou.length}
-            </dd>
-          </div>
-          <div className="rounded-xl border border-line/70 bg-canvas/45 px-3 py-2.5">
-            <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-moss">
-              Not yet by anyone
-            </dt>
-            <dd className="mt-0.5 font-display text-xl tracking-tight">
-              {comparison.nobody.length}
-            </dd>
-          </div>
-        </dl>
-
-        <div className="mt-5 border-t border-line/70 pt-4">
-          <RegionBreakdown
-            codes={visibleCodes}
-            title="This view by region"
-            description="Countries in the current view, out of each region's total."
-            countLabel={viewMode === "nobody" ? "not marked" : "marked"}
+        <div
+          role="progressbar"
+          aria-label="Countries in this view"
+          aria-valuemin={0}
+          aria-valuemax={countryCount}
+          aria-valuenow={visibleCount}
+          className="mt-4 h-2.5 overflow-hidden rounded-full bg-line/70"
+        >
+          <div
+            className="h-full rounded-full bg-rose-deep transition-[width] duration-300"
+            style={{ width: `${(visibleCount / countryCount) * 100}%` }}
           />
         </div>
+
+        <details className="mt-5 border-t border-line/70 pt-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-moss [&::-webkit-details-marker]:hidden">
+            <span>Show more</span>
+            <span aria-hidden="true" className="text-base leading-none">
+              +
+            </span>
+          </summary>
+
+          <div className="mt-5 space-y-6">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
+                Show
+              </h3>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <label className="flex items-center gap-2 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={allMembersSelected}
+                    onChange={toggleAllMembers}
+                    className="size-4 accent-rose-deep"
+                  />
+                  All
+                </label>
+                {map.members.map((member) => (
+                  <label key={member.id} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedMemberIds.has(member.id)}
+                      onChange={() => toggleMember(member.id)}
+                      className="size-4 accent-rose-deep"
+                    />
+                    {member.name}
+                    {member.isCurrentUser ? " (you)" : ""}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-line/70 pt-5">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
+                Compare progress
+              </h3>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                {(
+                  [
+                    ["Visited by everyone", comparison.everyone.length, "everyone"],
+                    ["Only you", comparison.onlyYou.length, "only-you"],
+                    ["Not yet by anyone", comparison.nobody.length, "nobody"],
+                  ] as const
+                ).map(([label, count, value]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={insightMode === value}
+                    onClick={() =>
+                      setInsightMode(insightMode === value ? "combined" : value)
+                    }
+                    className={`rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                      insightMode === value
+                        ? "border-moss/50 bg-moss/10"
+                        : "border-line/70 bg-canvas/45 hover:bg-canvas/70"
+                    }`}
+                  >
+                    <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-moss">
+                      {label}
+                    </span>
+                    <span className="mt-0.5 block font-display text-xl tracking-tight">
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <div className="mt-5">
+                <RegionBreakdown
+                  codes={visibleCodes}
+                  title="By region"
+                  description="Countries in the current view, out of each region's total."
+                  countLabel={viewMode === "nobody" ? "not marked" : "marked"}
+                  collapsible={false}
+                />
+              </div>
+            </div>
+
+            {membersPanel ? (
+              <div className="border-t border-line/70 pt-5">{membersPanel}</div>
+            ) : null}
+          </div>
+        </details>
+      </section>
+
+      <section
+        aria-labelledby={mapHeadingId}
+        className="min-w-0 rounded-card border border-line/80 bg-surface/80 p-4 shadow-soft sm:p-6"
+      >
+        <h2 id={mapHeadingId} className="font-display text-2xl tracking-tight">
+          Shared map
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-muted">
+          {mapDescription}
+        </p>
 
         <div className="relative mt-4 aspect-[1010/760] w-full overflow-hidden rounded-2xl border border-line/70 bg-map">
           {geometry ? (
@@ -382,24 +444,6 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
             </div>
           )}
         </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-muted">
-          <span className="inline-flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="size-3 rounded-full border border-moss bg-rose"
-            />
-            {legendLabels.marked}
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="size-3 rounded-full border border-moss bg-map"
-            />
-            {legendLabels.unmarked}
-          </span>
-          <span>{legendNote}</span>
-        </div>
       </section>
 
       <section
@@ -447,10 +491,6 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
           </ul>
         )}
 
-        <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-          Members can see each other&apos;s names and country-level marks. Email
-          addresses, account details, notes, and visit dates are not shared.
-        </p>
       </section>
 
       <ExportMapPanel

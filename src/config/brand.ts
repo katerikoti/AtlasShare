@@ -14,7 +14,7 @@ export const brand = {
   shortName: "AtlasShare",
   tagline: "Your world, mapped together.",
   description:
-    "Track the countries you have visited on your own world map, then combine your travels with the people you explore with.",
+    "Track the countries you have visited on your own world map, then create shared maps with your family and friends.",
   palette: {
     canvas: "#E9E3DD",
     surface: "#F4EFEA",
@@ -27,6 +27,7 @@ export const brand = {
     map: "#F1ECE6",
   },
   repositoryUrl: "https://github.com/katerikoti/AtlasShare",
+  portfolioUrl: "https://katerinamaenpaa.dev",
 } as const;
 
 export type Brand = typeof brand;

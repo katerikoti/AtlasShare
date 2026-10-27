@@ -19,6 +19,9 @@ type ExportMapPanelProps = {
   defaultTitle?: string;
 };
 
+const previewButtonClass =
+  "inline-flex items-center justify-center rounded-full bg-rose-deep px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-rose focus-visible:bg-rose disabled:cursor-not-allowed disabled:opacity-60";
+
 type Status = {
   tone: "idle" | "working" | "success" | "error";
   message?: string;
@@ -31,11 +34,13 @@ export function ExportMapPanel({
   defaultTitle = "My travels",
 }: ExportMapPanelProps) {
   const [displayName, setDisplayName] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
   const [status, setStatus] = useState<Status>({ tone: "idle" });
   const svgRef = useRef<SVGSVGElement>(null);
   const titleId = useId();
   const inputId = useId();
   const hintId = useId();
+  const previewId = useId();
   const year = new Date().getFullYear();
   const fallbackTitle = defaultTitle.trim() || "My travels";
 
@@ -56,21 +61,15 @@ export function ExportMapPanel({
       ? {
           intro:
             "Create a high-resolution image of your map. On supported devices the share sheet opens; elsewhere the PNG downloads.",
-          privacy:
-            "The image is built from your country marks, the title you choose, the year, and the count. It never includes your email or account id.",
         }
       : context === "shared"
         ? {
             intro:
               "Create a high-resolution image of the combined shared map. All members' marks are included, but member names are not.",
-            privacy:
-              "The image is built from the combined country marks of this shared map, the title you choose, the year, and the count. It never includes member names, emails, account ids, notes, or visit dates.",
           }
         : {
             intro:
               "Create a high-resolution image of the selected member's map. The image does not include their name.",
-            privacy:
-              "The image is built from the selected member's country marks, the title you choose, the year, and the count. It never includes member names, emails, account ids, notes, or visit dates.",
           };
 
   async function handleExport() {
@@ -119,7 +118,13 @@ export function ExportMapPanel({
       aria-labelledby={titleId}
       className="rounded-card border border-line/80 bg-surface/80 p-5 shadow-soft sm:p-6"
     >
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start">
+      <div
+        className={
+          showPreview
+            ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_26rem] lg:items-start"
+            : undefined
+        }
+      >
         <div>
           <h2 id={titleId} className="font-display text-2xl tracking-tight">
             Share your map
@@ -154,14 +159,26 @@ export function ExportMapPanel({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => void handleExport()}
-            disabled={!ready}
-            className={`${primaryButtonClass} mt-5 sm:w-auto`}
-          >
-            {busy ? "Preparing image…" : "Share or download image"}
-          </button>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowPreview((current) => !current)}
+              disabled={!geometry}
+              aria-expanded={showPreview}
+              aria-controls={previewId}
+              className={previewButtonClass}
+            >
+              {showPreview ? "Hide preview" : "Preview"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleExport()}
+              disabled={!ready}
+              className={`${primaryButtonClass} sm:w-auto`}
+            >
+              {busy ? "Preparing image…" : "Share or download image"}
+            </button>
+          </div>
 
           {status.message ? (
             <p
@@ -173,13 +190,10 @@ export function ExportMapPanel({
               {status.message}
             </p>
           ) : null}
-
-          <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-            {copy.privacy}
-          </p>
         </div>
 
-        <figure className="min-w-0">
+        {/* Stays mounted while hidden: the export serializes this SVG. */}
+        <figure id={previewId} hidden={!showPreview} className="min-w-0">
           <figcaption className="sr-only">Export preview</figcaption>
           {geometry ? (
             <ExportMapSvg

@@ -5,6 +5,7 @@ type RegionBreakdownProps = {
   title?: string;
   description?: string;
   countLabel?: "marked" | "not marked";
+  collapsible?: boolean;
 };
 
 /**
@@ -16,20 +17,13 @@ export function RegionBreakdown({
   title = "By region",
   description = "Marked countries out of each region's total.",
   countLabel = "marked",
+  collapsible = true,
 }: RegionBreakdownProps) {
   const breakdown = getRegionBreakdown(codes);
   const markedTotal = breakdown.reduce((sum, item) => sum + item.marked, 0);
 
-  return (
-    <div>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-moss">
-          {title}
-        </h3>
-        <p className="text-[11px] text-ink-muted">
-          {markedTotal} {countLabel}
-        </p>
-      </div>
+  const content = (
+    <>
       <p className="mt-1 text-xs text-ink-muted">{description}</p>
 
       <ul className="mt-3 grid gap-x-5 gap-y-3 sm:grid-cols-2">
@@ -54,6 +48,39 @@ export function RegionBreakdown({
           </li>
         ))}
       </ul>
-    </div>
+    </>
+  );
+
+  if (!collapsible) {
+    return (
+      <div>
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-moss">
+            {title}
+          </h3>
+          <p className="text-[11px] text-ink-muted">
+            {markedTotal} {countLabel}
+          </p>
+        </div>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <details>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-moss [&::-webkit-details-marker]:hidden">
+        <span>{title}</span>
+        <span aria-hidden="true" className="text-base leading-none">
+          +
+        </span>
+      </summary>
+      <div className="pt-3">
+        <p className="sr-only">
+          {markedTotal} {countLabel}
+        </p>
+        {content}
+      </div>
+    </details>
   );
 }

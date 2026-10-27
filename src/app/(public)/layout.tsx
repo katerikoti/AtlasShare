@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { brand } from "@/config/brand";
@@ -32,12 +33,14 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           href="/"
           className="flex min-w-0 items-center gap-2 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-moss sm:gap-3"
         >
-          <span
+          <Image
+            src="/brand/atlas-share-mark-transparent.png"
+            alt=""
             aria-hidden="true"
-            className="grid size-8 shrink-0 place-items-center rounded-full bg-moss font-display text-base text-canvas sm:size-9 sm:text-lg"
-          >
-            A
-          </span>
+            width={36}
+            height={36}
+            className="size-8 shrink-0 object-contain sm:size-9"
+          />
           <span className="truncate font-display text-xl tracking-tight sm:text-2xl">
             {brand.name}
           </span>
@@ -48,12 +51,6 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           className="flex shrink-0 items-center gap-2 sm:gap-3"
         >
           <Link
-            href="/privacy"
-            className="hidden text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink sm:inline"
-          >
-            Privacy
-          </Link>
-          <Link
             href="/sign-in"
             className="hidden text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink sm:inline"
           >
@@ -61,9 +58,15 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           </Link>
           <Link
             href="/sign-up"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-moss px-3 py-2 text-sm font-medium text-canvas transition-colors hover:bg-ink sm:px-4"
+            className="hidden text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink sm:inline"
           >
             Create account
+          </Link>
+          <Link
+            href="/install"
+            className="inline-flex min-h-11 items-center justify-center rounded-full bg-rose-deep px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-rose sm:px-4"
+          >
+            Install
           </Link>
         </nav>
       </header>
@@ -73,8 +76,17 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="mx-auto flex w-full max-w-6xl flex-col gap-4 border-t border-line/80 px-6 py-6 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between sm:px-10">
-        <p>Private by default · Country-level travel maps.</p>
+        <p>
+          © {brand.name} {new Date().getFullYear()}
+        </p>
         <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
+          <a
+            href={brand.portfolioUrl}
+            rel="noreferrer"
+            className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
+          >
+            Made by Katerina Mäenpää
+          </a>
           <Link
             href="/privacy"
             className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
@@ -87,13 +99,6 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           >
             Map data
           </Link>
-          <a
-            href={brand.repositoryUrl}
-            rel="noreferrer"
-            className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
-          >
-            Repository
-          </a>
         </nav>
       </footer>
     </div>

@@ -6,6 +6,51 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ## [Unreleased]
 
+### Added — Phase 7: public site and PWA (2026-10-27)
+
+- Public landing page (`/`), privacy page, and install page (`/install`) with
+  shared chrome; signed-in visitors are redirected from `/` to `/map`.
+- Web manifest, icon set, `robots.ts`, `sitemap.ts`, Open Graph/Twitter images,
+  an offline-shell service worker (navigations network-only, public static assets
+  only, denylist for private paths, cache cleared on sign-out), a self-contained
+  `/offline` page, and a "newer version ready" update prompt.
+- Logo assets in `public/brand/` (transparent mark, solid mark, lockup) used in
+  the public, signed-in, and auth headers; PWA, Apple, and browser icons are
+  generated from the solid mark. `icon.svg` and `favicon.ico` were removed.
+- `brand.portfolioUrl` and a "Made by Katerina Mäenpää" footer credit.
+
+### Changed — owner UI revisions (2026-10-27, ADR-035)
+
+- Landing: simplified hero copy, rose calls to action, a three-card "See where
+  you've been" section, a green "How it works" panel whose step 2 links to
+  `/install`, and a rose closing panel. Header is Sign in / Create account /
+  Install (highlighted); Privacy is footer-only. Footer is © AtlasShare, the
+  portfolio credit, Privacy, Map data; the repository link was removed, and the
+  signed-in app footer now matches.
+- Install page wording avoids technical terms ("app shell") and says a
+  connection is needed to view or save a map.
+- Personal map: "By region" is a closed dropdown.
+- Shared list: "Maps you belong to:" now comes before "Create a shared map:".
+- Shared map: summary card (X of 195, member count, percentage, progress bar)
+  with a **Show more** dropdown containing member checkboxes (All + each member),
+  Compare progress, and Members with Invite someone and Pending invitations
+  (owner only). The map legend and the privacy sentence under the country list
+  were removed. A comparison can be toggled off, and changing members returns to
+  the combined view.
+- Export panel: a rose **Preview** toggle replaces the always-visible image on
+  personal and shared maps; the on-screen privacy paragraph was removed.
+- Test count is now 144 (was 137): new coverage for the summary, Show more
+  contents, the members-panel slot, comparison toggle-off, member change after a
+  comparison, a one-member map, and the Preview toggle on both maps.
+
+### Fixed
+
+- Sign-up/sign-in showed "Invalid origin" locally when the dev server ran on a
+  different port from `NEXT_PUBLIC_APP_URL`/`BETTER_AUTH_URL`. Documented in the
+  README; the local `.env` was aligned to the actual port.
+- A one-member shared map with "All" checked was labeled as a single-member view;
+  it is now the combined view.
+
 ### Added — Phase 6: image export (2026-10-27)
 
 - High-resolution personal map export from a pure inline SVG: one 1600 × 1000

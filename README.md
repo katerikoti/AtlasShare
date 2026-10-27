@@ -2,16 +2,19 @@
 
 **Your world, mapped together.**
 
-Mark the countries you have visited on a personal world map, then combine your
-map with the people you travel with.
+Track the countries you have visited on your own world map, then create shared
+maps with your family and friends.
 
-> **Project status: Phase 6 of 8 complete — image export. Phase 7 is next.**
+> **Project status: Phase 6 of 8 complete; Phase 7 (public site & PWA) is
+> implemented and awaiting owner review.**
 > You can create an account, sign in/out, reset a password, manage account
 > settings, mark visited countries on a private 195-country world map, search
 > that list, see continent-level statistics, combine your map with invited
 > members in a private read-only shared view with a country-level comparison,
-> and export a high-resolution image of your personal map or the combined shared
-> map. There is still no PWA. See
+> and preview/export a high-resolution image of your personal map or the
+> combined shared map. The public landing, privacy, and install pages, the web
+> manifest, and an offline-shell service worker exist; the manual device,
+> offline, and Lighthouse checks are still outstanding. See
 > [`docs/PROGRESS.md`](docs/PROGRESS.md) for exactly what exists and
 > [`docs/DEVELOPMENT_PLAN.md`](docs/DEVELOPMENT_PLAN.md) for what comes next.
 
@@ -50,6 +53,12 @@ npm run dev
 ```
 
 Open http://localhost:3000. `postinstall` generates the Prisma client.
+
+If port 3000 is already taken, Next.js starts on the next free port. Set
+`NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` in `.env` to that exact origin
+(for example `http://localhost:3001`) and restart `npm run dev`; otherwise
+sign-up and sign-in fail with an **"Invalid origin"** error because Better Auth
+only trusts the configured origin.
 
 Local development can use plain Postgres; the runtime adapter switches to Neon
 when the database host ends in `.neon.tech`. Start a local server, create the

@@ -722,6 +722,56 @@ decisions in ADR-033 remain.
 
 ---
 
+## ADR-035 — Owner UI revisions: install page, shared-map layout, export preview
+
+**Status:** accepted (owner revision, 2026-10-27)
+
+**Context:** Owner review of the Phase 7 landing page and the signed-in screens
+asked for plainer copy, a clearer install path, and a shared-map page that
+matches the personal map instead of showing every control at once.
+
+**Decision:**
+
+- **Install page.** Add a public static `/install` page with iPhone/iPad,
+  Android, and desktop instructions in plain language, linked from the header
+  ("Install", the highlighted rose button) and from landing step 2. It states
+  that viewing or saving a map needs a connection; it does not use the term
+  "app shell".
+- **Public chrome.** Header is Sign in, Create account, Install (Privacy moved to
+  the footer only). Footer is © brand + year, "Made by Katerina Mäenpää"
+  (`brand.portfolioUrl`), Privacy, Map data; the repository link was removed from
+  the footer. The signed-in app footer matches. Calls to action use rose.
+  The hero/landing copy was simplified and the 195-countries/private/no-tracking
+  line removed from the hero (privacy messaging stays in the Privacy section).
+- **Logo.** The supplied logo replaces the placeholder "A" circle in the public,
+  signed-in, and auth headers and supplies all PWA/browser/Apple icons (see
+  `ARCHITECTURE.md` §3). `icon.svg` and `favicon.ico` were removed; the service
+  worker precaches `/icon.png` and its cache version was bumped.
+- **Personal map.** "By region" is a closed dropdown by default.
+- **Shared list.** "Maps you belong to:" precedes "Create a shared map:".
+- **Shared map.** A summary card (X of 195, member count, percentage, progress
+  bar) with a closed **Show more** dropdown holding the member checkboxes,
+  Compare progress (+ region breakdown), and a Members panel that now also
+  contains Invite someone and Pending invitations (owner only). The map card has
+  no legend; the redundant "Members can see each other's names…" paragraph was
+  removed. Selecting a comparison and changing members are mutually exclusive
+  views; pressing an active comparison again returns to the combined view.
+- **Export.** The panel shows a rose Preview toggle instead of the image, on both
+  the personal and shared maps, and the on-screen privacy paragraph is removed.
+  With the member checkboxes, a shared export uses the combined marks when All
+  is checked, the one member's marks when exactly one is checked, and the union
+  of the checked members otherwise (a refinement of ADR-034; still no identities).
+
+**Consequences:** No schema, server query, or authorization change. The privacy
+boundary for exports is unchanged and still enforced by the export input type
+and tests, but the reassurance text is no longer shown beside the button; reword
+the panel intro if reviewers want it back. Hiding invite controls in a dropdown
+is presentation only; the server still gates them (`SECURITY.md` §4). Several
+earlier UI statements (shared "Show" select, always-visible preview, visible
+region bars) are superseded; the history in `PROGRESS.md` is kept as a record.
+
+---
+
 ## Deferred decisions
 
 | Topic | Why deferred | Needed by |

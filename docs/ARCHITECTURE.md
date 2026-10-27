@@ -1,7 +1,8 @@
 # AtlasShare — Architecture
 
 Status: **Phase 6 (image export) is complete and approved.** Phases 1–6 are
-approved. PWA functionality is still planned.
+approved. Phase 7 (public site and PWA) is implemented and awaiting owner
+review.
 Anything marked _planned_ does not exist in the codebase yet. See
 [`PROGRESS.md`](./PROGRESS.md) for what is actually built.
 
@@ -41,8 +42,17 @@ properties in `src/app/globals.css` (`@theme`). `brand.ts` mirrors those values
 for contexts where CSS is unavailable (PNG export, email HTML).
 
 Rule: never write the product name as a literal in UI code. Use `brand.name`.
-When renaming the product, update `brand.ts`, `package.json`, the `A` mark, and
-verify the metadata in `src/app/layout.tsx`.
+When renaming the product, update `brand.ts`, `package.json`, the logo files in
+`public/brand/` and `public/icons/` (plus `src/app/icon.png` and
+`apple-icon.png`), and verify the metadata in `src/app/layout.tsx`.
+
+Logo assets: `public/brand/atlas-share-mark-transparent.png` is the header mark
+(public, signed-in, and auth layouts); `atlas-share-mark.png` (solid background)
+is the source for the 192/512/maskable PWA icons, `src/app/icon.png`, and
+`apple-icon.png`; `atlas-share-lockup.png` is the full mark-plus-wordmark
+artwork, kept for reuse. The link-preview images in `opengraph-image.tsx` /
+`twitter-image.tsx` still draw their own mark and have not been switched to the
+logo. The footer credit link comes from `brand.portfolioUrl`.
 
 ## 4. System context
 
@@ -150,13 +160,18 @@ src/
   app/
     layout.tsx              # root layout, metadata, fonts
     globals.css             # Tailwind v4 theme tokens (colors, radius, shadow)
-    page.tsx                # temporary development placeholder (landing is Phase 7)
     not-found.tsx
-    icon.svg                # app icon
+    icon.png                # browser/app icon (square mark)
+    apple-icon.png          # 180 × 180 home-screen icon
+    manifest.ts             # /manifest.webmanifest
+    sitemap.ts, robots.ts   # public metadata routes
+    opengraph-image.tsx     # link-preview images (also twitter-image.tsx)
+    (public)/               # shared public chrome: landing (/), privacy, install
     (auth)/                 # sign in, sign up, forgot/reset, invite/[token]
     (app)/account/          # signed-in account settings
     (app)/map/              # personal map + route error boundary
     (app)/shared/           # shared list, create form, shared/[mapId]
+    offline/                # self-contained offline page route handler
     api/auth/[...all]/      # Better Auth handler
   components/
     auth/                   # sign-in/up, forgot/reset, sign-out forms
@@ -198,7 +213,8 @@ scripts/
   generate-countries.mjs    # reproducible country/geometry generator
 public/
   map/countries.json        # generated SVG geometry, fetched at runtime
-                            # PWA icons/manifest planned for Phase 7
+  icons/                    # PWA icons (192, 512, maskable 512) from the square mark
+  brand/                    # logo mark (square + transparent) and full lockup
 ```
 
 
@@ -313,8 +329,10 @@ so (e.g. "combined: 61").
 The region breakdown is computed on the client from the same visit set (or the
 authorized shared view set). Each row shows marked countries out of that
 region's dataset total, with a CSS bar; the marked values sum to the headline
-count. No charting library is used. Shared views label the same rows "not
-marked" for the "not yet by anyone" comparison so the words match the set.
+count. No charting library is used. On the personal map the breakdown is a
+closed-by-default "By region" `<details>` dropdown. Shared views label the same
+rows "not marked" for the "not yet by anyone" comparison so the words match the
+set.
 
 ### 7.4 Insights and comparison
 
@@ -333,6 +351,10 @@ Phase 5 adds derived views only; it stores nothing new.
   other's country-level marks, so the comparison does not widen the disclosure.
 - The UI issues no claim when the sets are empty; "not yet by anyone" also has a
   distinct empty state. Lists are height-limited and scroll on mobile.
+- On the shared-map page the comparison lives under **Show more → Compare
+  progress** as three toggle buttons (pressing the active one returns to the
+  combined view). Changing the member checkboxes also returns to the combined
+  view, so a stale comparison never hides a member selection.
 
 ## 8. Shared maps
 
@@ -340,9 +362,25 @@ A shared map is a named collection of members. Each member keeps their own
 private visit data; the shared map shows a **derived view**:
 
 - union of members' visited countries (the default),
-- per-member filtering,
+- per-member filtering with checkboxes ("All" plus one per member, all checked by
+  default; any subset is unioned),
 - derived comparison sets: visited by everyone, only you, and not yet by anyone
   (ADR-030).
+
+Page layout (`/shared/[mapId]`, ADR-035), top to bottom: map name and
+description; a summary card (countries in the current view as "X of 195", member
+count, percentage, progress bar) containing a closed **Show more** dropdown;
+then the map card; the "Countries in this view" list; the export panel; and, for
+owners, Map details and Danger zone. **Show more** holds, in order: the member
+checkboxes, Compare progress (with the region breakdown), and a Members panel
+with the member list, Remove/Leave actions, and, for the owner only, Invite
+someone and Pending invitations. The page (a Server Component) builds the
+Members panel and passes it to the client `SharedMapExperience` as a `ReactNode`
+prop, so owner checks and invitation data stay server-side; non-owners never
+receive pending-invitation data or invite controls. The map card has no legend.
+
+`/shared` lists "Maps you belong to:" first, directly under the intro text, then
+the "Create a shared map:" form.
 
 Design constraints:
 
@@ -398,6 +436,11 @@ Implemented approach:
    filters are view-only and do not change the export. It never passes member
    names, the map name, emails, ids, per-member counts, notes, or visit dates.
    The optional title is user-entered, not account metadata.
+6. The panel shows a rose **Preview** button (toggle, `aria-expanded`) instead of
+   always rendering the image. The export SVG stays mounted but `hidden` while
+   closed because export serializes it. The on-screen privacy paragraph was
+   removed (ADR-035); the guarantee is enforced by the input type and tests, not
+   by copy.
 
 Constraints:
 

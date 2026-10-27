@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
@@ -28,12 +29,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           href="/"
           className="flex items-center gap-3 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-moss"
         >
-          <span
+          <Image
+            src="/brand/atlas-share-mark-transparent.png"
+            alt=""
             aria-hidden="true"
-            className="grid size-9 place-items-center rounded-full bg-moss font-display text-lg text-canvas"
-          >
-            A
-          </span>
+            width={36}
+            height={36}
+            className="size-9 shrink-0 object-contain"
+          />
           <span className="font-display text-xl tracking-tight">
             {brand.name}
           </span>

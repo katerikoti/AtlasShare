@@ -27,7 +27,7 @@ export function CreateMapForm() {
       className="rounded-card border border-line/80 bg-surface/80 p-5 shadow-soft sm:p-6"
     >
       <h2 className="font-display text-2xl tracking-tight">
-        Create a shared map
+        Create a shared map:
       </h2>
       <p className="mt-1 text-sm leading-relaxed text-ink-muted">
         Name the trip or group. You can invite people after it is created.

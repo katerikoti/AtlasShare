@@ -87,7 +87,8 @@ terms are searchable; its code remains `VA`.
 - **FR-M2** Mark/unmark a country as visited; changes persist server-side and
   survive reload. Toggling is idempotent.
 - **FR-M3** Visited countries use the dusty-rose fill; unvisited use warm
-  off-white; borders use moss. Legend explains the states.
+  off-white; borders use moss. No legend is shown (removed after owner review;
+  the colors and country list make the states self-evident).
 - **FR-M4** A searchable, keyboard-accessible country list offers the same
   toggle action as the map.
 - **FR-M5** Show a count ("23 of 195 countries") and a progress indicator.
@@ -111,8 +112,9 @@ terms are searchable; its code remains `VA`.
 - **FR-S5** Owner can revoke pending invitations and remove members.
 - **FR-S6** Member can leave a map. Owner can delete a map (confirmed).
 - **FR-S7** Shared map view shows the combined map: countries visited by any
-  member, plus a per-member filter (at least "everyone" and one member at a
-  time).
+  member, plus a per-member filter (checkboxes: "All" and one per member, all
+  checked by default; any subset is combined). The filter, comparison, and member
+  management live in a "Show more" dropdown under the summary card (ADR-035).
 - **FR-S8** Show combined count and per-member counts. The initial release
   stores no notes or visit dates to expose.
 - **FR-S9** Non-members get a 404-style response, not a permission error.
@@ -153,6 +155,10 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 - **FR-P3** Signed-in users are routed to their map, not the marketing page.
 - **FR-P4** Metadata and Open Graph image for link previews.
 - **FR-P5** No misleading claims (no "track every trip" if only countries exist).
+- **FR-P6** A public install page explains, in plain language, how to add the
+  web app to an iPhone/iPad, Android device, or desktop, and that a connection
+  is still needed to view or save a map. It is linked from the header and the
+  landing page (ADR-035).
 
 ### 7.7 PWA (Phase 7)
 

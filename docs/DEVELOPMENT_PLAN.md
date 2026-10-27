@@ -269,8 +269,9 @@ enough to justify the extra layout and QA surface.
 - `src/components/export/export-map-svg.tsx` renders a 1600 × 1000 inline SVG
   with system fonts, the brand palette, count/percentage, progress, brand mark,
   and all 195 country paths. It has no external assets.
-- `src/components/export/export-map-panel.tsx` provides the title field, preview,
-  progress/error status, and the share button.
+- `src/components/export/export-map-panel.tsx` provides the title field, a rose
+  Preview toggle (the image is hidden until pressed; ADR-035), progress/error
+  status, and the share button.
 - The panel appears on the personal map and the shared map. On a shared map it
   receives the combined country codes by default, or the selected member's
   codes; comparison filters are view-only and do not change the export. Member
@@ -332,8 +333,11 @@ platforms. Mitigation: cap pixel dimensions, use system stacks, test early.
 - Landing page with real product visuals (from the export renderer where
   possible), clear CTA, honest copy.
 - Privacy page describing actual data handling; "about the map" attribution.
+- Public `/install` page with plain-language instructions for iPhone/iPad,
+  Android, and desktop, linked from the header and the landing "How it works"
+  step (owner addition, ADR-035).
 - Signed-in redirect from `/` to the app (or a signed-in-aware header).
-- Metadata + Open Graph image; favicon set.
+- Metadata + Open Graph image; favicon set (square logo mark).
 - `manifest.webmanifest`, icons, theme color, standalone display.
 - Service worker: app shell + static assets only; offline page; update flow;
   explicit denylist for authenticated HTML/API; cache cleared on sign-out where

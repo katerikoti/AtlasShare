@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
@@ -29,12 +30,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             href="/map"
             className="flex items-center gap-3 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-moss"
           >
-            <span
+            <Image
+              src="/brand/atlas-share-mark-transparent.png"
+              alt=""
               aria-hidden="true"
-              className="grid size-8 place-items-center rounded-full bg-moss font-display text-base text-canvas"
-            >
-              A
-            </span>
+              width={36}
+              height={36}
+              className="size-8 shrink-0 object-contain"
+            />
             <span className="hidden font-display text-lg tracking-tight sm:inline">
               {brand.name}
             </span>
@@ -75,16 +78,31 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <footer className="border-t border-line/80">
-        <div className="mx-auto flex w-full max-w-4xl flex-col gap-2 px-6 py-4 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between sm:px-10">
-          <p>Private by default · Country-level travel maps.</p>
+      <footer className="mx-auto flex w-full max-w-6xl flex-col gap-4 border-t border-line/80 px-6 py-6 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between sm:px-10">
+        <p>
+          © {brand.name} {new Date().getFullYear()}
+        </p>
+        <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2">
+          <a
+            href={brand.portfolioUrl}
+            rel="noreferrer"
+            className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
+          >
+            Made by Katerina Mäenpää
+          </a>
           <Link
             href="/privacy"
             className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
           >
             Privacy
           </Link>
-        </div>
+          <Link
+            href="/privacy#map-data"
+            className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
+          >
+            Map data
+          </Link>
+        </nav>
       </footer>
     </div>
   );
