@@ -28,9 +28,13 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ### Changed — Phase 4
 
-- Shared navigation, account copy, and public home copy now describe Phase 4.
+- User-facing copy now describes the product only; internal phase numbers and
+  future-feature timing were removed from the landing page, app footer, account
+  page, and source comment.
 - The landing header scales the wordmark and hides the duplicate sign-in link
   below `sm`, fixing a clipped “Create account” button at 320 px.
+- Removing a member now revalidates `/shared` as well as the map detail, so the
+  list's member and combined counts are not stale.
 - Invitation copy feedback uses one live region and resets on a new submission;
   single-member labels use correct pluralization.
 - The proxy optimistically protects `/shared` in addition to `/account`; all
@@ -47,11 +51,17 @@ Notable changes, newest first. This project follows a phase-based plan; see
   combined counts (3) and filtering (owner 2), used/revoked links, member leave,
   owner rename/revoke/remove, deletion, and deleted-map HTTP 404.
 - Read-only shared view: 250 SVG paths, zero checkboxes, member controls absent.
+- Expired invitation browser check on 2026-10-27: owner saw no pending invitation
+  after expiry, and the signed-in invited account saw the generic unavailable
+  state; no phase or roadmap wording was present in rendered UI.
+- Lighthouse on the public landing and invitation pages scored 100 for
+  accessibility, best practices, and SEO with no reported failures; authenticated
+  shared-map pages were not Lighthouse-audited.
 - Responsive metrics at 320/390 px for the landing page, `/shared`,
   `/shared/[mapId]`, and `/map`; document width matched the viewport. Invite
   response headers checked with `curl`.
 - Manual gaps: physical touch, Safari/Firefox, keyboard/screen-reader, visual
-  design approval, invitation inbox rendering, and expired-invite browser UI.
+  design approval, and invitation inbox rendering.
 - Accepted limitations: no invitation rate limit, no email verification before
   acceptance, no retry/purge job, and raw token paths can appear in hosting
   access logs. See `PROGRESS.md`/`SECURITY.md`.

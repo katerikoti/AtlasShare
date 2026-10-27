@@ -74,7 +74,7 @@ export default async function AccountPage() {
           <Link href="/shared" className="font-medium text-moss underline underline-offset-2">
             private shared map
           </Link>{" "}
-          with other travellers. Image export arrives in a later phase.
+          with other travellers.
         </p>
       </div>
 

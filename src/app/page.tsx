@@ -3,10 +3,9 @@ import Link from "next/link";
 import { brand } from "@/config/brand";
 
 /**
- * Temporary development placeholder.
+ * Public landing page.
  *
- * The public landing page is Phase 7. This page deliberately does not implement
- * product features yet; it exists so the foundation is runnable and reviewable.
+ * Introduces the product and provides the routes into sign-in and sign-up.
  */
 export default function Home() {
   return (
@@ -33,9 +32,6 @@ export default function Home() {
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <span className="hidden rounded-full border border-moss/30 bg-surface/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-moss sm:inline">
-            Phase 4 · Shared maps
-          </span>
           <Link
             href="/sign-in"
             className="hidden text-sm font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink sm:inline"
@@ -77,25 +73,6 @@ export default function Home() {
             >
               Sign in
             </Link>
-          </div>
-
-          <div className="mt-9 max-w-lg rounded-card border border-line/80 bg-surface/80 p-5 shadow-soft backdrop-blur-sm">
-            <div className="flex items-start gap-3">
-              <span
-                aria-hidden="true"
-                className="mt-1.5 size-2.5 shrink-0 rounded-full bg-rose-deep"
-              />
-              <div>
-                <p className="font-medium text-ink">
-                  Personal and shared maps are live.
-                </p>
-                <p className="mt-1 text-sm leading-relaxed text-ink-muted">
-                  Create an account and mark the countries you have visited.
-                  Then start a private shared map and invite people by email;
-                  image export arrives in a later phase.
-                </p>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -177,10 +154,7 @@ export default function Home() {
       </section>
 
       <footer className="mx-auto flex w-full max-w-6xl flex-col gap-3 border-t border-line/80 pt-5 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between">
-        <p>
-          Phase 4 of 8 · Personal and shared maps are live · Image export comes
-          later.
-        </p>
+        <p>Private by default · Country-level travel maps.</p>
         <a
           className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
           href={brand.repositoryUrl}

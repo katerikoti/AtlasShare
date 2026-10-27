@@ -4,7 +4,7 @@
 approval**).
 **Status:** Phases 1–3 are approved. Phase 4 is implemented, checked, and
 browser-tested in production mode; it needs owner approval before Phase 5 starts.
-**Last updated:** 2026-10-26.
+**Last updated:** 2026-10-27.
 
 This is the first file to read when resuming work. It reflects what is actually
 built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
@@ -97,8 +97,9 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   intrinsic grid width of 463 px (`grid-cols-1` + `min-w-0`).
 - Four client auth forms now use `method="post"` so a failed JavaScript boot
   cannot put a password into the URL.
-- Home page and README report Phase 4; the landing page itself is still the
-  temporary development placeholder until Phase 7.
+- User-facing copy describes the product only. Internal phase numbers and
+  future-feature timing were removed from the landing page, app footer, and
+  account page; `README.md` still records project status for contributors.
 
 ### Accounts and authentication (Phase 2)
 
@@ -195,7 +196,10 @@ another project. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
 | Responsive layout | headless Chrome CDP at 320/390 px | ✅ landing, `/shared`, `/shared/[mapId]`, `/map`; document width equals viewport; no page overflow |
 | Migration | schema review | ✅ no Phase 4 schema change or migration; Phase 2 tables reused |
 | Invitation inbox delivery/render | Brevo | ⬜ send path ran; delivery/opening and visual rendering not verified |
-| Expired invite in browser | integration test only | ⬜ covered by test, not browser |
+| Expired invite in browser | production browser (2026-10-27) | ✅ expired link showed the generic unavailable state; owner list showed no pending invitation |
+| Member removal list refresh | action test + revalidation | ✅ `/shared` and map detail are both revalidated after removal |
+| Internal phase copy | source + production browser | ✅ no phase/roadmap wording in rendered landing, app, or invite UI; header/footer/account copy now product-only |
+| Accessibility audit | Lighthouse on landing + public invite page | ✅ accessibility, best-practices, and SEO scores 100; no reported failures. Shared map pages were not audited |
 | Physical touch / Safari / Firefox | manual | ⬜ not run |
 | Keyboard / screen reader | manual | ⬜ not run |
 | Visual design approval | human review | ⬜ delegated to the owner |
@@ -206,8 +210,12 @@ another project. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
   exceeded the viewport and were clipped by the landing page's `overflow-hidden`;
   the header now scales the wordmark, tightens gaps, and hides the duplicate
   “Sign in” link below `sm` (the hero keeps both calls to action).
-- **Landing page still reported Phase 3 and “sharing comes next”.** Updated the
-  badge, status card, and footer to Phase 4.
+- **User-facing UI exposed internal phase/roadmap copy.** Removed the landing
+  phase badge, development status card, footer phase line, and account/app
+  later-feature copy. The landing page now presents only product content.
+- **The shared-map list could keep stale member counts after a removal.**
+  `removeMemberAction` now revalidates both `/shared` and the map detail; the
+  action test asserts both paths.
 - **Invite form had duplicate live regions.** Removed the `sr-only` status and
   kept one visible `role="status"`/`aria-live` node; copy status resets when a
   new invitation is submitted.

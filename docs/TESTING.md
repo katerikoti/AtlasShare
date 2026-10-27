@@ -1,11 +1,11 @@
 # AtlasShare — Testing
 
-Status: **Phase 4 built and verified (2026-10-26), awaiting approval.**
+Status: **Phase 4 built and verified (2026-10-27), awaiting approval.**
 105 automated tests in 17 files. Database persistence, auth, shared-map
 authorization, map layout, and browser behavior were also checked manually; the
-exact pass/blocked/not-run state is below. Results are from 2026-10-26 on macOS,
-Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome 148 (headless CDP and
-the app's browser pane). Final `npm run check` and production rebuild results
+exact pass/blocked/not-run state is below. Results are from 2026-10-26–27 on
+macOS, Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome 148 (headless
+CDP and the app's browser pane). Final `npm run check` and production rebuild results
 are recorded in section 5.1.
 
 ## 1. Principles
@@ -31,7 +31,7 @@ are recorded in section 5.1.
 | Data integrity | Vitest over the country dataset | Every check | ✅ 6 tests |
 | Integration (DB) | Vitest against `TEST_DATABASE_URL` | Every check when test DB is configured; skipped otherwise | ✅ 14 tests (visits + shared maps); local test DB |
 | End-to-end | Playwright (Phase 8) | CI / pre-release | ⬜ planned; manual browser checks done |
-| Accessibility | axe + manual keyboard/screen-reader | Each UI phase; full audit Phase 8 | ⬜ partial; manual keyboard/screen-reader not run |
+| Accessibility | Lighthouse/axe + manual keyboard/screen-reader | Each UI phase; full audit Phase 8 | ⬜ partial; public pages scored 100, manual keyboard/screen-reader not run |
 | Visual/layout | Headless Chrome CDP metrics | Each UI phase | ✅ 320/390/1200/1280 metrics; visual review delegated |
 
 ## 3. Commands
@@ -81,7 +81,8 @@ and compare hashes when changing the generator.
 ### 4.3 `npm test`
 
 - Command: `npm test`
-- Result: **passed**, 105/105 tests in 17 files (2026-10-26 13:57 local).
+- Result: **passed**, 105/105 tests in 17 files (2026-10-27, after the final
+  copy and member-removal revalidation edits).
 - Coverage by file:
   - `src/config/brand.test.ts` — product name, WCAG text contrast, and map border contrast (4).
   - `src/config/env.test.ts` — lazy env parsing, missing/malformed values, short
@@ -194,9 +195,9 @@ and compare hashes when changing the generator.
 - `npm run lint`: **passed**, exit 0.
 - `npm run typecheck`: **passed**, exit 0.
 - `npm run check`: **passed**, lint + typecheck + **105/105 tests in 17 files**
-  (2026-10-26, after the final shared-map and landing-header edits).
-- `npm run build`: **passed**. Dynamic routes: `/account`, `/map`, `/shared`,
-  `/shared/[mapId]`, `/invite/[token]`, `/reset-password`,
+  (2026-10-27, after the final copy and member-removal revalidation edits).
+- `npm run build`: **passed** on 2026-10-27. Dynamic routes: `/account`, `/map`,
+  `/shared`, `/shared/[mapId]`, `/invite/[token]`, `/reset-password`,
   `/api/auth/[...all]`. **No new migration** was created or needed.
 - `npm audit`: 8 advisories (1 critical, 3 high, 4 moderate), all in development
   tooling/nested dependencies. Runtime Better Auth is 1.7.12; the advisories are
@@ -224,6 +225,7 @@ CDP session.
 | Member controls | **pass** — member saw the combined view but no owner management/remove controls |
 | Read-only shared map | **pass** — 250 SVG paths, zero checkboxes/toggles |
 | Used invitation | **pass (blocked)** — generic invalid/unavailable state; no second membership |
+| Expired invitation | **pass (blocked, 2026-10-27)** — owner list removed the pending row after expiry; signed-in invited account saw the generic unavailable state, not the map name |
 | Member leave | **pass** — redirected to `/shared?left=1`; map disappeared from list |
 | Personal data after leaving | **pass** — member's `/map` still showed FR+SE (2 of 250) |
 | Owner rename/description | **pass** — persisted on reload |
@@ -231,6 +233,7 @@ CDP session.
 | Re-invite and remove member | **pass** — re-invited, accepted, owner removed; combined 3→2; personal map still 2 |
 | Delete map | **pass** — typed `DELETE`; list empty; detail returned HTTP 404 |
 | Invite response headers | **pass** — `Referrer-Policy: no-referrer`, `X-Robots-Tag`, `Cache-Control: private, no-store` |
+| Lighthouse (public pages) | **pass (2026-10-27)** — landing and invitation page scored 100 for accessibility, best practices, and SEO; no failures |
 | Authenticated map from a signed-in account | **pass** — 250-country combined/read-only view; no raw rows exposed to the client (inspection + tests) |
 
 ### 5.3 Responsive and layout checks
@@ -263,8 +266,8 @@ Suspense boundary.
 
 - Physical-phone touch gestures, Safari, and Firefox.
 - Manual keyboard-only walkthrough and screen-reader output for the shared and
-  invite pages; no axe scan.
-- Expired-invitation UI in a browser; expiry is covered by the integration test.
+  invite pages. Lighthouse covered the public landing and invitation pages only;
+  authenticated shared-map pages were not audited.
 - Invitation inbox delivery, rendering, bounce handling, and open tracking; the
   test recipient was an `example.com` address.
 - Real-time updates between two open browsers. The view is request-time; open a

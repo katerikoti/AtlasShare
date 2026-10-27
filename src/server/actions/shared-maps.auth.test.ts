@@ -384,6 +384,8 @@ describe("shared-map action validation and success paths", () => {
       membershipId: "member_other",
       ownerId: "user_owner",
     });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/shared");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/shared/map_1");
   });
 
   it("lets a member leave and redirects to the list", async () => {

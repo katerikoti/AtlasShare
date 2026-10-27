@@ -69,8 +69,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
       <footer className="border-t border-line/80">
         <p className="mx-auto w-full max-w-4xl px-6 py-4 text-xs text-ink-muted sm:px-10">
-          Private by default · Shared maps are live; image export arrives in a
-          later phase.
+          Private by default · Country-level travel maps.
         </p>
       </footer>
     </div>

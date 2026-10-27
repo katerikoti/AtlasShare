@@ -304,6 +304,7 @@ export async function removeMemberAction(
     return { status: "error", message: genericErrorMessage };
   }
 
+  revalidatePath("/shared");
   revalidatePath(`/shared/${parsed.data.mapId}`);
   return { status: "success", message: "Member removed." };
 }
