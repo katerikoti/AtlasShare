@@ -3,6 +3,9 @@ import type { ReactNode } from "react";
 export const inputClass =
   "mt-2 block w-full rounded-xl border border-line bg-canvas/60 px-4 py-3 text-[15px] text-ink shadow-sm transition-colors placeholder:text-ink-muted/60 focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/20 disabled:opacity-60";
 
+export const selectClass =
+  "mt-1.5 block w-full rounded-xl border border-line bg-canvas/60 px-3 py-2 text-sm text-ink shadow-sm transition-colors focus:border-moss focus:outline-none focus:ring-2 focus:ring-moss/20 disabled:opacity-60";
+
 export const primaryButtonClass =
   "inline-flex w-full items-center justify-center rounded-full bg-moss px-5 py-3 text-sm font-semibold text-canvas transition-colors hover:bg-ink focus-visible:bg-ink disabled:cursor-not-allowed disabled:opacity-60";
 

@@ -9,6 +9,7 @@ import {
   getCountry,
   isCountryCode,
 } from "./countries";
+import { countryRegionOrder } from "./country-regions";
 
 type Geometry = {
   viewBox: string;
@@ -39,6 +40,28 @@ describe("country dataset", () => {
       expect(name.trim().length).toBeGreaterThan(0);
     }
     expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("assigns exactly one region to every country unit", () => {
+    const totals = new Map(countryRegionOrder.map((region) => [region, 0]));
+
+    for (const country of countries) {
+      expect(countryRegionOrder).toContain(country.region);
+      totals.set(country.region, (totals.get(country.region) ?? 0) + 1);
+    }
+
+    expect(
+      [...totals.values()].reduce((sum, value) => sum + value, 0),
+    ).toBe(countryCount);
+    expect(countryRegionOrder.map((region) => totals.get(region))).toEqual([
+      59, 56, 53, 52, 26, 4,
+    ]);
+    expect(getCountry("SE")?.region).toBe("Europe");
+    expect(getCountry("JP")?.region).toBe("Asia");
+    expect(getCountry("RU")?.region).toBe("Europe");
+    expect(getCountry("TR")?.region).toBe("Asia");
+    expect(getCountry("AQ")?.region).toBe("Antarctica");
+    expect(getCountry("XK")?.region).toBe("Europe");
   });
 
   it("keeps Palestine and Israel as separate required units", () => {

@@ -1,9 +1,9 @@
 # AtlasShare — Progress
 
-**Current phase:** Phase 4 — Shared maps (**built and verified, awaiting
-approval**).
-**Status:** Phases 1–3 are approved. Phase 4 is implemented, checked, and
-browser-tested in production mode; it needs owner approval before Phase 5 starts.
+**Current phase:** Phase 5 — Insights and filters (**built and verified,
+awaiting approval**).
+**Status:** Phases 1–4 are approved. Phase 5 is implemented, checked, and
+browser-tested in production mode; it needs owner approval before Phase 6 starts.
 **Last updated:** 2026-10-27.
 
 This is the first file to read when resuming work. It reflects what is actually
@@ -16,13 +16,40 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | 1. Foundation & planning | ✅ Complete (approved) | Runnable branded skeleton + full docs. Commit `ad7746c`. |
 | 2. Accounts & authentication | ✅ Complete (approved 2026-10-26) | Auth, settings, reset, email plumbing, first migration. |
 | 3. Country dataset & personal map | ✅ Complete (approved 2026-10-26) | 250-unit dataset, private map, visited toggle, integration tests, browser QA. |
-| 4. Shared maps | ✅ Built, awaiting approval (2026-10-26) | Create/manage maps, invitations, member roles, combined read-only view, two-account QA. |
-| 5. Insights & filters | ⛔ Not started | D2 resolved: no notes/dates; filters/stats only. |
+| 4. Shared maps | ✅ Complete (approved 2026-10-27) | Create/manage maps, invitations, member roles, combined read-only view, two-account QA. |
+| 5. Insights & filters | ✅ Built, awaiting approval (2026-10-27) | Region field, list filters/sorts, region stats, shared comparison, no migration. |
 | 6. Image export | ⛔ Not started | — |
 | 7. Public site & PWA | ⛔ Not started | — |
 | 8. Hardening, QA & deployment | ⛔ Not started | — |
 
 ## 2. What exists today
+
+### Insights and filters (Phase 5)
+
+- Every one of the 250 units now carries a continent-level region from
+  `src/data/country-regions.ts` (Africa, Americas, Asia, Europe, Oceania,
+  Antarctica), attached by `src/data/countries.ts`. The grouping uses UN M49 at
+  the continent level; transcontinental units use their UN region and dependent
+  territories follow their geographic continent. It is static code, not a table
+  or migration.
+- The personal country list filters by all/visited/not-yet-visited and by
+  region, and sorts by name, region, or visited-first. Search by name or code
+  remains and combines with every control. A visible result count, empty state,
+  and explicit reset action are provided; control state is not reset when a
+  visit is toggled.
+- The personal progress card shows a continent breakdown with marked/total
+  values and small CSS bars. Marked values sum to the headline visited count;
+  no charting library was added.
+- The shared map adds a comparison derived from the already-authorized aggregate
+  view: **Visited by everyone**, **Only you**, and **Not yet by anyone**. The
+  view control updates the map, progress, region breakdown, list, title, empty
+  state, and count. "Only you" and "not yet by anyone" disclose no field the
+  per-member filter did not already send. No new server query or migration.
+- Shared and personal lists are height-limited and scroll on mobile; shared
+  comparison lists show region names and remain read-only.
+- Pure helpers in `src/data/country-insights.ts` implement filtering, region
+  counts, and comparison sets; unit tests cover sorting, filter combinations,
+  region sums, and all three comparison sets.
 
 ### Shared maps (Phase 4)
 
@@ -74,15 +101,17 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 - Canonical dataset: 250 units (249 ISO 3166-1 entries plus Kosovo `XK`),
   generated from `@svg-maps/world@2.0.0` (CC-BY-4.0) plus a committed Natural
   Earth 1:10m Antarctica outline (public domain). Palestine (`PS`) and Israel
-  (`IL`) are separate units. Generated metadata is in
-  `src/data/countries.generated.ts`; geometry is in `public/map/countries.json`.
+  (`IL`) are separate units. Generated codes/names are in
+  `src/data/countries.generated.ts`; the hand-authored continent assignment is
+  in `src/data/country-regions.ts`; geometry is in `public/map/countries.json`.
 - `scripts/generate-countries.mjs` removes `go`/`ju`, merges six `um-*`
   subdivisions into `UM`, adds `AQ`, normalizes names, sorts codes, asserts the
   count, creates output directories, and requires exactly `@svg-maps/world`
   `2.0.0`. `npm run data:countries` reproduces both outputs deterministically.
-- `/map` is a signed-in, user-scoped page: a 250-path SVG map, searchable
-  250-row country list, count and progress bar, legend, empty state, geometry
-  loading/error/retry, route error boundary, and source/licence disclosure.
+- `/map` is a signed-in, user-scoped page: a 250-path SVG map, searchable and
+  filterable 250-row country list, count/progress bar, continent stats, legend,
+  empty state, geometry loading/error/retry, route error boundary, and
+  source/licence disclosure.
 - Map geometry is fetched after first paint from `/map/countries.json`, validated
   against all 250 codes, and is not bundled into JavaScript. Raw asset size is
   ~1.2 MB; local production compression measured ~398 KB. It is public data.
@@ -161,12 +190,53 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 
 ### Not built (do not assume otherwise)
 
-No insights/filters (Phase 5), no image export (Phase 6), no final landing page
-or PWA (Phase 7), no CI, and no deployment. The shared-map tables are now used by
-the Phase 4 UI and actions; there was no Phase 4 migration. Visited state has no
-notes or dates (D2).
+No image export (Phase 6), no final landing page or PWA (Phase 7), no CI, and no
+deployment. Phases 4 and 5 added no migrations; the Phase 2 schema is in use.
+Visited state has no notes or dates (D2), and there are no charts beyond the
+small CSS region bars.
 
 ## 3. Verification
+
+### Phase 5 verification (2026-10-27)
+
+Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
+(headless CDP), production build served on `localhost:3001` because port 3000
+was occupied. Runtime `BETTER_AUTH_URL` / `NEXT_PUBLIC_APP_URL` were
+`http://localhost:3001`.
+
+| Check | Command / method | Result |
+| --- | --- | --- |
+| Lint | `npm run lint` | ✅ exit 0 |
+| Types | `npm run typecheck` | ✅ exit 0 |
+| Tests | `npm test` | ✅ **120/120 passed (18 files)** |
+| Full check | `npm run check` | ✅ exit 0 |
+| Production build | `npm run build` | ✅ exit 0; all existing routes present |
+| Dataset regions | unit test | ✅ exactly one region per 250 units; totals sum to 250 |
+| Filter combinations | unit + component tests | ✅ search + visited + region combine; reset restores all |
+| Sorts | unit + component tests | ✅ name, region order, visited-first |
+| Region sums | unit + browser | ✅ marked region counts sum to headline; 4 marked → 1 Americas + 1 Asia + 2 Europe |
+| Personal browser filters | production browser | ✅ 4 visited; 2 European visited; reset restored 250 rows |
+| Shared comparison | production browser | ✅ combined 5; everyone 2, only-you 2, nobody 245 |
+| Shared view details | production browser | ✅ list counts, map title, region stats, and empty-safe labels follow the view |
+| Read-only shared map | browser inspection | ✅ 250 paths, 0 checkboxes |
+| Responsive layout | headless Chrome CDP | ✅ 320/390/1280 px; no page overflow; map above list on narrow; lists scroll |
+| Migration | schema review | ✅ no Phase 5 schema change or migration |
+| Lighthouse authenticated pages | manual | ⬜ not run; prior public-page audit remains 100/100/100 |
+| Physical touch / Safari / Firefox | manual | ⬜ not run |
+| Keyboard-only / screen reader | manual | ⬜ not run |
+| Visual design approval | human review | ⬜ delegated to owner |
+
+#### Phase 5 defects found and fixed
+
+- **"Visited by everyone" was ambiguous with the combined view.** Renamed the
+  combined option to "Whole group" and its map/copy wording to "any member";
+  "every member" is reserved for the overlap comparison.
+- **The "not yet by anyone" map still described highlighted countries as
+  marked.** Path titles and the legend now say "not marked by anyone" / "Not
+  marked yet", and the region breakdown uses the "not marked" label.
+- **Large comparison lists could grow the page.** Shared lists are capped and
+  scroll; the 245-country "nobody yet" view stays usable without pushing the
+  page apart.
 
 ### Phase 4 verification (2026-10-26)
 
@@ -246,7 +316,7 @@ Environment: macOS, Node v24.13.1, npm 11.8.0, local PostgreSQL 18, Chrome 148
 | Desktop layout | Chrome 1200 px | ✅ map and list side by side; no horizontal overflow |
 | Mobile layout | Chrome 320/390 px | ✅ map first, list follows (map top 711/603 px vs list 1183/1091 px); no horizontal overflow after `grid-cols-1`/`min-w-0` fix |
 | Auth after form change | production browser | ✅ sign-in and sign-up work with `method="post"` |
-| Phase 2 auth/email | prior verification | ✅ see `docs/TESTING.md` §6; not all checks repeated |
+| Phase 2 auth/email | prior verification | ✅ see `docs/TESTING.md` §8; not all checks repeated |
 | Migration | schema review | ✅ no schema change or new migration in Phase 3; Phase 2 migration remains the source |
 | Geometry error/offline | manual | ⬜ not browser-tested |
 | Keyboard/screen reader | manual | ⬜ not run |
@@ -332,6 +402,25 @@ Full records in ADR-024, ADR-025, and §5.
 - Auth forms submit with `method="post"`; this is a hardening fix, not a new auth
   flow.
 
+### Phase 5 decisions
+
+Full records in ADR-029 and ADR-030.
+
+- Region is static dataset metadata, not a database table: UN M49 continent-level
+  grouping in `src/data/country-regions.ts`, attached to the canonical country
+  list, with one assignment per unit. Russia is Europe; Türkiye, Cyprus,
+  Armenia, Azerbaijan, Georgia, and Kazakhstan are Asia; dependent territories
+  follow geographic continent.
+- Country-list filters and sorts are client-side pure functions over the
+  authorized visit set. Search remains; controls combine; reset is explicit.
+- Statistics use marked/region-total counts and CSS bars, not a charting library.
+- The shared comparison is derived in the browser from the existing authorized
+  aggregate view. It adds no server query, no identity field, and no migration.
+  "Only you" uses count-one countries in the current member's set; "not yet by
+  anyone" uses the dataset minus the combined union.
+- The combined shared view is labeled "whole group"/"any member" to avoid
+  conflating it with the "visited by everyone" overlap set.
+
 ### Phase 4 decisions
 
 Full records in ADR-012, ADR-013, and ADR-026.
@@ -386,15 +475,15 @@ Full records in ADR-012, ADR-013, and ADR-026.
 
 | Item | Status | Needed for |
 | --- | --- | --- |
-| Phase 4 approval | built and verified; not yet approved | Starting Phase 5 |
+| Phase 5 approval | built and verified; not yet approved | Starting Phase 6 |
 | Neon dev branch + connection strings | connected; Phase 2 migration applied | Deployment verification |
 | Brevo account + verified sender | configured; prior test delivered/opened | Reset/invitation email validation |
 | Brevo production domain authentication | optional; not configured | Better deliverability in Phase 8 |
 | Approval to push to `origin` | not given | Sharing the repository |
 | Domain name (optional) | undecided | Phase 8 |
 
-Phase 1–3 are approved. Phase 4 is built and verified and awaits explicit
-approval before Phase 5. No credentials are committed; `.env.example` documents
+Phases 1–4 are approved. Phase 5 is built and verified and awaits explicit
+approval before Phase 6. No credentials are committed; `.env.example` documents
 the expected variables.
 
 ## 7. Repository state
@@ -403,8 +492,9 @@ the expected variables.
   the Phase 2 documentation commit is `6ae3b7c`.
 - Phase 3 is committed locally in `0abebaf` plus the map-order follow-up; run
   `git log --oneline` for the exact history. Phase 4 is committed locally after
-  the final check; run `git log --oneline` for its hash. **Not pushed** — pushing
-  needs explicit approval.
+  its final check. Phase 5 is committed locally after its final check; run
+  `git log --oneline` for the exact hash. **Not pushed** — pushing needs explicit
+  approval.
 - Remote `origin` = `https://github.com/katerikoti/AtlasShare.git`.
 - `gh` CLI is not installed; git credentials are cached.
 - `package-lock.json` is committed; `node_modules`, `.next`, `.env*`,
@@ -413,19 +503,23 @@ the expected variables.
   `phase4.member@example.com` plus a “Mobile QA” shared map. Both accounts were
   deleted after QA; Prisma cascades removed their sessions, visits, memberships,
   invitations, and the owned map. The Phase 3 smoke account was already deleted.
+- Phase 5 browser QA created `phase5.qa@example.com` and
+  `phase5.member@example.com` plus a “Phase 5 comparison” shared map. These were
+  deleted after QA; cascades removed sessions, visits, memberships, and the owned
+  map. No QA data is left in the development database.
 
 ## 8. Next steps
 
-1. Owner reviews Phase 4 and explicitly approves or requests changes.
-2. Do not start Phase 5 until that approval; do not push without permission.
+1. Owner reviews Phase 5 and explicitly approves or requests changes.
+2. Do not start Phase 6 until that approval; do not push without permission.
 3. Complete the remaining manual checks if desired: physical touch, Safari and
-   Firefox, keyboard-only, screen reader, invite-email rendering, and visual
-   design approval.
+   Firefox, keyboard-only, screen reader, invite-email rendering, authenticated
+   Lighthouse, and visual design approval.
 4. Decide before launch whether to remove the unused `note` /
    `firstVisitedAt` columns or keep them reserved.
 5. Keep the shared-rate-limit, email-verification, and invitation-token log
    concerns on the pre-launch/Phase 8 list.
-6. Clean up local QA accounts and maps before any production data is used.
+6. Clean up any future QA accounts and maps before using real data.
 
 ## 9. Known limitations and debt
 
@@ -434,6 +528,20 @@ the expected variables.
   visually approve the rendered map. Physical-phone touch, Safari/Firefox,
   keyboard-only navigation, screen-reader output, geometry error/retry, offline,
   and throttled-mobile performance remain unverified.
+- **Region grouping is a travel-map convention, not a political statement.**
+  It follows UN M49 continents, so Cyprus, Türkiye, Armenia, Azerbaijan, Georgia,
+  and Kazakhstan count as Asia and Russia counts as Europe. Territories follow
+  their geographic continent. Region labels are English-only; a user expecting a
+  different convention may disagree at the edges.
+- **Filter and sort state is not in the URL.** It survives visit toggles and
+  client re-renders but resets on reload. There is no saved filter preference.
+- **Shared comparison is derived from the loaded aggregate.** It is not real-time
+  and does not re-query on a timer; opening or refreshing the page picks up new
+  visits. "Visited by everyone" naturally becomes empty as members join.
+- **No charting library or exportable stats.** Region bars are CSS; statistics
+  are not included in a CSV/PNG export.
+- **Authenticated pages were not Lighthouse-audited in Phase 5.** The earlier
+  100/100/100 result applies only to the public landing and invitation pages.
 - **Geometry is a public 1.2 MB asset.** Local production compresses it to
   ~398 KB; it is ETag-revalidated (`max-age=0`) at an unversioned path. A CDN
   should use a short TTL or a versioned URL if long caching is desired. It never
@@ -500,6 +608,6 @@ the expected variables.
 2. Run `npm ci` and `npm run check`; confirm `TEST_DATABASE_URL` for integration.
 3. Start local Postgres if needed and confirm `DATABASE_URL` / `DIRECT_URL`.
 4. Check the blockers and known limitations above.
-5. Do not start Phase 5 without explicit approval; do not push without approval.
+5. Do not start Phase 6 without explicit approval; do not push without approval.
 6. At the end of any work: update this file, run `npm run check` and
    `npm run build`, report honestly, and stop.

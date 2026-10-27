@@ -1,11 +1,12 @@
 # AtlasShare — Database
 
-Status: **implemented through Phase 4.** The auth and application tables exist
+Status: **implemented through Phase 5.** The auth and application tables exist
 in the Phase 2 migration. Phase 3 uses `visited_countries`; Phase 4 uses the
 `shared_maps`, `shared_map_members`, and `shared_map_invitations` tables created
-in that same migration. **Phase 4 added no migration or schema change.** The
-schema below is the contract later phases build on. It will be adjusted only
-with a documented reason (and a migration), not silently.
+in that same migration. Phase 5 adds insights and comparison as derived views.
+**Phases 4 and 5 added no migration or schema change.** The schema below is the
+contract later phases build on. It will be adjusted only with a documented
+reason (and a migration), not silently.
 
 ## 1. Principles
 
@@ -157,10 +158,13 @@ The country list is static, versioned with the code, and needed on the client
 for rendering. A database copy would drift from the SVG geometry and require a
 seed/migration every time the dataset changes. Instead:
 
-- the canonical metadata lives in `src/data/countries.generated.ts`, imported
-  through the `src/data/countries.ts` helper; generated SVG geometry lives in
-  `public/map/countries.json`;
+- the canonical codes/names live in `src/data/countries.generated.ts`, imported
+  through the `src/data/countries.ts` helper; the continent assignment lives in
+  `src/data/country-regions.ts` and is attached by that helper; generated SVG
+  geometry lives in `public/map/countries.json`;
 - the server validates every `countryCode` against the helper before writing;
+- region statistics are computed from visits plus this static mapping at read
+  time, never stored as rows;
 - the generator is deliberately database-free and never deletes visit rows. If a
   future dataset change removes a code, that change is a **data migration** and
   must first query and report affected visit rows (and decide how to migrate or
@@ -181,7 +185,10 @@ keyed by the same alpha-2 code.
 | Only one active invitation per (map, email) | Application layer: revoke/replace previous active invite before creating a new one |
 | Expired/revoked/accepted invites cannot be used | Application layer checks all three states transactionally |
 | Country code is valid | Application layer against the dataset, before insert |
+| Every country code has exactly one region | Static dataset + test over all 250 units |
+| Region counts sum to the headline visited total | Pure `getRegionBreakdown` function + test |
 | Combined map never leaks raw member visits | Query layer returns aggregates, not per-user rows, to the client |
+| Shared comparison adds no new private data | Derived client-side from the authorized combined counts and the current member's codes |
 
 The "owner is also a member" rule keeps authorization and the combined-view
 query uniform. It is created in the same transaction as the map.
@@ -312,6 +319,16 @@ Resolved in Phase 2:
    names.
 5. First migration written and verified with `migrate deploy` on an empty test
    database. Account deletion and all declared cascades were verified manually.
+
+Resolved in Phase 5:
+
+1. No schema change or migration was needed. Region metadata is static
+   application data and all counts are derived from existing visit rows.
+2. Personal filters, region counts, and the shared comparison are pure functions
+   tested without a database; the authorized shared view already carried the
+   inputs.
+3. Region counts are asserted to sum to the headline visited count, and the
+   comparison is asserted to expose only codes/counts.
 
 Resolved in Phase 4:
 

@@ -6,6 +6,46 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ## [Unreleased]
 
+### Added — Phase 5: insights and filters (2026-10-27)
+
+- Static continent-level region metadata for all 250 units in
+  `src/data/country-regions.ts`, attached to the canonical country dataset.
+  Assignment follows the UN M49 continent grouping and is covered by a
+  one-region-per-unit test.
+- Personal country-list controls: visited state, region, and sort by name,
+  region, or visited-first. Search remains and combines with the filters; a
+  reset action is explicit, and filter state survives visit toggles.
+- Region breakdown in the personal progress card with CSS bars, marked/total
+  values per continent, and counts that sum to the headline visited total.
+- Shared-map comparison derived from the authorized combined view: "Visited by
+  everyone", "Only you", and "Not yet by anyone", with per-view counts, map
+  titles, empty states, and region breakdowns. No new query, field, migration,
+  or private data exposure.
+- Shared list is height-limited and scrollable on mobile; personal list shows
+  each country's region. Read-only shared behavior is unchanged.
+- Pure insight helpers and tests for filtering, sorting, region counts, and
+  comparison sets.
+
+### Verified — Phase 5
+
+- `npm run check` passed: lint, typecheck, and **120/120 tests in 18 files**
+  (including 14 local PostgreSQL integration tests).
+- `npm run build` passed; all existing routes remain dynamic/static as before.
+  **No new migration was required.**
+- Production browser QA on `localhost:3001` with a signed-in owner: personal
+  filters returned 4 visited, then 2 European visited; reset restored 250; sort
+  visited-first put Japan first. Region stats showed 1 Americas, 1 Asia, 2
+  Europe, and 4 marked total.
+- Shared QA with two members: combined 5; comparison 2 visited-by-everyone,
+  2 only-you, 245 not-yet-by-anyone; view-specific lists and region stats
+  updated; zero checkboxes; map titles matched the selected view.
+- Responsive metrics at 320/390/1280 px: no document horizontal overflow; map
+  remained above the personal list on narrow screens; large shared lists
+  scrolled inside their card.
+- Manual gaps unchanged: physical touch, Safari/Firefox, keyboard-only and
+  screen-reader walkthroughs, visual design approval, invitation inbox rendering,
+  and Lighthouse on authenticated pages.
+
 ### Added — Phase 4: shared maps (2026-10-26)
 
 - `/shared` map list and create form; `/shared/[mapId]` combined read-only map,

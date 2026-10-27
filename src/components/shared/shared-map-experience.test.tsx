@@ -72,10 +72,10 @@ describe("SharedMapExperience", () => {
     render(<SharedMapExperience map={map} />);
 
     expect(
-      await screen.findByRole("img", { name: /marked by everyone/i }),
+      await screen.findByRole("img", { name: /marked by any member/i }),
     ).toBeVisible();
     expect(
-      screen.getByText(/countries & territories marked by everyone/i),
+      screen.getByText(/countries & territories marked by any member/i),
     ).toBeInTheDocument();
 
     const list = within(
@@ -88,12 +88,86 @@ describe("SharedMapExperience", () => {
     expect(list.getByText("3 of 250 marked")).toBeInTheDocument();
   });
 
-  it("filters to one member without exposing mutation controls", async () => {
+  it("summarizes comparison counts and the current view by region", async () => {
     render(<SharedMapExperience map={map} />);
-    await screen.findByRole("img", { name: /marked by everyone/i });
+    await screen.findByRole("img", { name: /marked by any member/i });
+
+    expect(
+      screen.getByRole("option", { name: /visited by everyone · 1/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /only you · 1/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("option", { name: /not yet by anyone · 247/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Visited by everyone", { selector: "dt" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("This view by region")).toBeInTheDocument();
+    expect(screen.getByText("3 of 52")).toBeInTheDocument();
+  });
+
+  it("shows countries marked only by the current member", async () => {
+    render(<SharedMapExperience map={map} />);
+    await screen.findByRole("img", { name: /marked by any member/i });
 
     fireEvent.change(screen.getByLabelText("Show"), {
-      target: { value: "member_b" },
+      target: { value: "only-you" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("img", { name: /marked by only you/i }),
+      ).toBeVisible();
+    });
+    expect(
+      screen.getByText(/countries & territories marked only by you/i),
+    ).toBeInTheDocument();
+
+    const list = within(
+      screen.getByRole("region", { name: /countries in this view/i }),
+    );
+    expect(list.getByText("Norway")).toBeInTheDocument();
+    expect(list.queryByText("Sweden")).not.toBeInTheDocument();
+    expect(list.queryByText("France")).not.toBeInTheDocument();
+    expect(list.getByText("1 of 250 marked")).toBeInTheDocument();
+  });
+
+  it("shows countries nobody has marked yet", async () => {
+    render(<SharedMapExperience map={map} />);
+    await screen.findByRole("img", { name: /marked by any member/i });
+
+    fireEvent.change(screen.getByLabelText("Show"), {
+      target: { value: "nobody" },
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("img", { name: /not yet marked by anyone/i }),
+      ).toBeVisible();
+    });
+    expect(screen.getByRole("heading", { name: "Shared map" })).toBeVisible();
+    expect(
+      screen.getByText("Countries no member has marked yet."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Not marked yet")).toBeInTheDocument();
+    expect(screen.getByText("Marked by someone")).toBeInTheDocument();
+
+    const list = within(
+      screen.getByRole("region", { name: /countries in this view/i }),
+    );
+    expect(list.getByText("247 of 250 not marked yet")).toBeInTheDocument();
+    expect(list.queryByText("Sweden")).not.toBeInTheDocument();
+    expect(list.getByText("Japan")).toBeInTheDocument();
+  });
+
+  it("filters to one member without exposing mutation controls", async () => {
+    render(<SharedMapExperience map={map} />);
+    await screen.findByRole("img", { name: /marked by any member/i });
+
+    fireEvent.change(screen.getByLabelText("Show"), {
+      target: { value: "member:member_b" },
     });
 
     await waitFor(() => {

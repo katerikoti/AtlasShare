@@ -1,7 +1,7 @@
 # AtlasShare — Development Plan
 
-Status: **Phase 4 built and verified (2026-10-26), awaiting approval.** Phases
-1–3 are approved; Phase 5 has not started.
+Status: **Phase 5 built and verified (2026-10-27), awaiting approval.** Phases
+1–4 are approved; Phase 6 has not started.
 
 ## How phases work
 
@@ -163,11 +163,10 @@ rather than ad-hoc curation.
 
 ---
 
-## Phase 4 — Shared maps
+## Phase 4 — Shared maps ✅ (approved 2026-10-27)
 
-**Status:** implemented and verified 2026-10-26; awaiting approval. The three
-shared-map tables already existed from the Phase 2 migration, so this phase did
-not add a migration. The implementation returns member display names and
+**Status:** approved 2026-10-27. The three shared-map tables already existed from
+the Phase 2 migration, so this phase did not add a migration. The implementation returns member display names and
 deduplicated country-code sets so the member filter works; raw visit rows,
 emails, user ids, notes, and visit dates are still never sent.
 
@@ -210,6 +209,10 @@ confusion about what "combined" means (copy must be explicit).
 ---
 
 ## Phase 5 — Insights and filters
+
+**Status:** implemented and verified 2026-10-27; awaiting approval. Added the
+static region field to the dataset, personal filters/sorts and region stats, and
+the derived shared comparison. No database migration was needed.
 
 **Goal:** make the map informative without turning it into a social network.
 

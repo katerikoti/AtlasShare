@@ -1,4 +1,8 @@
 import { countries as generatedCountries } from "./countries.generated";
+import {
+  countryRegions,
+  type CountryRegion,
+} from "./country-regions";
 
 /**
  * The app's canonical country units.
@@ -6,11 +10,22 @@ import { countries as generatedCountries } from "./countries.generated";
  * The generated list is the single source of truth for codes, display names,
  * and sort order. Geometry is generated alongside it into
  * `public/map/countries.json`; keep the two files in sync with
- * `npm run data:countries`.
+ * `npm run data:countries`. The continent grouping lives in
+ * `country-regions.ts` and is attached here so every consumer gets one
+ * complete dataset.
  */
-export const countries = generatedCountries;
+export type Country = (typeof generatedCountries)[number] & {
+  region: CountryRegion;
+};
 
-export type Country = (typeof countries)[number];
+export const countries = generatedCountries.map((country) => {
+  const region = countryRegions[country.code];
+  if (!region) {
+    throw new Error(`Country ${country.code} has no region assignment.`);
+  }
+  return { ...country, region };
+}) satisfies readonly Country[];
+
 export type CountryCode = Country["code"];
 
 export const countryCount = countries.length;

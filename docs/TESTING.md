@@ -1,12 +1,12 @@
 # AtlasShare — Testing
 
-Status: **Phase 4 built and verified (2026-10-27), awaiting approval.**
-105 automated tests in 17 files. Database persistence, auth, shared-map
-authorization, map layout, and browser behavior were also checked manually; the
-exact pass/blocked/not-run state is below. Results are from 2026-10-26–27 on
-macOS, Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome 148 (headless
-CDP and the app's browser pane). Final `npm run check` and production rebuild results
-are recorded in section 5.1.
+Status: **Phase 5 built and verified (2026-10-27), awaiting approval.**
+120 automated tests in 18 files. Database persistence, auth, shared-map
+authorization, map layout, filters, region counts, and browser behavior were also
+checked manually; the exact pass/blocked/not-run state is below. Results are from
+2026-10-26–27 on macOS, Node 24.13.1, npm 11.8.0, local PostgreSQL 18, and Chrome
+148 (headless CDP and the app's browser pane). Final `npm run check` and
+production rebuild results are recorded in section 5.1.
 
 ## 1. Principles
 
@@ -26,9 +26,9 @@ are recorded in section 5.1.
 | --- | --- | --- | --- |
 | Lint | ESLint 9 + `eslint-config-next` | Every check | ✅ configured |
 | Types | `next typegen && tsc --noEmit` | Every check | ✅ configured |
-| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 105 tests / 17 files total |
-| Component | React Testing Library + jsdom | Every check | ✅ 6 map/shared-view tests |
-| Data integrity | Vitest over the country dataset | Every check | ✅ 6 tests |
+| Unit/component | Vitest 5 + RTL + jsdom | Every check | ✅ 120 tests / 18 files total |
+| Component | React Testing Library + jsdom | Every check | ✅ 12 map/shared-view tests |
+| Data integrity | Vitest over the country dataset + insight helpers | Every check | ✅ 15 tests |
 | Integration (DB) | Vitest against `TEST_DATABASE_URL` | Every check when test DB is configured; skipped otherwise | ✅ 14 tests (visits + shared maps); local test DB |
 | End-to-end | Playwright (Phase 8) | CI / pre-release | ⬜ planned; manual browser checks done |
 | Accessibility | Lighthouse/axe + manual keyboard/screen-reader | Each UI phase; full audit Phase 8 | ⬜ partial; public pages scored 100, manual keyboard/screen-reader not run |
@@ -59,14 +59,14 @@ fails.
 
 Integration tests load `.env` and use `TEST_DATABASE_URL` (the local
 `atlasshare_test` database). They are skipped, not passed, when that variable is
-absent. `npm test` therefore reports 105 passed locally; a fresh checkout without
-the test DB reports 91 passed and 14 skipped unless the environment is set.
+absent. `npm test` therefore reports 120 passed locally; a fresh checkout without
+the test DB reports 106 passed and 14 skipped unless the environment is set.
 
 `npm run data:countries` requires `@svg-maps/world@2.0.0` exactly and rewrites
 `src/data/countries.generated.ts` and `public/map/countries.json`. Run it twice
 and compare hashes when changing the generator.
 
-## 4. Automated tests through Phase 4
+## 4. Automated tests through Phase 5
 
 ### 4.1 `npm run lint`
 
@@ -81,8 +81,8 @@ and compare hashes when changing the generator.
 ### 4.3 `npm test`
 
 - Command: `npm test`
-- Result: **passed**, 105/105 tests in 17 files (2026-10-27, after the final
-  copy and member-removal revalidation edits).
+- Result: **passed**, 120/120 tests in 18 files (2026-10-27, after the final
+  Phase 5 copy, comparison, and label edits).
 - Coverage by file:
   - `src/config/brand.test.ts` — product name, WCAG text contrast, and map border contrast (4).
   - `src/config/env.test.ts` — lazy env parsing, missing/malformed values, short
@@ -101,14 +101,19 @@ and compare hashes when changing the generator.
     unauthenticated callers before Better Auth; validation and password-change
     session revocation (8).
   - `src/data/countries.test.ts` — exactly 250 unique units, names, special
-    units, PS/IL separation, path completeness, lookup/sort (6).
+    units, PS/IL separation, path completeness, lookup/sort, and exactly one
+    region per unit (7).
+  - `src/data/country-insights.test.ts` — filter/sort combinations, unvisited
+    filtering, region sums and unknown-code handling, and the three shared
+    comparison sets including the single-member case (8).
   - `src/server/visits.integration.test.ts` — idempotent set/remove, user
     isolation against local Postgres (3).
   - `src/server/actions/visits.auth.test.ts` — unauthenticated rejection,
     dataset validation, boolean validation, successful persistence, safe error
     (5).
   - `src/components/map/map-experience.test.tsx` — accessible list and count,
-    search, optimistic mark, rollback/error (4).
+    search, optimistic mark, rollback/error, visited/region filters with reset,
+    sort controls, and region statistics (7).
   - `src/server/shared-maps.integration.test.ts` — combined counts, member
     privacy shape, create/invite/accept/reinvite/revoke/remove/leave, expiry,
     wrong email, single-use and concurrency, owner invariants (11).
@@ -116,7 +121,8 @@ and compare hashes when changing the generator.
     rejects unauthenticated/non-member/non-owner callers as appropriate,
     validates input, and handles email outcomes (17).
   - `src/components/shared/shared-map-experience.test.tsx` — combined view,
-    member filter, read-only state (2).
+    member filter, read-only state, comparison counts, only-you and nobody views,
+    view-specific region stats (5).
   - `src/server/invitations.test.ts` — token entropy/format, hash/TTL, URL and
     path handling (5).
   - `src/lib/safe-redirect.test.ts` — same-origin redirects accepted; absolute,
@@ -188,9 +194,86 @@ and compare hashes when changing the generator.
 - Visual rendering of transactional email and password-reset delivery are still
   not confirmed.
 
-## 5. Phase 4 automated and manual verification
+## 5. Phase 5 automated and manual verification
 
 ### 5.1 Final checks
+
+- `npm run lint`: **passed**, exit 0.
+- `npm run typecheck`: **passed**, exit 0.
+- `npm run check`: **passed**, lint + typecheck + **120/120 tests in 18 files**
+  (2026-10-27, after the final Phase 5 edits).
+- `npm run build`: **passed** on 2026-10-27. Routes are unchanged:
+  `/account`, `/map`, `/shared`, `/shared/[mapId]`, `/invite/[token]`,
+  `/reset-password`, `/api/auth/[...all]` dynamic, with the public pages static.
+  **No new migration** was created or needed.
+
+### 5.2 Personal filters and statistics
+
+Served the production build at `http://localhost:3001` (port 3000 was occupied)
+with the runtime auth/app URLs set to that origin. Used a real signed-in account
+through headless Chrome CDP.
+
+| Scenario | Result |
+| --- | --- |
+| Mark four countries | **pass** — Sweden, Norway, Japan, United States; progress 4 of 250 |
+| Visited-only filter | **pass** — 4 rows, "Showing 4 of 250" |
+| Add Europe region filter | **pass** — 2 rows (Sweden, Norway), "Showing 2 of 250" |
+| Reset filters | **pass** — Show and Region returned to "all", 250 rows restored, sort reset |
+| Sort visited-first | **pass** — visited countries appeared before unvisited, then alphabetical |
+| Region breakdown | **pass** — 4 marked total: Americas 1 of 56, Asia 1 of 53, Europe 2 of 52, others 0; sums to 4 |
+| Search + filters | **pass (unit/component)** — controls combine without replacing each other |
+| Empty state | **pass** — no-match copy and reset action; keyboard-native controls |
+
+### 5.3 Shared comparison
+
+A second member and a shared map were seeded in the local development database
+for this phase's UI check. Owner visits: SE, NO, JP, US. Member visits: SE, FR,
+JP. The shared view is read-only.
+
+| Scenario | Result |
+| --- | --- |
+| Combined view | **pass** — 5 of 250; owner 4, member 3; region Europe 3, Asia 1, Americas 1 |
+| Comparison counts | **pass** — visited by everyone 2 (JP, SE), only you 2 (NO, US), not yet by anyone 245 |
+| "Visited by everyone" view | **pass** — 2 countries, list count and map title match the overlap |
+| "Only you" view | **pass** — 2 countries, no other member's exclusive country leaked into the list |
+| "Not yet by anyone" view | **pass** — 245 countries, "not marked yet" wording, scrollable list |
+| Return to whole group | **pass** — counts, list, region stats, and map title restored |
+| Region breakdown per view | **pass** — counts follow the selected set and use "not marked" for the nobody view |
+| Read-only behavior | **pass** — zero checkboxes; no mutation controls on the shared view |
+| Large-list usability | **pass** — 245 rows rendered in a height-limited scroll card |
+
+### 5.4 Responsive and layout checks
+
+- Headless Chrome CDP at **320, 390, and 1280 px** measured `/map` and
+  `/shared/[mapId]`.
+- `document.documentElement.scrollWidth` equaled the viewport at every width; no
+  page-level horizontal scroll.
+- At 320/390 px the personal map preceded the country list (map top 923/841 px
+  versus list 1394/1329 px). The filter selects fit the sidebar (238 px controls
+  inside a 272 px card at 320 px).
+- At 1280 px the map and personal list remained side by side; shared controls and
+  large lists stayed inside their cards.
+- Mobile emulation is not a physical phone; visual design approval remains
+  delegated to the owner.
+
+### 5.5 Not run or not covered in Phase 5
+
+- Physical-phone touch, Safari, and Firefox.
+- Manual keyboard-only walkthrough and screen-reader output for the new filters,
+  region bars, and comparison views. Native selects/buttons were used and
+  component tests query by role/label, but a human pass is still needed.
+- Lighthouse on authenticated `/map` or `/shared/[mapId]`; the prior public-page
+  audit remains 100/100/100.
+- Visual design approval.
+- Real-time refresh between two open browsers. Comparison is derived from the
+  loaded request, not a subscription.
+- Region taxonomy review at the edges (Cyprus, Türkiye, Russia, territories).
+  This is documented as a convention in ADR-029.
+- Export of statistics or charts; Phase 5 intentionally uses CSS bars only.
+
+## 6. Phase 4 automated and manual verification
+
+### 6.1 Final checks
 
 - `npm run lint`: **passed**, exit 0.
 - `npm run typecheck`: **passed**, exit 0.
@@ -206,7 +289,7 @@ and compare hashes when changing the generator.
   Unresolved issues are recorded in `PROGRESS.md`; upgrade/replace before
   deployment.
 
-### 5.2 Shared-map browser QA
+### 6.2 Shared-map browser QA
 
 Served the production build at `http://localhost:3001` (port 3000 was occupied)
 with `BETTER_AUTH_URL` and runtime `NEXT_PUBLIC_APP_URL` set to that origin.
@@ -236,7 +319,7 @@ CDP session.
 | Lighthouse (public pages) | **pass (2026-10-27)** — landing and invitation page scored 100 for accessibility, best practices, and SEO; no failures |
 | Authenticated map from a signed-in account | **pass** — 250-country combined/read-only view; no raw rows exposed to the client (inspection + tests) |
 
-### 5.3 Responsive and layout checks
+### 6.3 Responsive and layout checks
 
 - Headless Chrome CDP at **320 and 390 px** (mobile emulation) measured the
   landing page, `/shared`, `/shared/[mapId]`, and `/map`.
@@ -253,7 +336,7 @@ CDP session.
 - Responsive metrics use headless Chrome, not a physical phone. Visual design
   approval remains delegated to the owner.
 
-### 5.4 Automation-tab artifact
+### 6.4 Automation-tab artifact
 
 The in-app browser pane runs a background/hidden tab; it can pause
 `requestAnimationFrame`, leaving React's streamed Suspense segment hidden. The
@@ -262,7 +345,7 @@ Chrome session rendered the same pages normally. This is a test-tool visibility
 artifact, not an application loading bug. Do not “fix” the app by removing the
 Suspense boundary.
 
-### 5.5 Not run or not covered in Phase 4
+### 6.5 Not run or not covered in Phase 4
 
 - Physical-phone touch gestures, Safari, and Firefox.
 - Manual keyboard-only walkthrough and screen-reader output for the shared and
@@ -278,9 +361,9 @@ Suspense boundary.
 - Shared-map rate limits and verified-email enforcement; they are not
   implemented and are recorded as accepted risks.
 
-## 6. Phase 3 automated and manual verification
+## 7. Phase 3 automated and manual verification
 
-### 6.1 Dataset generation
+### 7.1 Dataset generation
 
 - `npm run data:countries` completed and reported 250 units, 250 paths, and the
   viewBox. Running the generator twice produced identical UTF-8 output; the two
@@ -294,7 +377,7 @@ Suspense boundary.
   compression brought the browser transfer to ~398 KB. It is public data and
   must never contain a user's visited set.
 
-### 6.2 Automated checks
+### 7.2 Automated checks
 
 - `npm test`: **passed**, 64/64 tests in 12 files. The three database integration
   tests ran against local `atlasshare_test`; they create two users, prove
@@ -306,7 +389,7 @@ Suspense boundary.
 - `npm run check`: **passed** after the final Phase 3 edits (see the result note
   below).
 
-### 6.3 Production browser and layout checks
+### 7.3 Production browser and layout checks
 
 - Served the production build at `http://127.0.0.1:3003` with
   `BETTER_AUTH_URL` and `NEXT_PUBLIC_APP_URL` set to that origin. Used Chrome
@@ -339,7 +422,7 @@ Suspense boundary.
   functional after the change; a fresh QA account was created through the UI and
   deleted afterward.
 
-### 6.4 Phase 3 not run or not covered
+### 7.4 Phase 3 not run or not covered
 
 - No physical-phone test, real touch gesture test, or Safari/Firefox test.
 - No manual keyboard tab/space walkthrough or screen-reader session; the list is
@@ -353,7 +436,7 @@ Suspense boundary.
 - No visual design review by the agent. Screenshots were captured at 320, 390,
   and 1280 px, but visual approval is delegated to the owner.
 
-### 6.5 Final result
+### 7.5 Final result
 
 Final Phase 3 commands on 2026-10-26: `npm run lint`, `npm run typecheck`,
 `npm run check`, and `npm run build` all exited 0. `npm run check` reported
@@ -361,9 +444,9 @@ Final Phase 3 commands on 2026-10-26: `npm run lint`, `npm run typecheck`,
 after the mobile overflow fix; no files changed after that build except
 documentation.
 
-## 7. Phase 2 manual verification (historical)
+## 8. Phase 2 manual verification (historical)
 
-### 7.1 Production smoke and auth flows
+### 8.1 Production smoke and auth flows
 
 Served with `PORT=3102 BETTER_AUTH_URL=http://localhost:3102
 NEXT_PUBLIC_APP_URL=http://localhost:3102 npm start` against local Postgres.
@@ -392,7 +475,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3102 npm start` against local Postgres.
 Test data lived only in the local `atlasshare_dev` database. Emails used
 `example.com` addresses. No credentials or tokens were committed.
 
-### 7.2 Layout and accessibility measurements
+### 8.2 Layout and accessibility measurements
 
 Headless Chrome via CDP at 320, 390, and 1280 px for `/`, `/sign-in`,
 `/sign-up`, `/forgot-password`, `/reset-password`, `/account`, and a missing
@@ -408,7 +491,7 @@ page.
 | Console errors | none after adding `src/app/icon.svg`; only the deliberately requested missing page returns 404 |
 | Focus visibility | Phase 1 outline styles still apply; not re-measured this phase |
 
-### 7.3 Not run or blocked in Phase 2
+### 8.3 Not run or blocked in Phase 2
 
 | Check | Status | Why |
 | --- | --- | --- |
@@ -425,13 +508,13 @@ page.
 | Cross-browser (Safari/Firefox) | **not run** | Chrome only. |
 | Lighthouse | **not run** | Meaningful after the map/landing page exist. |
 
-### 7.4 Phase 1 results (historical)
+### 8.4 Phase 1 results (historical)
 
 Phase 1 passed lint, typecheck, 4/4 tests, build, production smoke, 404, and
 320/390/1280 layout checks. The detailed record is in the Phase 1 commit and
 `CHANGELOG.md`; Phase 2 supersedes those counts.
 
-## 8. Test data and fixtures
+## 9. Test data and fixtures
 
 - Local Postgres databases: `atlasshare_dev` for development/manual checks and
   `atlasshare_test` for the Vitest integration suite. `TEST_DATABASE_URL` is
@@ -444,7 +527,7 @@ Phase 1 passed lint, typecheck, 4/4 tests, build, production smoke, 404, and
 - Country fixtures use real codes from the committed dataset; tests fail if a
   fixture code is not in the dataset.
 
-## 9. Accessibility testing plan
+## 10. Accessibility testing plan
 
 Per UI phase:
 
@@ -460,7 +543,7 @@ The map needs special attention: the SVG is not 250 tab stops. The country list
 is the accessible control surface; the SVG has an accessible name and reflects
 state via text alternatives.
 
-## 10. Manual QA checklist (feature phases)
+## 11. Manual QA checklist (feature phases)
 
 Phase 4 additions are checked separately from the historical Phase 2/3 items.
 
@@ -514,7 +597,7 @@ Phase 2 (historical):
 - [x] Unauthenticated `/shared` redirect; non-member map access returns 404
   (action/integration tests; map page uses the signed-in member check).
 
-## 11. CI (planned)
+## 12. CI (planned)
 
 When the repo gets CI (Phase 8):
 
@@ -529,7 +612,7 @@ they are skipped and the run is reported as such. The build must not need
 secrets: database access at build time is avoided by lazy env/auth/database
 initialization and dynamic rendering.
 
-## 12. Known gaps
+## 13. Known gaps
 
 - No browser-level regression tests yet.
 - No automated test that a forged server-action request is rejected at the HTTP

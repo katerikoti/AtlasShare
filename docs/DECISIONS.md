@@ -547,6 +547,58 @@ remain single-use, 7-day, hashed, revocable, and high-entropy.
 
 ---
 
+## ADR-029 — Continent-level region is static dataset metadata
+
+**Status:** accepted (Phase 5)
+
+**Context:** Phase 5 needs region filters and counts that sum to the visited
+total. The generated dataset carried only codes and names, and the geometry
+generator should stay deterministic and unchanged. There is no single runtime
+API for continent membership, and country/territory assignment involves judgment
+calls at the edges.
+
+**Decision:** Add `src/data/country-regions.ts` as the single source of truth for
+one continent-level region per unit: Africa, Americas, Asia, Europe, Oceania, or
+Antarctica. It follows the United Nations M49 geoscheme at the continent level.
+Russia is Europe; Türkiye, Cyprus, Armenia, Azerbaijan, Georgia, and Kazakhstan
+are Asia; dependent territories follow their geographic continent. The mapping
+is attached to the generated list by `src/data/countries.ts`, so consumers keep
+one `countries` import and no extra country table or migration is needed.
+
+**Consequences:** Every unit gets exactly one assignment, enforced at startup and
+by a dataset test; the region totals sum to 250. Region names are display labels,
+not localized. Changing the grouping is a code change plus test update, not a
+data migration, because no region value is stored in Postgres. The grouping is a
+travel-map aid, not a political statement.
+
+---
+
+## ADR-030 — Shared comparison is derived from the authorized aggregate view
+
+**Status:** accepted (Phase 5)
+
+**Context:** The Phase 5 scope allows a shared comparison ("visited by
+everyone", "only you", "not yet by anyone") only if privacy allows. The Phase 4
+shared view already sends each member's display name and deduplicated country
+codes for the per-member filter, plus aggregate per-country counts. A new
+server endpoint would add attack surface and a second authorization path for no
+new product data.
+
+**Decision:** Compute the comparison in the browser from the already-authorized
+view. "Visited by everyone" means a combined count equal to the member count;
+"only you" means a code in the signed-in member's set whose combined count is
+one; "not yet by anyone" means the static dataset minus the combined codes. Send
+no additional identity fields, raw visit rows, notes, dates, emails, or user ids.
+
+**Consequences:** The comparison exposes only country codes and counts, and no
+member learns anything the member filter did not already reveal. There is no new
+query or migration and the data layer stays unchanged. If the shared view ever
+stops sending per-member country sets, the comparison must move server-side or
+be removed. The UI must not imply real-time updates; it reflects the loaded
+request.
+
+---
+
 ## Deferred decisions
 
 | Topic | Why deferred | Needed by |

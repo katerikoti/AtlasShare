@@ -1,9 +1,9 @@
 # AtlasShare — Security
 
-Status: **Phase 4 shared maps are implemented and verified, awaiting approval.**
-Export and PWA are not implemented. This document states the rules that every
-phase must satisfy. Deviations require an explicit decision in
-`DECISIONS.md`.
+Status: **Phase 5 insights and filters are implemented and verified, awaiting
+approval.** Phases 1–4 are approved. Export and PWA are not implemented. This
+document states the rules that every phase must satisfy. Deviations require an
+explicit decision in `DECISIONS.md`.
 
 ## 1. Assets
 
@@ -96,6 +96,13 @@ scoped by the authenticated user or by a verified membership.**
   member filter works, plus combined counts. It does not receive emails, user
   ids, raw visit rows, notes, or visit dates. Pending invitation emails are
   returned only to the owner.
+- The Phase 5 comparison is derived in the browser from that same authorized
+  view: "visited by everyone" uses the published per-country counts, "only you"
+  intersects the signed-in member's own codes with count-one codes, and "not yet
+  by anyone" uses the public dataset minus the combined codes. It issues no new
+  query and discloses no field that the per-member filter did not already send.
+  Region statistics are counts over the current view, not another person's raw
+  rows.
 
 Test requirement: for each new server action, at least one test proves a
 non-member cannot perform it and cannot read the data.
