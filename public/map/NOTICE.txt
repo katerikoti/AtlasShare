@@ -8,24 +8,12 @@ Package: https://www.npmjs.com/package/@svg-maps/world
 License: Creative Commons Attribution 4.0 International (CC BY 4.0)
          https://creativecommons.org/licenses/by/4.0/
 
-AtlasShare modifications: removed the non-ISO `go` and `ju` paths; merged the
-six `um-*` U.S. Minor Outlying Islands subdivisions into one `UM` path;
-normalized display names; sorted units by ISO alpha-2 code. Palestine (`PS`)
-and Israel (`IL`) remain separate paths.
-
-Antarctica outline
-------------------
-Source: Natural Earth 1:10m cultural/physical data
-        https://www.naturalearthdata.com/
-License: public domain
-        https://www.naturalearthdata.com/about/terms-of-use/
-
-AtlasShare modifications: extracted a single main-ring Antarctica outline,
-projected to the map's coordinate space, and committed it as
-`scripts/data/antarctica-path.txt`. It is an approximate visual outline, not a
-survey boundary.
+AtlasShare modifications: filtered the 256 source locations to the 195
+recognized countries (193 UN member states plus the Holy See and Palestine);
+removed all territories, Kosovo (`XK`), the non-ISO `go` and `ju` paths, and
+the six `um-*` subdivisions; normalized display names; sorted countries by ISO
+alpha-2 code. Palestine (`PS`) and Israel (`IL`) remain separate paths.
 
 The generated files `public/map/countries.json` and
-`src/data/countries.generated.ts` are derived from the sources above. They
-contain only public country/territory geometry and names; no user visit data is
-included.
+`src/data/countries.generated.ts` are derived from the source above. They
+contain only public country geometry and names; no user visit data is included.

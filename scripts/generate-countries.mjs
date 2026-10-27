@@ -5,15 +5,11 @@ import { fileURLToPath } from "node:url";
 /**
  * Generates the canonical country metadata and SVG geometry.
  *
- * Source: @svg-maps/world 2.0.0 (CC BY 4.0), plus a public-domain Antarctica
- * outline derived from Natural Earth 1:10m. The source map contains 256 paths:
- * it includes six `um-*` subdivisions but no single `UM` path, two non-ISO
- * extras (`go`, `ju`), and no Antarctica. We:
- *   - remove `go` and `ju`,
- *   - merge the six `um-*` paths into `UM`,
- *   - add `AQ` from the committed outline,
- *   - keep `PS` and `IL` as separate units,
- *   - normalize names and sort by ISO alpha-2 code.
+ * Source: @svg-maps/world 2.0.0 (CC BY 4.0). The source map contains 256
+ * locations, including territories, Kosovo, and non-ISO extras. This project
+ * deliberately shows the 195 recognized countries: the 193 UN member states
+ * plus the two non-member observer states, the Holy See and Palestine. Every
+ * other location is filtered out.
  *
  * The output is deterministic. Run with `npm run data:countries`.
  */
@@ -21,10 +17,6 @@ import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const packagePath = resolve(root, "node_modules/@svg-maps/world");
 const sourcePath = resolve(packagePath, "index.js");
-const antarcticaPath = readFileSync(
-  resolve(root, "scripts/data/antarctica-path.txt"),
-  "utf8",
-).trim();
 const pkg = JSON.parse(readFileSync(resolve(packagePath, "package.json"), "utf8"));
 
 if (pkg.version !== "2.0.0") {
@@ -33,40 +25,46 @@ if (pkg.version !== "2.0.0") {
   );
 }
 
+// The 193 UN member states plus the Holy See (VA) and Palestine (PS).
+const recognizedCountries = new Set(
+  `
+  AD AE AF AG AL AM AO AR AT AU AZ BA BB BD BE BF BG BH BI BJ BN BO BR BS BT BW BY BZ
+  CA CD CF CG CH CI CL CM CN CO CR CU CV CY CZ DE DJ DK DM DO DZ EC EE EG ER ES ET FI FJ
+  FM FR GA GB GD GE GH GM GN GQ GR GT GW GY HN HR HT HU ID IE IL IN IQ IR IS IT JM JO JP
+  KE KG KH KI KM KN KP KR KW KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MG MH MK ML
+  MM MN MR MT MU MV MW MX MY MZ NA NE NG NI NL NO NP NR NZ OM PA PE PG PH PK PL PS PT PW
+  PY QA RO RS RU RW SA SB SC SD SE SG SI SK SL SM SN SO SR SS ST SV SY SZ TD TG TH TJ TL
+  TM TN TO TR TT TV TZ UA UG US UY UZ VA VC VE VN VU WS YE ZA ZM ZW
+  `
+    .trim()
+    .split(/\s+/),
+);
+
+if (recognizedCountries.size !== 195) {
+  throw new Error(
+    `Expected 195 recognized countries, found ${recognizedCountries.size}.`,
+  );
+}
+
 // Display names that we want to be unambiguous in the UI. Keep this list small
 // and review every change; the dataset is also used for search and tests.
 const nameOverrides = {
-  ax: "Åland Islands",
-  bl: "Saint Barthélemy",
   bn: "Brunei",
-  bq: "Caribbean Netherlands",
-  cc: "Cocos (Keeling) Islands",
   cd: "Democratic Republic of the Congo",
   cg: "Republic of the Congo",
   cv: "Cabo Verde",
   cz: "Czechia",
   fm: "Micronesia",
-  gs: "South Georgia & South Sandwich Islands",
-  io: "British Indian Ocean Territory",
   la: "Laos",
-  mf: "Saint Martin",
   mk: "North Macedonia",
-  mo: "Macao",
   ps: "Palestine",
-  re: "Réunion",
-  sh: "Saint Helena, Ascension and Tristan da Cunha",
   st: "São Tomé and Príncipe",
-  sx: "Sint Maarten",
   sz: "Eswatini",
-  tf: "French Southern Territories",
   tr: "Türkiye",
   us: "United States",
+  va: "Holy See (Vatican City)",
   vc: "Saint Vincent and the Grenadines",
-  vi: "U.S. Virgin Islands",
 };
-
-const excluded = new Set(["go", "ju"]);
-const umPaths = [];
 
 const sourceText = readFileSync(sourcePath, "utf8");
 const map = JSON.parse(sourceText.replace(/^export default /, "").trim());
@@ -74,11 +72,8 @@ const byCode = new Map();
 
 for (const location of map.locations) {
   const id = String(location.id).toLowerCase();
-  if (excluded.has(id)) continue;
-  if (id.startsWith("um-")) {
-    umPaths.push(location.path);
-    continue;
-  }
+  if (!recognizedCountries.has(id.toUpperCase())) continue;
+
   const code = id.toUpperCase();
   if (!/^[A-Z]{2}$/.test(code)) {
     throw new Error(`Invalid source id: ${location.id}`);
@@ -93,31 +88,16 @@ for (const location of map.locations) {
   });
 }
 
-if (umPaths.length !== 6) {
-  throw new Error(`Expected 6 UM subdivision paths, found ${umPaths.length}`);
-}
-
-byCode.set("UM", {
-  code: "UM",
-  name: "United States Minor Outlying Islands",
-  path: umPaths.join(" "),
-});
-byCode.set("AQ", {
-  code: "AQ",
-  name: "Antarctica",
-  path: antarcticaPath,
-});
-
 const countries = [...byCode.values()].sort((a, b) =>
   a.code.localeCompare(b.code),
 );
 
-if (countries.length !== 250) {
-  throw new Error(`Expected 250 country units, generated ${countries.length}`);
+if (countries.length !== 195) {
+  throw new Error(`Expected 195 countries, generated ${countries.length}`);
 }
-for (const required of ["AQ", "IL", "PS", "UM", "XK"]) {
+for (const required of ["IL", "PS", "VA"]) {
   if (!byCode.has(required)) {
-    throw new Error(`Missing required country unit: ${required}`);
+    throw new Error(`Missing required country: ${required}`);
   }
 }
 if (byCode.get("PS").path === byCode.get("IL").path) {
@@ -152,6 +132,4 @@ writeFileSync(
   `${JSON.stringify(geometry, null, 2)}\n`,
 );
 
-console.log(
-  `Generated ${countries.length} country units, ${geometry.paths.AQ ? "including" : "missing"} Antarctica.`,
-);
+console.log(`Generated ${countries.length} countries and ${countries.length} paths.`);

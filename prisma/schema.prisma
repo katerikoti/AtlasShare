@@ -81,7 +81,7 @@ enum SharedMapRole {
 }
 
 /// A user's private visit. Country codes are ISO 3166-1 alpha-2, validated
-/// against the committed dataset before insert (Kosovo is `XK`).
+/// against the committed 195-country dataset before insert.
 model VisitedCountry {
   id             String    @id @default(cuid())
   userId         String

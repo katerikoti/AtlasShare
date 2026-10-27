@@ -83,8 +83,8 @@ describe("MapExperience", () => {
     render(<MapExperience initialVisited={["SE", "NO"]} />);
 
     expect(screen.getByText("By region")).toBeInTheDocument();
-    expect(screen.getByText("0 of 59")).toBeInTheDocument();
-    expect(screen.getByText("2 of 52")).toBeInTheDocument();
+    expect(screen.getByText("0 of 54")).toBeInTheDocument();
+    expect(screen.getByText("2 of 44")).toBeInTheDocument();
   });
 
   it("optimistically marks a country and persists the desired state", async () => {

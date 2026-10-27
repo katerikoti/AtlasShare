@@ -44,7 +44,7 @@ export function isCountryCode(code: string): code is CountryCode {
 
 /**
  * Alphabetical order for search/list UIs. ICU collation keeps accented names
- * (Åland, Côte d'Ivoire, Réunion) next to their unaccented neighbours.
+ * (Côte d'Ivoire, São Tomé and Príncipe) next to their unaccented neighbours.
  */
 export const countriesAlphabetical = [...countries].sort((a, b) =>
   a.name.localeCompare(b.name, "en", { sensitivity: "base" }),

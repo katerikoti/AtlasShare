@@ -6,7 +6,7 @@ import { countryRegionOrder } from "./country-regions";
 
 describe("country insights", () => {
   it("counts marked countries by region and sums to the total", () => {
-    const codes = ["SE", "NO", "FR", "JP", "US", "AQ"];
+    const codes = ["SE", "NO", "FR", "JP", "US"];
     const breakdown = getRegionBreakdown(codes);
 
     expect(breakdown.map((entry) => entry.region)).toEqual(
@@ -20,11 +20,15 @@ describe("country insights", () => {
     );
     expect(breakdown.find((entry) => entry.region === "Europe")).toMatchObject({
       marked: 3,
-      total: 52,
+      total: 44,
     });
-    expect(breakdown.find((entry) => entry.region === "Antarctica")).toMatchObject(
-      { marked: 1, total: 4 },
-    );
+    expect(
+      breakdown.find((entry) => entry.region === "Americas"),
+    ).toMatchObject({ marked: 1, total: 35 });
+    expect(breakdown.find((entry) => entry.region === "Asia")).toMatchObject({
+      marked: 1,
+      total: 48,
+    });
   });
 
   it("ignores unknown or duplicate codes in the breakdown", () => {

@@ -12,11 +12,9 @@ export function MapAttribution() {
         >
           @svg-maps/world
         </a>{" "}
-        (CC BY 4.0), modified by removing non-ISO paths, merging the United
-        States Minor Outlying Islands subdivisions, and adding a Natural Earth
-        1:10m Antarctica outline (public domain). Palestine and Israel are
-        separate map units. Boundaries follow the source data and are not a
-        statement about disputed territories. Read the{" "}
+        (CC BY 4.0), filtered to the 193 UN member states plus the Holy See and
+        Palestine. Boundaries follow the source data and are not a statement
+        about disputed territories. Read the{" "}
         <a
           href="https://creativecommons.org/licenses/by/4.0/"
           className="font-medium text-moss underline underline-offset-2"

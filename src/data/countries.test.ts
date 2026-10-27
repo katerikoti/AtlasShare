@@ -21,9 +21,9 @@ const geometry = JSON.parse(
 ) as Geometry;
 
 describe("country dataset", () => {
-  it("contains exactly 250 unique alpha-2 units", () => {
-    expect(countryCount).toBe(250);
-    expect(countries).toHaveLength(250);
+  it("contains exactly 195 unique alpha-2 countries", () => {
+    expect(countryCount).toBe(195);
+    expect(countries).toHaveLength(195);
 
     const codes = countries.map((country) => country.code);
     expect(new Set(codes).size).toBe(codes.length);
@@ -42,7 +42,7 @@ describe("country dataset", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it("assigns exactly one region to every country unit", () => {
+  it("assigns exactly one region to every country", () => {
     const totals = new Map(countryRegionOrder.map((region) => [region, 0]));
 
     for (const country of countries) {
@@ -54,17 +54,17 @@ describe("country dataset", () => {
       [...totals.values()].reduce((sum, value) => sum + value, 0),
     ).toBe(countryCount);
     expect(countryRegionOrder.map((region) => totals.get(region))).toEqual([
-      59, 56, 53, 52, 26, 4,
+      54, 35, 48, 44, 14,
     ]);
     expect(getCountry("SE")?.region).toBe("Europe");
     expect(getCountry("JP")?.region).toBe("Asia");
     expect(getCountry("RU")?.region).toBe("Europe");
     expect(getCountry("TR")?.region).toBe("Asia");
-    expect(getCountry("AQ")?.region).toBe("Antarctica");
-    expect(getCountry("XK")?.region).toBe("Europe");
+    expect(getCountry("VA")?.region).toBe("Europe");
+    expect(getCountry("PS")?.region).toBe("Asia");
   });
 
-  it("keeps Palestine and Israel as separate required units", () => {
+  it("keeps Palestine and Israel as separate required countries", () => {
     const palestine = getCountry("PS");
     const israel = getCountry("IL");
 
@@ -75,14 +75,19 @@ describe("country dataset", () => {
     expect(geometry.paths.PS).not.toBe(geometry.paths.IL);
   });
 
-  it("includes the documented special units", () => {
-    for (const code of ["AQ", "UM", "XK"]) {
-      expect(isCountryCode(code)).toBe(true);
-      expect(geometry.paths[code]).toBeTruthy();
+  it("includes the two UN observer states and excludes territories", () => {
+    expect(getCountry("VA")?.name).toBe("Holy See (Vatican City)");
+    expect(isCountryCode("PS")).toBe(true);
+    expect(geometry.paths.VA).toBeTruthy();
+    expect(geometry.paths.PS).toBeTruthy();
+
+    for (const code of ["AQ", "UM", "XK", "TW", "EH"]) {
+      expect(isCountryCode(code)).toBe(false);
+      expect(geometry.paths[code]).toBeUndefined();
     }
   });
 
-  it("has exactly one non-empty SVG path for every dataset unit", () => {
+  it("has exactly one non-empty SVG path for every dataset country", () => {
     const geometryCodes = Object.keys(geometry.paths).sort();
     const datasetCodes = countries.map((country) => country.code).sort();
 

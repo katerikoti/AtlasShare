@@ -14,7 +14,7 @@ const mapErrorMessage =
 
 /**
  * Load and validate the public SVG geometry. The asset is checked against the
- * committed 250-code dataset before any path is rendered. Retrying resets the
+ * committed 195-country dataset before any path is rendered. Retrying resets the
  * error and refetches; no user data is involved.
  */
 export function useMapGeometry() {

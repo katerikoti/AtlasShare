@@ -131,14 +131,14 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
 
   const progressDescription =
     viewMode === "member" && selectedMember
-      ? `countries & territories marked by ${viewLabel}`
+      ? `countries marked by ${viewLabel}`
       : viewMode === "everyone"
-        ? "countries & territories marked by every member"
+        ? "countries marked by every member"
         : viewMode === "only-you"
-          ? "countries & territories marked only by you"
+          ? "countries marked only by you"
           : viewMode === "nobody"
-            ? "countries & territories not yet marked by anyone"
-            : "countries & territories marked by any member";
+            ? "countries not yet marked by anyone"
+            : "countries marked by any member";
 
   const mapDescription =
     viewMode === "member"

@@ -75,7 +75,7 @@ describe("SharedMapExperience", () => {
       await screen.findByRole("img", { name: /marked by any member/i }),
     ).toBeVisible();
     expect(
-      screen.getByText(/countries & territories marked by any member/i),
+      screen.getByText("countries marked by any member", { selector: "p" }),
     ).toBeInTheDocument();
 
     const list = within(
@@ -85,7 +85,7 @@ describe("SharedMapExperience", () => {
     expect(list.getByText("Norway")).toBeInTheDocument();
     expect(list.getByText("France")).toBeInTheDocument();
     expect(list.getByText("2 of 2")).toBeInTheDocument();
-    expect(list.getByText("3 of 250 marked")).toBeInTheDocument();
+    expect(list.getByText("3 of 195 marked")).toBeInTheDocument();
   });
 
   it("summarizes comparison counts and the current view by region", async () => {
@@ -99,13 +99,13 @@ describe("SharedMapExperience", () => {
       screen.getByRole("option", { name: /only you · 1/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("option", { name: /not yet by anyone · 247/i }),
+      screen.getByRole("option", { name: /not yet by anyone · 192/i }),
     ).toBeInTheDocument();
     expect(
       screen.getByText("Visited by everyone", { selector: "dt" }),
     ).toBeInTheDocument();
     expect(screen.getByText("This view by region")).toBeInTheDocument();
-    expect(screen.getByText("3 of 52")).toBeInTheDocument();
+    expect(screen.getByText("3 of 44")).toBeInTheDocument();
   });
 
   it("shows countries marked only by the current member", async () => {
@@ -122,7 +122,7 @@ describe("SharedMapExperience", () => {
       ).toBeVisible();
     });
     expect(
-      screen.getByText(/countries & territories marked only by you/i),
+      screen.getByText("countries marked only by you", { selector: "p" }),
     ).toBeInTheDocument();
 
     const list = within(
@@ -131,7 +131,7 @@ describe("SharedMapExperience", () => {
     expect(list.getByText("Norway")).toBeInTheDocument();
     expect(list.queryByText("Sweden")).not.toBeInTheDocument();
     expect(list.queryByText("France")).not.toBeInTheDocument();
-    expect(list.getByText("1 of 250 marked")).toBeInTheDocument();
+    expect(list.getByText("1 of 195 marked")).toBeInTheDocument();
   });
 
   it("shows countries nobody has marked yet", async () => {
@@ -157,7 +157,7 @@ describe("SharedMapExperience", () => {
     const list = within(
       screen.getByRole("region", { name: /countries in this view/i }),
     );
-    expect(list.getByText("247 of 250 not marked yet")).toBeInTheDocument();
+    expect(list.getByText("192 of 195 not marked yet")).toBeInTheDocument();
     expect(list.queryByText("Sweden")).not.toBeInTheDocument();
     expect(list.getByText("Japan")).toBeInTheDocument();
   });
@@ -176,7 +176,7 @@ describe("SharedMapExperience", () => {
       ).toBeVisible();
     });
     expect(
-      screen.getByText(/countries & territories marked by Ben/i),
+      screen.getByText("countries marked by Ben", { selector: "p" }),
     ).toBeInTheDocument();
 
     const list = within(
@@ -185,7 +185,7 @@ describe("SharedMapExperience", () => {
     expect(list.getByText("Sweden")).toBeInTheDocument();
     expect(list.getByText("France")).toBeInTheDocument();
     expect(list.queryByText("Norway")).not.toBeInTheDocument();
-    expect(list.getByText("2 of 250 marked")).toBeInTheDocument();
+    expect(list.getByText("2 of 195 marked")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 });

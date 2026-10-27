@@ -115,8 +115,8 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
           Where have you been?
         </h1>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-ink-muted">
-          Mark the countries and territories you have visited. Your map is
-          private to your account.
+          Mark the countries you have visited. Your map is private to your
+          account.
         </p>
       </header>
 
@@ -136,7 +136,7 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
               <span aria-live="polite">{visitedCount}</span> of {countryCount}
             </p>
             <p className="mt-1 text-sm text-ink-muted">
-              countries &amp; territories marked
+              countries marked
             </p>
           </div>
           <p className="text-sm font-medium text-moss">
@@ -278,7 +278,7 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
               id="country-list-heading"
               className="font-display text-xl tracking-tight"
             >
-              Countries &amp; territories
+              Countries
             </h2>
             <label
               htmlFor={searchId}
@@ -302,7 +302,7 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
             </p>
           ) : (
             <ul
-              aria-label="Countries and territories"
+              aria-label="Countries"
               className="mt-3 max-h-[24rem] space-y-1 overflow-y-auto overscroll-contain pr-1 lg:max-h-[30rem]"
             >
               {filteredCountries.map((country) => {

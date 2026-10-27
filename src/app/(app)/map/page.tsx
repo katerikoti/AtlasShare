@@ -8,7 +8,7 @@ import { getVisitedCountryCodes } from "@/server/visits";
 
 export const metadata: Metadata = {
   title: "Your map",
-  description: `Mark the countries and territories you have visited in ${brand.name}.`,
+  description: `Mark the countries you have visited in ${brand.name}.`,
 };
 
 function MapLoading() {
