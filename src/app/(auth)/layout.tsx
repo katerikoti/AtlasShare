@@ -1,7 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { brand } from "@/config/brand";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -11,7 +19,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         className="pointer-events-none absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(45rem 32rem at 12% -10%, rgb(220 161 161 / 0.25), transparent 60%), radial-gradient(40rem 30rem at 100% 110%, rgb(102 115 97 / 0.16), transparent 65%)",
+            "radial-gradient(45rem 32rem at 12% -10%, rgb(220 161 161 / 0.25), transparent 60%), radial-gradient(40rem 30rem at 100% 110%, rgb(90 102 85 / 0.16), transparent 65%)",
         }}
       />
 
@@ -38,8 +46,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <footer className="mx-auto w-full max-w-5xl text-center text-xs text-ink-muted">
-        Country-level travel only. No location tracking, no public profiles.
+      <footer className="mx-auto flex w-full max-w-5xl flex-col items-center gap-2 text-center text-xs text-ink-muted sm:flex-row sm:justify-center sm:gap-4">
+        <p>Country-level travel only. No location tracking, no public profiles.</p>
+        <Link
+          href="/privacy"
+          className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
+        >
+          Privacy
+        </Link>
       </footer>
     </main>
   );

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
+import { clearPrivateRuntimeCaches } from "@/lib/pwa-cache";
 import { secondaryButtonClass } from "@/components/ui/form";
 
 export function SignOutButton({ redirectTo = "/" }: { redirectTo?: string }) {
@@ -12,7 +13,16 @@ export function SignOutButton({ redirectTo = "/" }: { redirectTo?: string }) {
 
   async function onSignOut() {
     setPending(true);
-    await authClient.signOut();
+    try {
+      await authClient.signOut();
+    } catch {
+      setPending(false);
+      return;
+    }
+
+    // Defence in depth: the service worker only caches public assets, but a
+    // shared device should not retain anything from the signed-in session.
+    await clearPrivateRuntimeCaches();
     router.replace(redirectTo);
     router.refresh();
   }

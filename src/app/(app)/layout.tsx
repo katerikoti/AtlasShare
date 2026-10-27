@@ -1,9 +1,17 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { brand } from "@/config/brand";
 import { requireSession } from "@/server/session";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 // Every page under this layout is authenticated and request-specific. Force
 // dynamic rendering so `next build` never tries to prerender it (which would
@@ -68,9 +76,15 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       </main>
 
       <footer className="border-t border-line/80">
-        <p className="mx-auto w-full max-w-4xl px-6 py-4 text-xs text-ink-muted sm:px-10">
-          Private by default · Country-level travel maps.
-        </p>
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-2 px-6 py-4 text-xs text-ink-muted sm:flex-row sm:items-center sm:justify-between sm:px-10">
+          <p>Private by default · Country-level travel maps.</p>
+          <Link
+            href="/privacy"
+            className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
+          >
+            Privacy
+          </Link>
+        </div>
       </footer>
     </div>
   );

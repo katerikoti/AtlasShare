@@ -1,7 +1,7 @@
 # AtlasShare — Development Plan
 
 Status: **Phase 6 complete (approved 2026-10-27, including the shared-map export
-revision).** Phases 1–6 are approved. Phase 7 has not started.
+revision).** Phases 1–6 are approved. Phase 7 is implemented and awaiting review.
 
 ## How phases work
 
@@ -323,7 +323,7 @@ platforms. Mitigation: cap pixel dimensions, use system stacks, test early.
 
 ---
 
-## Phase 7 — Public site and PWA
+## Phase 7 — Public site and PWA 🟡 (implemented, awaiting review)
 
 **Goal:** explain the product and make it installable, without weakening privacy.
 

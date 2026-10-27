@@ -20,7 +20,7 @@ export const brand = {
     surface: "#F4EFEA",
     ink: "#2B302C",
     inkMuted: "#5A6159",
-    moss: "#667361",
+    moss: "#5A6655",
     rose: "#DCA1A1",
     roseDeep: "#C98585",
     line: "#C9C1B9",

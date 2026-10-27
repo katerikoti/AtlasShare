@@ -140,7 +140,7 @@ The palette is warm paper, moss, and dusty rose:
 | `canvas` | `#E9E3DD` | Page background |
 | `surface` | `#F4EFEA` | Cards |
 | `ink` | `#2B302C` | Primary text |
-| `moss` | `#667361` | Borders, accents |
+| `moss` | `#5A6655` | Borders, accents |
 | `rose` | `#DCA1A1` | Visited countries |
 | `map` | `#F1ECE6` | Map base / unvisited |
 

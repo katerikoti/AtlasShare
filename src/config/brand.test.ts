@@ -41,6 +41,10 @@ describe("brand", () => {
     expect(contrast(brand.palette.inkMuted, brand.palette.canvas)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it("keeps moss labels readable on the canvas", () => {
+    expect(contrast(brand.palette.moss, brand.palette.canvas)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it("keeps non-text map borders distinguishable from the map base", () => {
     // WCAG 1.4.11 asks for 3:1 for graphical objects and UI components.
     expect(contrast(brand.palette.moss, brand.palette.map)).toBeGreaterThanOrEqual(3);

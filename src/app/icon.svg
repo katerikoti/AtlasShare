@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="AtlasShare">
   <rect width="64" height="64" rx="14" fill="#E9E3DD" />
-  <circle cx="32" cy="32" r="24" fill="#667361" />
+  <circle cx="32" cy="32" r="24" fill="#5A6655" />
   <path d="M32 15 49 47h-8.5L32 29.5 23.5 47H15Z" fill="#F7F3EF" />
   <path d="M25.5 38h13v4h-13z" fill="#F7F3EF" />
 </svg>

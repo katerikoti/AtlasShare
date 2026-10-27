@@ -54,7 +54,7 @@ export function FormMessage({
       className={`rounded-xl border px-3.5 py-2.5 text-sm ${
         status === "error"
           ? "border-rose-deep/40 bg-rose/25 text-ink"
-          : "border-moss/30 bg-moss/10 text-moss"
+          : "border-moss/30 bg-moss/10 text-ink"
       }`}
     >
       {message}
