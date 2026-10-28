@@ -47,6 +47,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: brand.palette.canvas,
   colorScheme: "light",
+  // Lets `env(safe-area-inset-*)` work so the mobile tab bar clears the iPhone
+  // home indicator; the body pads the left/right insets (see globals.css).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

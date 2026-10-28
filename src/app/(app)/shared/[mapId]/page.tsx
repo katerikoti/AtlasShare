@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { ReactNode } from "react";
 
 import { DeleteMapForm } from "@/components/shared/delete-map-form";
 import { InviteMemberForm } from "@/components/shared/invite-member-form";
@@ -27,36 +26,6 @@ export const metadata: Metadata = {
 
 const dateFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
-function Section({
-  title,
-  description,
-  children,
-  tone = "default",
-}: {
-  title: string;
-  description: string;
-  children: ReactNode;
-  tone?: "default" | "danger";
-}) {
-  return (
-    <section
-      className={`rounded-card border p-6 shadow-soft sm:p-8 ${
-        tone === "danger"
-          ? "border-rose-deep/30 bg-rose/10"
-          : "border-line/80 bg-surface/80"
-      }`}
-    >
-      <div className="max-w-2xl">
-        <h2 className="font-display text-2xl tracking-tight">{title}</h2>
-        <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-          {description}
-        </p>
-      </div>
-      {children}
-    </section>
-  );
-}
-
 export default async function SharedMapPage({
   params,
   searchParams,
@@ -76,7 +45,7 @@ export default async function SharedMapPage({
     ? await getPendingInvitationsForMap(mapId, session.user.id)
     : [];
 
-  const membersPanel = (
+  const manageContent = (
     <div className="space-y-6">
       <div>
         <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
@@ -178,8 +147,39 @@ export default async function SharedMapPage({
               </ul>
             )}
           </div>
+
+          <div className="border-t border-line/70 pt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
+              Map details
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
+              Rename the map or update its description. Everyone in the map sees
+              these details.
+            </p>
+            <MapSettingsForm
+              mapId={map.id}
+              name={map.name}
+              description={map.description}
+            />
+          </div>
+
+          <div className="border-t border-line/70 pt-5">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-rose-deep">
+              Danger zone
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
+              Deleting the shared map ends access for everyone and removes
+              pending invitations.
+            </p>
+            <DeleteMapForm mapId={map.id} mapName={map.name} />
+          </div>
         </>
-      ) : null}
+      ) : (
+        <p className="border-t border-line/70 pt-5 text-sm leading-relaxed text-ink-muted">
+          Only the owner can invite or remove people and change the map details.
+          You can leave the map above; your personal map will not be changed.
+        </p>
+      )}
     </div>
   );
 
@@ -219,36 +219,17 @@ export default async function SharedMapPage({
         </p>
       ) : null}
 
-      <SharedMapExperience map={map} membersPanel={membersPanel} />
+      <SharedMapExperience map={map} />
 
-      {isOwner ? (
-        <>
-          <Section
-            title="Map details"
-            description="Rename the map or update its description. Everyone in the map sees these details."
-          >
-            <MapSettingsForm
-              mapId={map.id}
-              name={map.name}
-              description={map.description}
-            />
-          </Section>
-
-          <Section
-            title="Danger zone"
-            description="Deleting the shared map ends access for everyone and removes pending invitations."
-            tone="danger"
-          >
-            <DeleteMapForm mapId={map.id} mapName={map.name} />
-          </Section>
-        </>
-      ) : (
-        <p className="rounded-card border border-line/80 bg-surface/60 p-5 text-sm leading-relaxed text-ink-muted">
-          Only the owner can invite or remove people and change the map details.
-          You can leave the map from the Show more section above; your personal
-          map will not be changed.
-        </p>
-      )}
+      <details className="rounded-card border border-line/80 bg-surface/80 p-5 shadow-soft sm:p-6">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-moss [&::-webkit-details-marker]:hidden">
+          <span>{isOwner ? "Members and settings" : "Members"}</span>
+          <span aria-hidden="true" className="text-base leading-none">
+            +
+          </span>
+        </summary>
+        <div className="mt-5">{manageContent}</div>
+      </details>
     </div>
   );
 }

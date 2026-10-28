@@ -62,7 +62,7 @@ describe("MapExperience", () => {
       screen.getByRole("heading", { name: "Share your map" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("button", { name: /share or download image/i }),
+      screen.getByRole("button", { name: "Download" }),
     ).toBeEnabled();
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useState } from "react";
 
 import {
   countriesAlphabetical,
@@ -16,14 +16,13 @@ import { ExportMapPanel } from "@/components/export/export-map-panel";
 import { MapAttribution } from "@/components/map/map-attribution";
 import { RegionBreakdown } from "@/components/map/region-breakdown";
 import { useMapGeometry } from "@/components/map/use-map-geometry";
+import { ZoomableMap } from "@/components/map/zoomable-map";
 
 type SharedMapExperienceProps = {
   map: Pick<
     SharedMapView,
     "name" | "members" | "combinedCountries" | "combinedCount"
   >;
-  /** Server-built member list, invitations, and owner actions for the dropdown. */
-  membersPanel?: ReactNode;
 };
 
 type VisibleCountry = {
@@ -47,10 +46,7 @@ function isComparisonMode(value: string): value is ComparisonMode {
   return comparisonModes.has(value);
 }
 
-export function SharedMapExperience({
-  map,
-  membersPanel,
-}: SharedMapExperienceProps) {
+export function SharedMapExperience({ map }: SharedMapExperienceProps) {
   const [selectedMemberIds, setSelectedMemberIds] = useState(
     () => new Set(map.members.map((member) => member.id)),
   );
@@ -347,10 +343,6 @@ export function SharedMapExperience({
                 />
               </div>
             </div>
-
-            {membersPanel ? (
-              <div className="border-t border-line/70 pt-5">{membersPanel}</div>
-            ) : null}
           </div>
         </details>
       </section>
@@ -366,84 +358,80 @@ export function SharedMapExperience({
           {mapDescription}
         </p>
 
-        <div className="relative mt-4 aspect-[1010/760] w-full overflow-hidden rounded-2xl border border-line/70 bg-map">
-          {geometry ? (
-            <svg
-              viewBox={geometry.viewBox}
-              preserveAspectRatio="xMidYMid meet"
-              role="img"
-              aria-labelledby={mapTitleId}
-              className="h-full w-full"
-            >
-              <title id={mapTitleId}>
-                {viewMode === "nobody"
-                  ? "World map showing countries not yet marked by anyone."
-                  : `World map showing countries marked by ${viewLabel}.`}
-              </title>
-              {countriesAlphabetical.map((country) => {
-                const visited = visibleCodes.has(country.code);
-                const combinedCount =
-                  map.combinedCountries.find(
-                    (entry) => entry.code === country.code,
-                  )?.count ?? 0;
+        {geometry ? (
+          <ZoomableMap viewBox={geometry.viewBox} labelledBy={mapTitleId}>
+            <title id={mapTitleId}>
+              {viewMode === "nobody"
+                ? "World map showing countries not yet marked by anyone."
+                : `World map showing countries marked by ${viewLabel}.`}
+            </title>
+            {countriesAlphabetical.map((country) => {
+              const visited = visibleCodes.has(country.code);
+              const combinedCount =
+                map.combinedCountries.find(
+                  (entry) => entry.code === country.code,
+                )?.count ?? 0;
 
-                return (
-                  <path
-                    key={country.code}
-                    d={geometry.paths[country.code]}
-                    data-country={country.code}
-                    data-visited={visited}
-                    className="map-country map-country-readonly"
-                  >
-                    <title>
-                      {country.name} —{" "}
-                      {visited
-                        ? viewMode === "nobody"
-                          ? "not marked by anyone"
-                          : viewMode === "everyone"
-                            ? "marked by every member"
-                            : viewMode === "only-you"
-                              ? "marked only by you"
-                              : selectedMember
-                                ? `marked by ${selectedMember.name}`
-                                : `marked by ${combinedCount} of ${map.members.length} ${
-                                  map.members.length === 1
-                                    ? "member"
-                                    : "members"
-                                }`
-                        : viewMode === "nobody"
-                          ? "marked by at least one member"
-                          : "not marked"}
-                    </title>
-                  </path>
-                );
-              })}
-            </svg>
-          ) : error ? (
-            <div
-              role="alert"
-              className="absolute inset-0 grid place-items-center p-6 text-center"
-            >
-              <div>
-                <p className="text-sm text-ink-muted">{error}</p>
-                <button
-                  type="button"
-                  onClick={retry}
-                  className={`${secondaryButtonClass} mt-3`}
+              return (
+                <path
+                  key={country.code}
+                  d={geometry.paths[country.code]}
+                  data-country={country.code}
+                  data-visited={visited}
+                  className="map-country map-country-readonly"
                 >
-                  Try again
-                </button>
+                  <title>
+                    {country.name} —{" "}
+                    {visited
+                      ? viewMode === "nobody"
+                        ? "not marked by anyone"
+                        : viewMode === "everyone"
+                          ? "marked by every member"
+                          : viewMode === "only-you"
+                            ? "marked only by you"
+                            : selectedMember
+                              ? `marked by ${selectedMember.name}`
+                              : `marked by ${combinedCount} of ${map.members.length} ${
+                                map.members.length === 1
+                                  ? "member"
+                                  : "members"
+                              }`
+                      : viewMode === "nobody"
+                        ? "marked by at least one member"
+                        : "not marked"}
+                  </title>
+                </path>
+              );
+            })}
+          </ZoomableMap>
+        ) : (
+          <div className="relative mt-4 aspect-[1010/760] w-full overflow-hidden rounded-2xl border border-line/70 bg-map">
+            {error ? (
+              <div
+                role="alert"
+                className="absolute inset-0 grid place-items-center p-6 text-center"
+              >
+                <div>
+                  <p className="text-sm text-ink-muted">{error}</p>
+                  <button
+                    type="button"
+                    onClick={retry}
+                    className={`${secondaryButtonClass} mt-3`}
+                  >
+                    Try again
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div
-              aria-busy="true"
-              className="absolute inset-0 grid place-items-center bg-map"
-            >
-              <p className="text-sm text-ink-muted">Loading the map…</p>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div
+                aria-busy="true"
+                className="absolute inset-0 grid place-items-center bg-map"
+              >
+                <p className="text-sm text-ink-muted">Loading the map…</p>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section
@@ -506,7 +494,10 @@ export function SharedMapExperience({
         }
       />
 
-      <MapAttribution />
+      {/* On phones the attribution lives under Account → About. */}
+      <div className="max-sm:hidden">
+        <MapAttribution />
+      </div>
     </div>
   );
 }

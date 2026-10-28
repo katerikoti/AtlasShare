@@ -159,14 +159,15 @@ export function ExportMapPanel({
             </p>
           </div>
 
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          {/* Equal-width side by side on phones; natural width from `sm` up. */}
+          <div className="mt-5 flex gap-3 sm:flex-wrap sm:items-center">
             <button
               type="button"
               onClick={() => setShowPreview((current) => !current)}
               disabled={!geometry}
               aria-expanded={showPreview}
               aria-controls={previewId}
-              className={previewButtonClass}
+              className={`${previewButtonClass} flex-1 sm:flex-none`}
             >
               {showPreview ? "Hide preview" : "Preview"}
             </button>
@@ -174,9 +175,9 @@ export function ExportMapPanel({
               type="button"
               onClick={() => void handleExport()}
               disabled={!ready}
-              className={`${primaryButtonClass} sm:w-auto`}
+              className={`${primaryButtonClass} flex-1 sm:w-auto sm:flex-none`}
             >
-              {busy ? "Preparing image…" : "Share or download image"}
+              {busy ? "Preparing…" : "Download"}
             </button>
           </div>
 

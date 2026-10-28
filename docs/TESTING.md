@@ -1,8 +1,8 @@
 # AtlasShare — Testing
 
-Status: **Phase 6 complete (approved 2026-10-27, including the shared-map export
-revision); Phase 7 implemented and awaiting review.**
-144 automated tests in 25 files (section 4.8), on the 195-country dataset.
+Status: **Phases 1–7 complete/closed; Phase 8 in progress (started 2026-10-28;
+email verification done).**
+194 automated tests in 32 files (sections 4.8 and 4.9), on the 195-country dataset.
 Database
 persistence, auth, shared-map authorization, map layout, search, region counts,
 image export, and browser behavior were also checked manually; the exact
@@ -215,32 +215,88 @@ Latest results, after the owner UI revisions (ADR-035). Command results:
 
 | Check | Result |
 | --- | --- |
-| `npm run check` | ✅ exit 0; lint clean, typecheck clean, **144/144 tests in 25 files** |
+| `npm run check` | ✅ exit 0; lint clean, typecheck clean, **167/167 tests in 29 files** (2026-10-28) |
 | `npm run build` | ✅ exit 0; `/install` prerendered static; `/shared` and `/shared/[mapId]` dynamic |
 
 New or changed automated coverage (all in jsdom):
 
 - `shared-map-experience.test.tsx` (now 14 tests): summary card with member count,
-  percentage, and progress bar; "Show more"; all members checked by default; the
-  server-built members panel renders inside the dropdown; comparison toggle-off
+  percentage, and progress bar; "Show more"; all members checked by default and
+  no member management inside Show more; comparison toggle-off
   returns to the combined view; changing members after a comparison returns to
   the combined view; a one-member map with All checked is "Combined progress";
   the export SVG is hidden until Preview is pressed and the old privacy sentence
   is absent; the earlier export-identity tests (combined, selected member, no
   names) still pass. The legend assertions were removed with the legend.
 - `map-experience.test.tsx`: the export preview is hidden until Preview is
-  pressed, can be hidden again, and the old privacy sentence is absent.
+  pressed, can be hidden again, and the old privacy sentence is absent; the
+  export button is named "Download".
 - `service-worker.test.ts`: `/icon.png` (replacing `/icon.svg`) is cacheable.
+- `map-zoom.test.ts` (9 tests): view-box parse/format and rejection of malformed
+  values; zoom about the centre; the point under the cursor stays fixed; limits
+  at 1× and 8×; zooming back out from a corner returns the full map; panning
+  follows the drag and stops at the edges; the unzoomed map cannot pan.
+- `zoomable-map.test.tsx` (7 tests): starting state; + zooms and Reset restores;
+  the + button disables at the maximum; Ctrl + scroll zooms and prevents the
+  page scroll while a plain scroll does not; a plain click reaches a country; a
+  drag pans and swallows the following click (the next click still works); a
+  1 px jitter is not a drag. jsdom cannot test real touch pinch.
+- `card-tones.test.ts` (3 tests): the `/shared` card colours alternate in one
+  column, form a green/pink checkerboard in two columns, and never repeat a colour
+  horizontally or vertically.
+- `app-nav.test.tsx` (4 tests): the desktop top bar lists Home, Shared, Account;
+  the phone tab bar lists Shared, Home, Account with the right links; the current
+  page gets `aria-current` on both navs (including nested `/shared/<id>`); Home and
+  Account are marked on `/map` and `/account`.
 
 Dev-browser checks (the existing signed-in account, one-member map): the shared
 page order and contents, the Preview toggle (hidden → visible → hidden), the
 rose button colour, `/shared` ordering, the closed "By region" dropdown, and the
-public landing/install pages and footers.
+public landing/install pages and footers. On 2026-10-28 also: the Home nav item,
+the Download button, green `/shared` cards, the bottom Members and settings
+dropdown, and map zoom (buttons, drag, Ctrl + scroll, reset) on the shared map,
+and the buttons on the personal map with the visited count unchanged. Also
+2026-10-28: the phone footer/About/export-button layout (500 px window) and the
+unchanged desktop layout (900 px frame), recorded in `PROGRESS.md`. These are CSS
+visibility rules, so they have no jsdom test.
 
 Not run: a shared map with two real members in a browser, the page as a
 non-owner, mobile widths (320/390 px) for the new shared-map layout, keyboard-
-only and screen-reader passes for the new checkboxes/dropdowns, Lighthouse on
+only and screen-reader passes for the new checkboxes/dropdowns and zoom buttons,
+touch pinch/drag on a physical phone, Lighthouse on
 `/install`, and physical-device installation.
+
+### 4.9 Phase 8: email verification by code (2026-10-28)
+
+Command results: `npm run check` ✅ exit 0, lint clean, typecheck clean,
+**194/194 tests in 32 files**; `npm run build` ✅ exit 0. The live API flow
+(sign-up, wrong/right/expired/exhausted codes, resend, squatting, verified-address
+re-registration, disabled passwordless endpoints) is recorded step by step in the
+Phase 8 verification table in `PROGRESS.md`.
+
+New automated coverage (jsdom/unit; no network):
+
+- `email/templates.test.ts` (+3): the code email shows the code and lifetime, has
+  no link or account data, and escapes non-code input.
+- `email/verification-code.test.ts` (4): the code is emailed and not logged on
+  success; printed in development when mail is skipped or fails (without the code
+  appearing in the error log); never logged in production, for either case.
+- `unverified-accounts.test.ts` (5): only never-verified accounts are removed, by
+  normalised address; the old code row is cleared; nothing else happens when there
+  was no unverified account; an empty address is ignored; the identifier format
+  matches the plugin's.
+- `components/auth/verify-email-form.test.tsx` (15): the code field accepts six
+  digits only (with `one-time-code`/numeric hints); the button waits for six
+  digits; success continues to `/account` or the invitation `next`; each of
+  `INVALID_OTP`, `OTP_EXPIRED`, `TOO_MANY_ATTEMPTS` shows its own message; "Use a
+  different email" goes back; the 60-second resend cooldown and resend call;
+  sign-up shows the code step instead of signing in, and keeps the form on
+  failure; sign-in shows the code step only for `EMAIL_NOT_VERIFIED`, keeps the
+  generic message for a wrong password, and still signs a verified person in.
+
+Not covered by automated tests: the Better Auth configuration itself (tested only
+through the live run), the real browser rendering of the code step, real mail
+delivery, and production rate limits. See the "not run" rows in `PROGRESS.md`.
 
 ## 5. Phase 6 and Phase 5 automated and manual verification
 

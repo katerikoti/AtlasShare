@@ -282,19 +282,15 @@ describe("SharedMapExperience", () => {
     expect(summary.getByText("Show more")).toBeInTheDocument();
   });
 
-  it("keeps all members checked by default and renders the members panel", async () => {
-    render(
-      <SharedMapExperience
-        map={map}
-        membersPanel={<p>Invite someone panel</p>}
-      />,
-    );
+  it("keeps all members checked by default and leaves member management out of Show more", async () => {
+    render(<SharedMapExperience map={map} />);
     await screen.findByRole("img", { name: /marked by any member/i });
 
     expect(screen.getByRole("checkbox", { name: "All" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /Ada/ })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Ben" })).toBeChecked();
-    expect(screen.getByText("Invite someone panel")).toBeInTheDocument();
+    expect(screen.queryByText("Invite someone")).not.toBeInTheDocument();
+    expect(screen.queryByText("Pending invitations")).not.toBeInTheDocument();
   });
 
   it("returns to the combined view when a comparison is toggled off", async () => {

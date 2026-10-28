@@ -1,7 +1,8 @@
 # AtlasShare — Development Plan
 
-Status: **Phase 6 complete (approved 2026-10-27, including the shared-map export
-revision).** Phases 1–6 are approved. Phase 7 is implemented and awaiting review.
+Status: **Phases 1–7 are complete/closed. Phase 8 is in progress (started by the
+owner on 2026-10-28): email verification by code is done (ADR-036); everything
+else in Phase 8 is not started.**
 
 ## How phases work
 
@@ -271,7 +272,7 @@ enough to justify the extra layout and QA surface.
   and all 195 country paths. It has no external assets.
 - `src/components/export/export-map-panel.tsx` provides the title field, a rose
   Preview toggle (the image is hidden until pressed; ADR-035), progress/error
-  status, and the share button.
+  status, and the Download button.
 - The panel appears on the personal map and the shared map. On a shared map it
   receives the combined country codes by default, or the selected member's
   codes; comparison filters are view-only and do not change the export. Member
@@ -362,12 +363,18 @@ review the fetch handler line by line and test sign-out → offline.
 
 ---
 
-## Phase 8 — Hardening, QA and deployment
+## Phase 8 — Hardening, QA and deployment 🟡 (in progress)
 
 **Goal:** a production deployment that is safe to invite real people to.
 
+**Progress (2026-10-28):** email verification by a 6-digit code is done
+(ADR-036). Not started: deployment, Brevo production sender, security headers and
+CSP, accessibility audit, cross-browser pass, end-to-end smoke tests, error
+monitoring, backups/rollback docs.
+
 **Scope**
 
+- Verify new accounts' email addresses with an emailed code ✅ (ADR-036).
 - Deploy to Vercel; Neon production branch; env vars; `migrate deploy` release
   step; custom domain and HTTPS.
 - Brevo domain authentication (SPF/DKIM), production sender.

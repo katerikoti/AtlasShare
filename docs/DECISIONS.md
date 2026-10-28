@@ -125,7 +125,8 @@ CSS-driven fills, a parallel accessible country list, no runtime geo dependency.
 
 **Consequences:** We own projection/geometry generation (offline script) and
 must curate disputed territories. Bundle size is controlled and the export is
-trivial to render from the same data. Pan/zoom, if needed, is custom.
+trivial to render from the same data. Pan/zoom is custom (added 2026-10-28,
+ADR-035: a small view-box wrapper, no map library).
 
 ---
 
@@ -529,7 +530,10 @@ an ownership-transfer flow must be added later.
 
 ## ADR-028 — Invitation acceptance matches an unverified account email
 
-**Status:** accepted (Phase 4, revisit before launch)
+**Status:** accepted in Phase 4; **its main limitation is resolved by ADR-036**
+(email verification enforced, 2026-10-28). The decision below still describes how
+acceptance works; the "unverified address" caveat no longer applies to new or
+existing accounts.
 
 **Context:** Invitations are addressed to an email and must not be redeemable by
 a different account. Better Auth email verification is not enforced in this
@@ -747,17 +751,48 @@ matches the personal map instead of showing every control at once.
   signed-in, and auth headers and supplies all PWA/browser/Apple icons (see
   `ARCHITECTURE.md` §3). `icon.svg` and `favicon.ico` were removed; the service
   worker precaches `/icon.png` and its cache version was bumped.
+- **Navigation and lists (2026-10-28).** The signed-in nav item "Map" is now
+  "Home" (still `/map`). On phones (below `sm`) the signed-in app is laid out like
+  an installed app: the top bar is the logo and an icon-only Sign out, and a fixed
+  bottom tab bar holds **Shared** (left, people icon), **Home** (middle, house
+  icon), and **Account** (right, settings-gear icon), each with a tiny label and
+  an `aria-current` highlight. The bar pads the iPhone safe area
+  (`viewport-fit=cover`, `env(safe-area-inset-bottom)`), and the body now pads the
+  left/right insets. From `sm` up the top bar keeps text links. Labels were kept
+  under the icons (rather than icon-only) so the icons are not a guessing game.
+  **Phone footer (2026-10-28):** the signed-in footer is hidden below `sm` (desktop
+  unchanged). Its links, the © line, and the "About the map data" attribution move
+  to an **About** section at the bottom of Account, and the attribution is hidden
+  under the Home and shared maps on phones. The attribution remains reachable
+  (Account, the Privacy page, and desktop), which CC BY 4.0 permits as "a
+  reasonable manner"; this is the owner's call and can be reversed. The Preview
+  and Download buttons are equal-width and side by side on phones.
+  The "Maps you belong to" cards on `/shared` alternate
+  green and pink: one column green, pink, green…; two columns a checkerboard
+  (green, pink / pink, green). They echo the landing page's green and pink panels.
 - **Personal map.** "By region" is a closed dropdown by default.
 - **Shared list.** "Maps you belong to:" precedes "Create a shared map:".
 - **Shared map.** A summary card (X of 195, member count, percentage, progress
-  bar) with a closed **Show more** dropdown holding the member checkboxes,
-  Compare progress (+ region breakdown), and a Members panel that now also
-  contains Invite someone and Pending invitations (owner only). The map card has
-  no legend; the redundant "Members can see each other's names…" paragraph was
+  bar) with a closed **Show more** dropdown holding the member checkboxes and
+  Compare progress (+ region breakdown). Member management is a separate closed
+  dropdown at the bottom of the page, **Members and settings**, holding the
+  member list, Invite someone, Pending invitations, Map details, and the Danger
+  zone (owner parts only for owners). *(Revised 2026-10-28: the first revision put
+  Members, Invite someone, and Pending invitations inside Show more; the owner
+  asked for them at the bottom with Map details.)* The map card has no legend;
+  the redundant "Members can see each other's names…" paragraph was
   removed. Selecting a comparison and changing members are mutually exclusive
   views; pressing an active comparison again returns to the combined view.
 - **Export.** The panel shows a rose Preview toggle instead of the image, on both
   the personal and shared maps, and the on-screen privacy paragraph is removed.
+  The main button is labelled just **Download** (2026-10-28); it still opens the
+  native share sheet where the device supports sharing a file.
+- **Map zoom (2026-10-28).** Both maps can be zoomed 1×–8× with Reset / − / +
+  buttons, pinch, Ctrl/⌘ + scroll, and drag-to-pan, via a view-box wrapper
+  (`zoomable-map.tsx`, `map-zoom.ts`) with no new dependency. Plain scroll is
+  deliberately not captured so the page keeps scrolling, and a drag never marks a
+  country. Zoom is view-only state: not persisted, not in the export. This
+  supersedes the earlier "no pan/zoom" limitation.
   With the member checkboxes, a shared export uses the combined marks when All
   is checked, the one member's marks when exactly one is checked, and the union
   of the checked members otherwise (a refinement of ADR-034; still no identities).
@@ -769,6 +804,47 @@ the panel intro if reviewers want it back. Hiding invite controls in a dropdown
 is presentation only; the server still gates them (`SECURITY.md` §4). Several
 earlier UI statements (shared "Show" select, always-visible preview, visible
 region bars) are superseded; the history in `PROGRESS.md` is kept as a record.
+
+---
+
+## ADR-036 — Email verification by 6-digit code (first Phase 8 item)
+
+**Status:** accepted (owner request, 2026-10-28; Phase 8 started by the owner)
+
+**Context:** ADR-028 and `SECURITY.md` recorded that email verification was not
+enforced: anyone could register any address, typos created accounts that could
+never be recovered, and an invitation proved only a string match. The owner asked
+for a one-time code so accounts exist only for real, reachable addresses.
+
+**Decision:**
+
+- Sign-up creates the account unverified and emails a 6-digit code (Better Auth
+  `emailOTP` plugin, `requireEmailVerification: true`). The form switches to a
+  "Check your email" step; a correct code verifies the address, creates the
+  session (`autoSignInAfterVerification`), and then the welcome email is sent
+  (moved from account creation to `afterEmailVerification`).
+- The code lasts 10 minutes, allows 5 attempts, is stored hashed, is single-use,
+  and is replaced by "Send a new code" (60-second client cooldown). Signing in
+  to an unverified account sends a fresh code and shows the same step.
+- A new sign-up for an address with only an unverified account replaces that
+  account, so address squatting cannot capture the real owner's verification.
+- The plugin's other flows (passwordless sign-in, reset by code) stay disabled.
+- Local development without a working email setup prints the code in the server
+  console (development only); production never logs it. This is a convenience
+  so sign-up cannot dead-end when this machine's IP is not authorised in Brevo.
+- The owner chose to mark existing accounts as verified, done once with a
+  one-off SQL update on the development database (2 of 2 accounts), not as a
+  migration, so it can never silently verify real users later.
+- Rejected: a link-based "verify" email (a code never leaves the app and cannot
+  be clicked through a phishing page); verifying after sign-in (the account
+  would exist and be usable unverified).
+
+**Consequences:** Sign-up now depends on email delivery working. Production needs
+a Brevo sender that actually delivers (see `DEPLOYMENT.md`); a person whose code
+does not arrive can request another. Invitations now rest on a verified address.
+Sign-up for an already-verified address shows the code screen but sends nothing
+(no "account exists" email yet). Email-change and OAuth remain out of scope; they
+would need to keep the verified-address rule.
 
 ---
 
@@ -784,7 +860,7 @@ region bars) are superseded; the history in `PROGRESS.md` is kept as a record.
 | Dark mode | Needs a second accessible palette | post-launch |
 | i18n | English-only first release | post-launch |
 | Shared rate-limit store | In-memory is sufficient until abuse is observed | Before public launch |
-| Enforce verified email before invitation acceptance | Verification flow is not built; risk recorded in ADR-028 | Before public launch |
+| Enforce verified email before invitation acceptance | **Done 2026-10-28 (ADR-036):** every account must verify its address with an emailed code before it can sign in | — |
 | Invitation-token log retention | Raw token is in the request path; deployment logging policy needed | Before production |
 | Shared-map ownership transfer | Owner must currently delete instead of leaving | If users ask for it |
 | Real-time shared updates | Request-time derived view is sufficient for the first release | post-launch |

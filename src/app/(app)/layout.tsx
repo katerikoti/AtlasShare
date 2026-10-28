@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import { DesktopNav, MobileTabBar } from "@/components/app/app-nav";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { brand } from "@/config/brand";
 import { requireSession } from "@/server/session";
@@ -23,9 +24,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await requireSession();
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
       <header className="border-b border-line/80 bg-canvas/80 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center gap-x-4 gap-y-2 px-6 py-4 sm:px-10">
+        <div className="mx-auto flex w-full max-w-4xl items-center gap-x-4 px-6 py-3 sm:px-10 sm:py-4">
           <Link
             href="/map"
             className="flex items-center gap-3 rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-moss"
@@ -38,38 +39,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               height={36}
               className="size-8 shrink-0 object-contain"
             />
-            <span className="hidden font-display text-lg tracking-tight sm:inline">
+            <span className="font-display text-lg tracking-tight">
               {brand.name}
             </span>
           </Link>
-          <nav
-            aria-label="Main"
-            className="order-last flex w-full items-center gap-1 sm:order-none sm:ml-2 sm:w-auto"
-          >
-            <Link
-              href="/map"
-              className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
-            >
-              Map
-            </Link>
-            <Link
-              href="/shared"
-              className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
-            >
-              Shared
-            </Link>
-            <Link
-              href="/account"
-              className="rounded-full px-3 py-1.5 text-sm font-medium text-ink-muted transition-colors hover:bg-canvas/70 hover:text-ink"
-            >
-              Account
-            </Link>
-          </nav>
+          <DesktopNav />
           <span className="hidden text-sm text-ink-muted lg:inline">
             Signed in as {session.user.name}
           </span>
           <div className="ml-auto">
-            <SignOutButton />
+            <SignOutButton iconOnlyOnMobile />
           </div>
         </div>
       </header>
@@ -78,7 +57,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
 
-      <footer className="mx-auto flex w-full max-w-6xl flex-col gap-4 border-t border-line/80 px-6 py-6 text-sm text-ink-muted sm:flex-row sm:items-center sm:justify-between sm:px-10">
+      <footer className="mx-auto flex w-full max-w-6xl flex-col gap-4 border-t border-line/80 px-6 py-6 text-sm text-ink-muted max-sm:hidden sm:flex-row sm:items-center sm:justify-between sm:px-10">
         <p>
           © {brand.name} {new Date().getFullYear()}
         </p>
@@ -104,6 +83,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </Link>
         </nav>
       </footer>
+
+      <MobileTabBar />
     </div>
   );
 }

@@ -74,12 +74,16 @@ terms are searchable; its code remains `VA`.
 - **FR-A3** Request a password reset by email; use a single-use, expiring link
   to set a new password.
 - **FR-A4** Session persists across reloads; sign-out invalidates it server-side.
-- **FR-A5** Send a welcome email once, tracked by `welcomeEmailSentAt`. Email
-  failure never blocks account creation.
+- **FR-A5** Send a welcome email once, tracked by `welcomeEmailSentAt`, after the
+  address is verified (FR-A7). Email failure never blocks verification.
 - **FR-A6** Account settings: change display name; change password; delete
   account (with explicit confirmation and a warning about owned shared maps).
-- **FR-A7** Email verification is not required initially; the account page shows
-  the address and, later, a verification action.
+- **FR-A7** Email verification is required (ADR-036). Sign-up emails a 6-digit
+  code (valid 10 minutes, 5 attempts, single use, stored hashed) and the account
+  cannot sign in until it is entered; entering it signs the person in. A new code
+  can be requested after a cooldown. Signing in to an unverified account emails a
+  fresh code. A new sign-up for an address with only an unverified account
+  replaces that account. Sign-in errors stay generic.
 
 ### 7.2 Personal map (Phase 3)
 
@@ -113,8 +117,9 @@ terms are searchable; its code remains `VA`.
 - **FR-S6** Member can leave a map. Owner can delete a map (confirmed).
 - **FR-S7** Shared map view shows the combined map: countries visited by any
   member, plus a per-member filter (checkboxes: "All" and one per member, all
-  checked by default; any subset is combined). The filter, comparison, and member
-  management live in a "Show more" dropdown under the summary card (ADR-035).
+  checked by default; any subset is combined). The filter and comparison live in
+  a "Show more" dropdown under the summary card; member management lives in a
+  "Members and settings" dropdown at the bottom of the page (ADR-035).
 - **FR-S8** Show combined count and per-member counts. The initial release
   stores no notes or visit dates to expose.
 - **FR-S9** Non-members get a 404-style response, not a permission error.
@@ -166,6 +171,18 @@ UI. Repeat visits would need a separate visit-history model if ever added.
 - **FR-W2** Offline shell shows a branded offline page; no stale private data.
 - **FR-W3** Never cache authenticated data or private API responses.
 - **FR-W4** Update flow does not trap users on an old build.
+- **FR-W5** On phones the signed-in app uses app-style navigation: a top bar with
+  the logo and an icon-only Sign out, and a fixed bottom tab bar with Shared
+  (left), Home (middle), and Account (right), each an icon with a short label
+  and the current page highlighted. It clears the device safe area. From the
+  `sm` breakpoint up, the top bar shows Home, Shared, Account as text links
+  (ADR-035, 2026-10-28).
+- **FR-W6** On phones the signed-in pages have no footer. Privacy, "Made by", the
+  © line, and the "About the map data" attribution are in an **About** section at
+  the bottom of Account instead, and the in-page attribution under the maps is
+  hidden. Desktop keeps the footer and the attribution under the maps unchanged.
+  The two export buttons (Preview, Download) are equal-width and side by side on
+  phones.
 
 ### 7.8 Cross-cutting
 

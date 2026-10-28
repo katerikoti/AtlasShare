@@ -176,7 +176,7 @@ src/
   components/
     auth/                   # sign-in/up, forgot/reset, sign-out forms
     account/                # name, password, delete-account forms
-    map/                    # SVG map, country list, region bars, geometry hook
+    map/                    # SVG map, zoomable surface, country list, region bars, geometry hook
     export/                 # pure export SVG + export panel
     shared/                 # shared view, create/invite/settings/member forms
     ui/form.tsx             # field, message, button/input styles
@@ -191,6 +191,7 @@ src/
   lib/
     auth-client.ts          # browser Better Auth client
     export-map.ts           # export input, canvas/share/download helpers
+    map-zoom.ts             # pure zoom/pan view-box math (unit-tested)
     safe-redirect.ts        # same-origin post-auth `next` validation
   server/
     auth.ts                 # lazy Better Auth instance + options
@@ -281,8 +282,13 @@ Identifier rules:
 - Validate every incoming code against the committed dataset on the server.
 - **Palestine (`PS`) is a country and is always its own map unit.** It is never
   merged into Israel or any other path.
-- Attribution for the CC-BY-4.0 source lives in the map's "About the map data"
-  disclosure and the repository docs. The former Antarctica outline and its
+- Attribution for the CC-BY-4.0 source lives in the "About the map data"
+  disclosure and the repository docs. It is shown under the map on desktop and on
+  the Privacy page (`/privacy#map-data`); on phones it is hidden from the Home and
+  shared-map pages and shown under **Account → About** instead (ADR-035,
+  2026-10-28). CC BY 4.0 allows attribution "in any reasonable manner", including
+  by a link; revisit this if the app is distributed somewhere that expects the
+  credit beside the map. The former Antarctica outline and its
   Natural Earth attribution were removed with the 195-country conversion.
 
 ### 7.2 Rendering
@@ -307,9 +313,23 @@ Identifier rules:
   controls after owner review. A checked row changes the country name and
   checkbox to dusty rose, with no separate \"visited\" text. The map legend and
   explanatory note were also removed as redundant.
-- On narrow screens the map comes first, followed by the country list, with no
-  pan/zoom dependency. From `lg` upward the map and list sit side by side. There
-  is no pan/zoom implementation.
+- On narrow screens the map comes first, followed by the country list. From `lg`
+  upward the map and list sit side by side.
+- **Zoom and pan (ADR-035, 2026-10-28).** Both the personal and the shared map
+  use `src/components/map/zoomable-map.tsx`, with pure view-box math in
+  `src/lib/map-zoom.ts` (1× to 8×). Zoom shrinks the SVG `viewBox` inside the
+  full geometry box; country strokes already use `vector-effect:
+  non-scaling-stroke`, so borders stay thin. Controls: Reset / − / + buttons,
+  two-finger pinch, Ctrl/⌘ + scroll (plain scroll still scrolls the page), and
+  drag to pan once zoomed in. A drag only starts after 4 px of movement and
+  swallows the click that would follow it, so panning never marks a country; a
+  plain tap still does. Touch scrolling of the page is left to the browser
+  (`touch-action: pan-y`) until the map is zoomed, then the map takes over
+  (`touch-action: none`). The zoom state lives in the wrapper, so the 195 paths
+  and the country list are not re-rendered while panning. Zoom is a view-only
+  convenience: it is not stored, not in the URL, resets on reload, and does not
+  affect the export image. There is no keyboard panning; the country list
+  remains the keyboard path to the same actions.
 - The asset is ~1.1 MB raw and ~377 KB compressed in local production, served
   with ETag revalidation. It contains only public geometry, never visit data.
 - The map route shows a server-rendered count and progress, a Suspense skeleton
@@ -367,17 +387,18 @@ private visit data; the shared map shows a **derived view**:
 - derived comparison sets: visited by everyone, only you, and not yet by anyone
   (ADR-030).
 
-Page layout (`/shared/[mapId]`, ADR-035), top to bottom: map name and
-description; a summary card (countries in the current view as "X of 195", member
-count, percentage, progress bar) containing a closed **Show more** dropdown;
-then the map card; the "Countries in this view" list; the export panel; and, for
-owners, Map details and Danger zone. **Show more** holds, in order: the member
-checkboxes, Compare progress (with the region breakdown), and a Members panel
-with the member list, Remove/Leave actions, and, for the owner only, Invite
-someone and Pending invitations. The page (a Server Component) builds the
-Members panel and passes it to the client `SharedMapExperience` as a `ReactNode`
-prop, so owner checks and invitation data stay server-side; non-owners never
-receive pending-invitation data or invite controls. The map card has no legend.
+Page layout (`/shared/[mapId]`, ADR-035, revised 2026-10-28), top to bottom: map
+name and description; a summary card (countries in the current view as "X of
+195", member count, percentage, progress bar) containing a closed **Show more**
+dropdown; then the map card; the "Countries in this view" list; the export panel;
+and finally one closed **Members and settings** dropdown (just **Members** for
+non-owners). **Show more** holds only the member checkboxes and Compare progress
+(with the region breakdown). **Members and settings** holds, in order: the member
+list with Remove/Leave, and, for the owner only, Invite someone, Pending
+invitations, Map details, and the Danger zone. The page (a Server Component)
+renders that dropdown itself, so owner checks and invitation data stay
+server-side; non-owners never receive pending-invitation data or invite
+controls. The map card has no legend.
 
 `/shared` lists "Maps you belong to:" first, directly under the intro text, then
 the "Create a shared map:" form.
@@ -465,7 +486,7 @@ Constraints:
 - Plain HTML templates with inline styles, built from the `brand` palette. No
   React Email dependency in the first release.
 - Emails implemented: welcome (Phase 2), password reset (Phase 2), and shared
-  map invitation (Phase 4).
+  map invitation (Phase 4); the verification-code email is described below.
 - Sending is best-effort and never blocks the primary mutation from succeeding.
   The owner can copy the invitation link if sending is skipped or fails.
   Failures are logged without tokens or message bodies.
@@ -474,10 +495,14 @@ Constraints:
 - `welcomeEmailSentAt` on the user record prevents duplicate welcomes. If email
   is disabled at sign-up, the field stays null and the welcome is **not**
   retried later; there is no job queue or invitation retry.
-- Email verification is **not enforced** initially (see `SECURITY.md`). The
-  tradeoff is explicit: lower sign-up friction, higher risk of typo'd addresses.
-  Password-reset delivery proves control when it reaches the real inbox, but
-  invitation acceptance only compares the unverified account email string.
+- Email verification **is enforced** (ADR-036). Sign-up emails a 6-digit code
+  (`src/server/email`: `renderVerificationCodeEmail`, `sendVerificationCodeEmail`;
+  wired through Better Auth's `emailOTP` plugin in `src/server/auth.ts`). The
+  sign-up and sign-in forms switch to `VerifyEmailForm` (`components/auth`),
+  which verifies the code and signs the person in. Because sign-up now depends on
+  delivery, a failed send is logged without the code, "Send a new code" retries,
+  and development prints the code to the server console when mail cannot be sent
+  (never in production).
 
 ## 11. Environment variables
 
@@ -511,7 +536,8 @@ for local Postgres.
   always has a non-visual equivalent (list + search). Focus is visible and
   never trapped. Motion respects `prefers-reduced-motion`.
 - **Responsiveness**: mobile-first. On narrow screens the map comes first and
-  the country list follows; no pan/zoom is required. Page chrome and the map
+  the country list follows; zoom is optional (buttons, pinch) and the list is
+  always the non-visual path. Page chrome and the map
   card never cause horizontal scrolling at 320 px (verified in a browser).
 - **Performance**: map route interactive quickly on a mid-range phone; geometry
   is compressible static data (~1.1 MB raw, ~377 KB compressed locally) and is

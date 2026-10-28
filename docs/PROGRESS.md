@@ -1,17 +1,17 @@
 # AtlasShare — Progress
 
-**Current phase:** Phase 7 — Public site & PWA (**approved to proceed
-2026-10-27; implemented, awaiting owner review**). Phase 8 has not started.
-**Status:** Phases 1–6 are approved. Phase 7 code is in the working tree
-(uncommitted): landing page, privacy and install pages, metadata/OG images,
-manifest, icons, service worker, offline page, and update prompt, plus the
-owner's 2026-10-27 UI revisions to the public site, the signed-in shell, the
-personal map, the shared-map pages, and the export panel (ADR-035).
-`npm run check` (144 tests) and `npm run build` pass; production smoke checks
-passed before the revisions and the revised pages were checked in a dev browser.
-Manual device, offline, install, and Lighthouse checks are still outstanding
-(see Phase 7 verification).
-**Last updated:** 2026-10-27.
+**Current phase:** Phase 8 — Hardening, QA & deployment (**started 2026-10-28 at
+the owner's direction**). Phase 7 (public site & PWA) was moved past by the owner
+on 2026-10-28 ("this is phase 8") while they finish checking texts before
+deploying; its manual device, offline, install, and Lighthouse checks are still
+not run (see Phase 7 verification).
+**Status:** Phases 1–7 are approved/closed by the owner. **Phase 8 so far has
+one item done: email verification by a 6-digit code (ADR-036).** Nothing else in
+Phase 8 has been started: no deployment, security headers/CSP, accessibility
+audit, end-to-end suite, error monitoring, or backups. The work since the last
+push is in the working tree (uncommitted): the owner UI revisions (ADR-035) and
+email verification. `npm run check` (194 tests) and `npm run build` pass.
+**Last updated:** 2026-10-28.
 
 This is the first file to read when resuming work. It reflects what is actually
 built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
@@ -26,8 +26,8 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | 4. Shared maps | ✅ Complete (approved 2026-10-27) | Create/manage maps, invitations, member roles, combined read-only view, two-account QA. |
 | 5. Insights & filters | ✅ Complete (approved 2026-10-27) | Region field, continent stats, shared comparison, no schema change. |
 | 6. Image export | ✅ Complete (approved 2026-10-27) | 3200 × 2000 PNG, share/download/SVG fallback, combined shared export without identities, browser QA. |
-| 7. Public site & PWA | 🟡 Implemented, awaiting review | Landing, privacy, metadata/OG, manifest, service worker, offline page. Manual QA pending. |
-| 8. Hardening, QA & deployment | ⛔ Not started | — |
+| 7. Public site & PWA | ✅ Closed by the owner 2026-10-28 | Landing, privacy, install, metadata/OG, manifest, service worker, offline page, and the ADR-035 revisions. Manual device/offline/Lighthouse QA still not run. |
+| 8. Hardening, QA & deployment | 🟡 In progress (started 2026-10-28) | Done: email verification by code (ADR-036). Not started: deployment, security headers/CSP, accessibility audit, e2e smoke tests, monitoring, backups. |
 
 ## 2. What exists today
 
@@ -98,7 +98,9 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 - `src/components/export/export-map-panel.tsx` renders on the personal map and on
   shared maps. It has a title field, a rose **Preview** toggle (the image is
   hidden until pressed, and stays mounted while hidden because export serializes
-  it), a share/download button, and progress/status/error states. The on-screen
+  it), a **Download** button (renamed from "Share or download image" on
+  2026-10-28; it still opens the native share sheet where supported), and
+  progress/status/error states. The on-screen
   privacy paragraph was removed (ADR-035); the guarantee still comes from the
   input type and tests. On a shared map it receives the combined country
   codes by default, or the selected member's codes (or the union of the checked
@@ -171,18 +173,32 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   `/shared/[mapId]` shows the combined view, member list, and owner
   controls; `/invite/[token]` previews and accepts an invitation. Non-members
   receive the app's 404 page for a map id.
-- **`/shared/[mapId]` layout (ADR-035), top to bottom:** map name/description; a
-  summary card (countries in the current view as "X of 195", member count,
-  percentage, progress bar) with a closed **Show more** dropdown; the map card
-  ("Shared map", no legend); "Countries in this view" (no privacy paragraph);
-  the export panel; then, for owners, Map details and Danger zone. **Show more**
-  contains, in order: **Show** (checkboxes: All plus each member, all checked by
-  default), **Compare progress** (with the region breakdown), and **Members**
-  (member list, Remove/Leave) with, for the owner only, **Invite someone** and
-  **Pending invitations**. The page builds the Members panel on the server and
-  passes it to the client view, so non-owners never receive invite controls or
+- **`/shared/[mapId]` layout (ADR-035, revised 2026-10-28), top to bottom:** map
+  name/description; a summary card (countries in the current view as "X of 195",
+  member count, percentage, progress bar) with a closed **Show more** dropdown;
+  the map card ("Shared map", no legend); "Countries in this view" (no privacy
+  paragraph); the export panel; then one closed **Members and settings**
+  dropdown (just **Members** for non-owners). **Show more** contains **Show**
+  (checkboxes: All plus each member, all checked by default) and **Compare
+  progress** (with the region breakdown). **Members and settings** contains the
+  member list (Remove/Leave) and, for the owner only, **Invite someone**,
+  **Pending invitations**, **Map details**, and the **Danger zone**. The page
+  renders it on the server, so non-owners never receive invite controls or
   pending-invitation emails. Ticking a member returns from any comparison to the
   combined view; "All" always means the combined view, even on a one-member map.
+- The signed-in header nav reads **Home** (was "Map"; still links to `/map`),
+  **Shared**, **Account** with the current page marked. **On phones (below `sm`)
+  the app is laid out like an installed app:** the top bar is the logo and an
+  icon-only Sign out, and a fixed bottom tab bar holds Shared (left), Home
+  (middle), Account (right) as icons with labels (`src/components/app/app-nav.tsx`).
+  `viewport-fit=cover` and safe-area padding keep it clear of the home indicator.
+- **Phone footer (2026-10-28).** Below `sm` the signed-in footer is hidden and
+  the in-page "About the map data" attribution under the maps is hidden; the
+  Account page has a phone-only **About** section (Privacy, Made by, the
+  attribution, ©). Desktop is unchanged. The Preview/Download buttons are
+  equal-width and side by side on phones. The map cards on `/shared` alternate green and pink
+  (green, pink, green… in one column; a green/pink checkerboard in two columns),
+  via `src/lib/card-tones.ts`.
 - The shared-map tables already existed from the Phase 2 migration. Phase 4 uses
   them as-is: **no new migration or schema change** was needed.
 - Creating a map inserts the map and the owner's `OWNER` membership in one
@@ -249,8 +265,12 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   codes outside the dataset; reads/writes are scoped to the session user.
 - The client updates optimistically and rolls back with an error message when
   the Server Action fails. Counts are server-rendered initially.
-- Narrow screens show the map first, with the country list below, and no
-  pan/zoom dependency. From `lg` upward the map and list are side by side. At
+- Narrow screens show the map first, with the country list below. From `lg`
+  upward the map and list are side by side. The map can be zoomed and panned
+  (2026-10-28): Reset / − / + buttons, pinch, Ctrl/⌘ + scroll, and drag once
+  zoomed, up to 8×, on both the personal and shared maps (`zoomable-map.tsx`,
+  `src/lib/map-zoom.ts`). A drag never marks a country; a tap does. Zoom is
+  view-only (not saved, not in the export). At
   320/390 px there is no horizontal overflow; this was fixed after finding an
   intrinsic grid width of 463 px (`grid-cols-1` + `min-w-0`).
 - Four client auth forms now use `method="post"` so a failed JavaScript boot
@@ -276,9 +296,22 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   client router.
 - Account deletion is password-gated, enabled in Better Auth, and relies on
   Prisma cascades. The UI warns that owned shared maps are deleted.
-- Welcome email is attempted once after sign-up and tracked with
-  `welcomeEmailSentAt`; a missing `BREVO_API_KEY` makes it a logged no-op, and
-  send failures never block sign-up.
+- Welcome email is sent once, **after the address is verified** (it used to be
+  attempted at sign-up), and tracked with `welcomeEmailSentAt`; a missing
+  `BREVO_API_KEY` makes it a logged no-op, and send failures never block
+  verification.
+- **Email verification by 6-digit code (Phase 8, ADR-036, 2026-10-28).** Sign-up
+  creates an unverified account with no session and emails a code (valid 10
+  minutes, 5 attempts, single use, stored hashed). The sign-up form then shows a
+  "Check your email" step (`VerifyEmailForm`); a correct code verifies the
+  address and signs the person in. "Send a new code" has a 60-second cooldown.
+  Signing in to an unverified account (after the correct password) emails a new
+  code and shows the same step; wrong passwords still get the generic message. A
+  new sign-up for an address that only has an unverified account replaces it (no
+  squatting). The plugin's passwordless sign-in and reset-by-code are disabled.
+  In development, if mail cannot be sent, the code is printed to the server
+  console (never in production). The two existing accounts were marked verified
+  once with a one-off SQL update.
 - Rate limits are enabled only in production (Better Auth, per-instance memory):
   sign-in 10/15 min, sign-up 5/hour, reset request 3/hour, reset submit 10/15 min.
 - Server-side authorization gate `requireSession()`; the proxy only redirects
@@ -328,6 +361,32 @@ aspect-ratio choices, PDF, or animation.
 
 ## 3. Verification
 
+### Phase 8 verification — email verification by code (2026-10-28)
+
+Run against the real dev server and the Neon dev database with `BREVO_API_KEY`
+unset (so codes were read from the server log and nobody was emailed), using
+throwaway `example.com` addresses that were deleted afterwards (2 test users and
+1 code row removed; the 2 real accounts remain, both verified).
+
+| Check | Method | Result |
+| --- | --- | --- |
+| Full check | `npm run check` | ✅ exit 0; **194/194 tests (32 files)**, no lint warnings |
+| Production build | `npm run build` | ✅ exit 0 |
+| Sign-up creates no session | `curl` | ✅ 200, `token: null`, `emailVerified: false`; code printed (dev only) |
+| Code stored hashed | SQL | ✅ one row `email-verification-otp-<email>`, 45-char value, not a plain code |
+| Wrong password on an unverified account | `curl` | ✅ 401, same message as any wrong password |
+| Correct password, unverified | `curl` | ✅ 403 `EMAIL_NOT_VERIFIED`; a new code was issued |
+| Old code after a new one | `curl` | ✅ 400 `INVALID_OTP` (rotated) |
+| Brute force | `curl` | ✅ after 5 wrong tries the correct code gets 403 `TOO_MANY_ATTEMPTS`; resend issues a working code |
+| Correct code | `curl` | ✅ 200, `emailVerified: true`, session cookie works; code cannot be reused; normal sign-in then returns 200; welcome email attempted only now |
+| Squatting | `curl` + SQL | ✅ attacker registers an address, the owner re-registers it: one account remains (the owner's); the attacker's password never works |
+| Sign-up on a verified address | `curl` | ✅ generic 200, nothing emailed, original password still works, intruder's does not |
+| Passwordless / reset-by-code | `curl` + SQL | ✅ sign-in and reset codes send nothing; OTP sign-in for a new address is refused and creates no account |
+| Code step in the sign-up and sign-in forms | component tests (jsdom) | ✅ 15 tests incl. error messages, cooldown, resend, redirect (`/account` or the invitation `next`) |
+| Code step in a real browser | — | ⬜ **not run**: this tool could not open a second browser context without disturbing the owner's signed-in tab. The API flow above is verified; the forms are covered by component tests only |
+| Real email delivery of the code | — | ⬜ **not run**: tested with the email key unset. Brevo delivery of this message type, rendering in a mail client, and the inbox/spam placement are unverified |
+| Production rate limits | — | ⬜ not exercised (they are active only in production) |
+
 ### Phase 7 verification (2026-10-27)
 
 Environment: macOS, Node v24.13.1, production build served locally with
@@ -335,11 +394,17 @@ Environment: macOS, Node v24.13.1, production build served locally with
 
 | Check | Command / method | Result |
 | --- | --- | --- |
-| Full check | `npm run check` | ✅ exit 0; **144/144 tests (25 files)**, no lint warnings (re-run after the 2026-10-27 UI revisions) |
+| Full check | `npm run check` | ✅ exit 0; **167/167 tests (29 files)**, no lint warnings (re-run after the 2026-10-28 follow-up revisions, map zoom, card colours, and phone navigation) |
+| Phone navigation | dev browser (2026-10-28) | ✅ at a 500 px window: top bar is logo + icon-only Sign out (65 px), bottom tab bar Shared / Home / Account (65 px) with the current page highlighted, desktop nav hidden, and the footer ends above the bar. At 900 px (iframe): text nav with the current page marked, tab bar hidden, "Sign out" text shown |
+| Phone navigation on a real device | manual | ⬜ not run (iPhone safe area / home indicator, Android gesture bar, and installed-PWA behaviour are unverified) |
+| Phone footer, About section, export buttons | dev browser (2026-10-28) | ✅ 500 px window: footer and in-page attribution hidden on Home; Account shows About (Privacy, Made by, About the map data, ©); Preview and Download are both 199 × 44 on one row. 900 px frame: footer and attribution visible, About hidden, buttons 93 and 107 px wide on one row (desktop unchanged) |
+| `/shared` card colours | dev browser (2026-10-28) | ✅ verified with cloned cards in a 900 px iframe (rows green/pink, pink/green, green/pink) and a 500 px frame (green, pink, green, pink…); the account has one real map, so no extra maps were created |
+| Map zoom | dev browser (2026-10-28) | ✅ shared map (read-only): Zoom in changed the view box, drag panned it, Ctrl + scroll zoomed without scrolling the page, a plain scroll left the zoom alone, Reset restored `0 0 1010 760` and disabled − / Reset. Personal map: buttons changed the view box and the visited count stayed 17 (no country was clicked) |
+| Map zoom on a touch device | manual | ⬜ not run (pinch and touch drag are covered only by logic and jsdom pointer tests) |
 | Production build | `npm run build` | ✅ exit 0; `/`, `/privacy`, `/install`, `/offline`, `/sw.js`, manifest, OG/Twitter images, robots, sitemap present |
 | Public routes | `curl` | ✅ `/`, `/privacy`, `/install`, `/offline`, `/sw.js`, manifest, robots, sitemap, OG image all 200 with expected content types (checked before the UI revisions; `/` and `/install` re-checked in a dev browser after) |
 | Revised landing/install copy, header, footer, logo | dev browser (2026-10-27) | ✅ read back through the accessibility tree: header Sign in / Create account / Install, footer © + Made by + Privacy + Map data, three-card section, step 2 "Here's how!" link to `/install` |
-| Shared map: layout and Show more | dev browser (2026-10-27) | ✅ owner view order summary → Show more (Show, Compare progress, Members, Invite someone, Pending invitations) → map → list → export → Map details → Danger zone; no legend, no privacy paragraph |
+| Shared map: layout and Show more | dev browser (2026-10-27, re-checked 2026-10-28) | ✅ owner view order summary → Show more (Show, Compare progress) → map → list → export → Members and settings (Members, Invite someone, Pending invitations, Map details, Danger zone); no legend, no privacy paragraph; header nav reads Home / Shared / Account; button reads Download; `/shared` cards are green |
 | Export Preview toggle | dev browser + component tests | ✅ SVG hidden → visible → hidden; button computed colour `rgb(201,133,133)` (rose-deep) |
 | `/shared` order | dev browser | ✅ "Maps you belong to:" above "Create a shared map:" |
 | Personal "By region" closed by default | dev browser | ✅ rendered as a closed `<details>` |
@@ -750,7 +815,8 @@ Full records in ADR-012, ADR-013, and ADR-026.
 
 | Item | Status | Needed for |
 | --- | --- | --- |
-| Phase 7 review | implemented; awaiting owner review and manual QA | Phase 8 start |
+| Phase 7 manual QA | not run (owner closed the phase on 2026-10-28) | Before launch |
+| Email delivery in production | not verified; sign-up now depends on it (ADR-036) | Deployment |
 | Neon dev branch + connection strings | connected; both migrations applied | Deployment verification |
 | Brevo account + verified sender | configured; delivery previously verified, but the local QA egress IP now gets 401 | Reset/invitation email validation |
 | Brevo production domain authentication | optional; not configured | Better deliverability in Phase 8 |
@@ -758,8 +824,8 @@ Full records in ADR-012, ADR-013, and ADR-026.
 | Approval to push to `origin` | not given | Sharing the repository |
 | Domain name (optional) | undecided | Phase 8 |
 
-Phases 1–6 are approved; Phase 7 is awaiting review. Pushing still needs explicit
-permission. No credentials are committed; `.env.example` documents
+Phases 1–7 are approved/closed; Phase 8 is in progress. Pushing still needs
+explicit permission. No credentials are committed; `.env.example` documents
 the expected variables.
 
 ## 7. Repository state
@@ -794,12 +860,14 @@ the expected variables.
 
 ## 8. Next steps
 
-1. Owner review of Phase 7 (including the 2026-10-27 UI revisions), plus the
-   manual checks listed in its verification
-   table (sign-out → offline, DevTools cache, install, Lighthouse, link preview,
-   320/390 px landing, `/install`, and the revised shared-map page with two real
-   members). Do not start Phase 8 or push to `origin` without
-   explicit permission.
+1. Phase 8 is in progress. **Done:** email verification by code. **Next, with
+   the owner's go-ahead for each:** try a real sign-up end to end in a browser with
+   a mailbox you control (check the email arrives and looks right), then the rest
+   of Phase 8 (deployment, security headers/CSP, accessibility audit, e2e smoke
+   tests, monitoring, backups). Do not push to `origin` without explicit
+   permission. The Phase 7 manual checks (sign-out → offline, DevTools cache,
+   install, Lighthouse, link preview, 320/390 px, `/install`, and the revised
+   shared-map page with two real members) are still open.
 2. Complete the remaining manual checks if desired: physical iOS/Android share
    sheets, Safari/Firefox export rendering, keyboard-only and screen-reader
    passes, authenticated Lighthouse, and visual design approval.
@@ -849,8 +917,11 @@ the expected variables.
 - **The 195-country map has no Antarctica outline and no dependent territories.**
   This is deliberate after ADR-032; do not reintroduce a "countries & territories"
   toggle without a new product decision, migration review, and copy update.
-- **No pan/zoom.** Narrow screens show the map first and the list below; the map
-  is a visual shortcut, not the only input.
+- **Map zoom is pointer/touch-driven.** The +/−/Reset buttons are keyboard
+  accessible, but panning is drag-only (no arrow-key panning) and plain scroll
+  does not zoom, by design, so the page can still scroll. Pinch and touch drag
+  have not been tried on a physical phone. The map remains a visual shortcut; the
+  country list is the non-visual path.
 - **Shared maps are read-only and not real-time.** Members update their own map
   on `/map`; the shared page reflects accepted membership and country changes on
   the next request/revalidation. There is no live presence, comments, or owner
@@ -886,11 +957,15 @@ the expected variables.
 - **Auth rate limiting is per-instance memory** and only active in production.
   It slows basic brute force on sign-in/sign-up/reset but is not a shared limiter
   and does not cover shared-map Server Actions.
-- **No email verification, MFA, or OAuth.** Shared invitations match the account's
-  email string, but the address is not verified. If an attacker has a forwarded
-  link and can register the unregistered invited address first, the email check
-  can be satisfied. Requiring verified email before acceptance is a pre-launch
-  hardening task; sign-up also reports that an address already exists.
+- **No MFA or OAuth.** Email verification is now enforced (ADR-036), so
+  invitations rest on a verified address. Remaining email-code caveats: anyone
+  can request a code for any address (nuisance email, rate-limited only per
+  instance in production), and signing up with an already-verified address shows
+  the code screen but sends nothing.
+- **Sign-up depends on email delivery.** If the code never arrives, the person
+  can request a new one, but if Brevo is blocked (for example by IP) nobody can
+  finish signing up in production. Development prints the code to the server
+  console in that case. Test delivery from a fresh address before launch.
 - **Secure cookies are not observable locally** because the smoke test used
   HTTP. Production uses an HTTPS origin.
 - **No CI, deployment, or error monitoring.** Checks run locally.
@@ -899,6 +974,15 @@ the expected variables.
   Prisma Studio pulls lodash. The runtime uses Better Auth 1.7.12, which is
   outside the affected range, and none of these are in the production bundle.
   Re-check before deployment and replace/upgrade when fixes are available.
+- **Never-verified accounts are never purged.** A sign-up that is never completed
+  stays in the database (name, address, password hash) until someone signs up
+  again with the same address, which replaces it. The privacy page says so. Add a
+  scheduled cleanup (for example, delete unverified accounts older than 7 days)
+  before launch; it is safe because unverified accounts hold no data.
+- **The privacy page has no contact route.** The "Questions" section (which linked
+  to a non-working issue tracker) was removed on 2026-10-28. Deletion is
+  self-service on Account, but a person with a privacy question has no listed
+  address. Add a contact email or a working tracker before launch.
 - **The OG/Twitter link-preview images still draw the old "A" mark** rather than
   the new logo, and `og:url` shows localhost unless `NEXT_PUBLIC_APP_URL` is set.
 - **Local origin must match the dev port.** If port 3000 is taken (it was, by

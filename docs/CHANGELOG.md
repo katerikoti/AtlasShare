@@ -6,6 +6,30 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ## [Unreleased]
 
+### Added — Phase 8: email verification by 6-digit code (2026-10-28, ADR-036)
+
+- Sign-up now creates an unverified account with no session and emails a 6-digit
+  code (valid 10 minutes, 5 attempts, single use, stored hashed). The form shows a
+  "Check your email" step; a correct code verifies the address and signs the
+  person in, then the welcome email is sent (it moved from account creation to
+  after verification). "Send a new code" has a 60-second cooldown.
+- Signing in to an account that was never verified (after the correct password)
+  emails a fresh code and shows the same step. Wrong passwords still get the
+  generic message.
+- A new sign-up for an address with only an unverified account replaces it, so
+  registering someone else's address cannot hijack their later verification.
+- Better Auth's `emailOTP` plugin is used with passwordless sign-in and
+  reset-by-code disabled. A development-only fallback prints the code to the
+  server console when mail cannot be sent; production never logs a code.
+- New: `VerifyEmailForm`, `renderVerificationCodeEmail`,
+  `sendVerificationCodeEmail`, `src/server/unverified-accounts.ts`. 27 new tests
+  (194 in 32 files).
+- The two existing accounts were marked verified once with a one-off SQL update
+  (not a migration). The privacy page now mentions the verification code.
+- Docs: SECURITY (verification is enforced; accepted-risk table updated), ADR-036
+  (and ADR-028 marked resolved), DATABASE, ARCHITECTURE, DEPLOYMENT (email is now
+  on the sign-up critical path), PROJECT_SPECIFICATION (FR-A5, FR-A7).
+- Phase 8 was started by the owner on 2026-10-28; this is its first item.
 ### Added — Phase 7: public site and PWA (2026-10-27)
 
 - Public landing page (`/`), privacy page, and install page (`/install`) with
@@ -18,6 +42,62 @@ Notable changes, newest first. This project follows a phase-based plan; see
   the public, signed-in, and auth headers; PWA, Apple, and browser icons are
   generated from the solid mark. `icon.svg` and `favicon.ico` were removed.
 - `brand.portfolioUrl` and a "Made by Katerina Mäenpää" footer credit.
+
+### Changed — privacy page (2026-10-28)
+
+- Removed the "Questions" section, whose link to the GitHub issue tracker did not
+  work, and bumped "Last updated" to 28 October 2026. The rest of the page was
+  re-read against the current app and still matches (nothing new is stored: map
+  zoom and the phone navigation are view-only, and exports are unchanged). The
+  page no longer offers a contact route; account deletion remains self-service
+  on the Account page.
+
+### Changed — phone footer and export buttons (2026-10-28, ADR-035)
+
+- Phones only (desktop unchanged): the signed-in footer is hidden, and the
+  "About the map data" attribution is hidden under the Home and shared maps. The
+  Account page gained a phone-only **About** section with Privacy, "Made by
+  Katerina Mäenpää", the attribution, and the © line.
+- The Preview and Download buttons are equal-width and side by side on phones
+  (they were one small and one full-width); while working, Download shows
+  "Preparing…".
+
+### Added — app-style phone navigation (2026-10-28, ADR-035)
+
+- On phones the signed-in app now has a top bar with the logo and an icon-only
+  Sign out, and a fixed bottom tab bar: Shared (left), Home (middle), Account
+  (right), icons with short labels and the current page highlighted. Desktop
+  keeps the text links in the top bar (now with the current page marked).
+- New `src/components/app/app-nav.tsx` (`DesktopNav`, `MobileTabBar`);
+  `SignOutButton` gained an opt-in `iconOnlyOnMobile` prop (the invite page keeps
+  its text button). `viewport-fit=cover` plus safe-area padding keep the bar clear
+  of the iPhone home indicator, and the body pads the left/right insets.
+- 4 new tests; the total is now 167 in 29 files.
+
+### Added — map zoom and pan (2026-10-28, ADR-035)
+
+- Both the personal and the shared world map can be zoomed 1×–8× and panned:
+  Reset / − / + buttons, two-finger pinch, Ctrl/⌘ + scroll, and drag once zoomed.
+  Plain scroll still scrolls the page. A drag never marks a country; a tap still
+  does. Zoom is view-only (not persisted, not in the export image).
+- New `src/components/map/zoomable-map.tsx` and pure `src/lib/map-zoom.ts`; no new
+  dependency. 16 new tests (9 for the math, 7 for the component).
+
+### Changed — owner follow-up revisions (2026-10-28, ADR-035)
+
+- Signed-in header nav: "Map" is now "Home" (still `/map`).
+- Export button: "Share or download image" is now **Download** (behavior
+  unchanged; the native share sheet still opens where supported).
+- `/shared`: the "Maps you belong to" cards alternate green and pink: green,
+  pink, green, pink… in one column (mobile), and a checkerboard (green, pink /
+  pink, green / …) in two columns (`sm` and up). Pink cards use darker secondary
+  text for contrast. The sequence lives in `src/lib/card-tones.ts` (3 tests).
+- Shared map: Members, Invite someone, and Pending invitations moved out of
+  **Show more** into one closed **Members and settings** dropdown at the bottom
+  of the page, together with Map details and the Danger zone (just **Members**
+  for non-owners). **Show more** now holds only the member checkboxes and Compare
+  progress. The client `SharedMapExperience` no longer takes a `membersPanel`
+  prop.
 
 ### Changed — owner UI revisions (2026-10-27, ADR-035)
 
@@ -40,7 +120,7 @@ Notable changes, newest first. This project follows a phase-based plan; see
 - Export panel: a rose **Preview** toggle replaces the always-visible image on
   personal and shared maps; the on-screen privacy paragraph was removed.
 - Test count is now 144 (was 137): new coverage for the summary, Show more
-  contents, the members-panel slot, comparison toggle-off, member change after a
+  contents (member management is not in it), comparison toggle-off, member change after a
   comparison, a one-member map, and the Preview toggle on both maps.
 
 ### Fixed

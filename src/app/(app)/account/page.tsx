@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { DeleteAccountForm } from "@/components/account/delete-account-form";
 import { NameForm } from "@/components/account/name-form";
+import { MapAttribution } from "@/components/map/map-attribution";
 import { brand } from "@/config/brand";
 import { requireSession } from "@/server/session";
 
@@ -104,6 +105,36 @@ export default async function AccountPage() {
         Email address changes and email verification are not available yet.
         Your address is never shown to other members.
       </p>
+
+      {/* Phones only: the app footer is hidden there, so its links live here. */}
+      <section aria-labelledby="about-heading" className="space-y-4 sm:hidden">
+        <h2 id="about-heading" className="font-display text-2xl tracking-tight">
+          About
+        </h2>
+        <ul className="flex flex-col gap-2 text-sm">
+          <li>
+            <Link
+              href="/privacy"
+              className="font-medium text-moss underline decoration-moss/40 underline-offset-4"
+            >
+              Privacy
+            </Link>
+          </li>
+          <li>
+            <a
+              href={brand.portfolioUrl}
+              rel="noreferrer"
+              className="font-medium text-moss underline decoration-moss/40 underline-offset-4"
+            >
+              Made by Katerina Mäenpää
+            </a>
+          </li>
+        </ul>
+        <MapAttribution />
+        <p className="text-xs text-ink-muted">
+          © {brand.name} {new Date().getFullYear()}
+        </p>
+      </section>
     </div>
   );
 }

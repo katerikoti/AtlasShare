@@ -18,6 +18,7 @@ import { inputClass, secondaryButtonClass } from "@/components/ui/form";
 import { MapAttribution } from "./map-attribution";
 import { RegionBreakdown } from "./region-breakdown";
 import { useMapGeometry } from "./use-map-geometry";
+import { ZoomableMap } from "./zoomable-map";
 
 type MapExperienceProps = {
   initialVisited: CountryCode[];
@@ -208,65 +209,61 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
             ) : null}
           </div>
 
-          <div className="relative mt-4 aspect-[1010/760] w-full overflow-hidden rounded-2xl border border-line/70 bg-map">
-            {geometry ? (
-              <svg
-                viewBox={geometry.viewBox}
-                preserveAspectRatio="xMidYMid meet"
-                role="img"
-                aria-labelledby={mapTitleId}
-                className="h-full w-full"
-              >
-                <title id={mapTitleId}>
-                  World map. Mark countries with the map or the country list.
-                </title>
-                {countriesAlphabetical.map((country) => (
-                  <path
-                    key={country.code}
-                    d={geometry.paths[country.code]}
-                    data-country={country.code}
-                    data-visited={visited.has(country.code)}
-                    className="map-country"
-                    onClick={() => void toggleCountry(country.code)}
-                    onPointerEnter={() => setHovered(country.code)}
-                    onPointerLeave={() =>
-                      setHovered((current) =>
-                        current === country.code ? null : current,
-                      )
-                    }
-                  >
-                    <title>
-                      {country.name} —{" "}
-                      {visited.has(country.code) ? "visited" : "not visited"}
-                    </title>
-                  </path>
-                ))}
-              </svg>
-            ) : geometryError ? (
-              <div
-                role="alert"
-                className="absolute inset-0 grid place-items-center p-6 text-center"
-              >
-                <div>
-                  <p className="text-sm text-ink-muted">{geometryError}</p>
-                  <button
-                    type="button"
-                    onClick={retryGeometry}
-                    className={`${secondaryButtonClass} mt-3`}
-                  >
-                    Try again
-                  </button>
+          {geometry ? (
+            <ZoomableMap viewBox={geometry.viewBox} labelledBy={mapTitleId}>
+              <title id={mapTitleId}>
+                World map. Mark countries with the map or the country list.
+              </title>
+              {countriesAlphabetical.map((country) => (
+                <path
+                  key={country.code}
+                  d={geometry.paths[country.code]}
+                  data-country={country.code}
+                  data-visited={visited.has(country.code)}
+                  className="map-country"
+                  onClick={() => void toggleCountry(country.code)}
+                  onPointerEnter={() => setHovered(country.code)}
+                  onPointerLeave={() =>
+                    setHovered((current) =>
+                      current === country.code ? null : current,
+                    )
+                  }
+                >
+                  <title>
+                    {country.name} —{" "}
+                    {visited.has(country.code) ? "visited" : "not visited"}
+                  </title>
+                </path>
+              ))}
+            </ZoomableMap>
+          ) : (
+            <div className="relative mt-4 aspect-[1010/760] w-full overflow-hidden rounded-2xl border border-line/70 bg-map">
+              {geometryError ? (
+                <div
+                  role="alert"
+                  className="absolute inset-0 grid place-items-center p-6 text-center"
+                >
+                  <div>
+                    <p className="text-sm text-ink-muted">{geometryError}</p>
+                    <button
+                      type="button"
+                      onClick={retryGeometry}
+                      className={`${secondaryButtonClass} mt-3`}
+                    >
+                      Try again
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div
-                aria-busy="true"
-                className="absolute inset-0 grid place-items-center bg-map"
-              >
-                <p className="text-sm text-ink-muted">Loading the map…</p>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div
+                  aria-busy="true"
+                  className="absolute inset-0 grid place-items-center bg-map"
+                >
+                  <p className="text-sm text-ink-muted">Loading the map…</p>
+                </div>
+              )}
+            </div>
+          )}
 
         </section>
 
@@ -356,7 +353,10 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
 
       <ExportMapPanel visited={visited} geometry={geometry} />
 
-      <MapAttribution />
+      {/* On phones the attribution lives under Account → About. */}
+      <div className="max-sm:hidden">
+        <MapAttribution />
+      </div>
     </div>
   );
 }

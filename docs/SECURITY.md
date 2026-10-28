@@ -54,12 +54,37 @@ Rules:
 - Changing a password revokes **all** sessions, including the current one, and
   redirects to sign-in. This avoids a session-rotation race and guarantees other
   devices are signed out.
-- **Email verification is not enforced initially.** Accepted risk: typo'd or
-  fake addresses. Password reset proves control when the message reaches the
-  real inbox. Invitation acceptance only checks that the signed-in account email
-  string matches; it does not independently prove address control. A verified-
-  email requirement can be enabled later without a schema change, but should be
-  added before public launch. This is recorded as an accepted risk.
+- **Email verification is enforced (ADR-036, 2026-10-28).** A new account cannot
+  sign in, and receives no session, until its address is confirmed with a
+  6-digit code emailed to it. The code is valid for 10 minutes and allows 5
+  tries; after that even the correct code is refused until a new one is
+  requested. Only a hash of the code is stored (`storeOTP: "hashed"`), a new
+  code replaces the old one, and a code works once. Signing in to an unverified
+  account (after the correct password) emails a fresh code, and the response for
+  a wrong password is unchanged, so this does not reveal whether an address is
+  registered. Verifying signs the person in and then sends the welcome email.
+  - **Squatting is closed.** A sign-up for an address that only has a
+    never-verified account first deletes that unverified account
+    (`src/server/unverified-accounts.ts`), so someone who registers another
+    person's address cannot leave their own password on the account the real
+    owner later verifies. Unverified accounts hold no sessions, visits, or
+    memberships, and verified accounts are never touched.
+  - **Sign-up for an already-verified address** returns the same generic success
+    as any other sign-up and changes nothing; the person sees the code screen but
+    no code arrives (there is no "you already have an account" email yet).
+  - **Unused code flows are disabled.** The plugin's passwordless sign-in and
+    password-reset-by-code endpoints exist but cannot create accounts
+    (`disableSignUp`) and `sendVerificationOTP` sends nothing for any type other
+    than `email-verification`; tests and a live run confirmed no account is
+    created and no mail is sent.
+  - **Remaining risk:** anyone can ask for a verification code for any address,
+    which can be used to annoy a recipient. Production rate limits slow this
+    (sign-up 5 per hour and the plugin's own limit), but they are per-instance
+    memory (see below). Development prints the code to the server console when
+    mail cannot be sent; production never logs a code.
+  - Existing accounts from before this change were marked verified once (the
+    owner's decision). A password reset still proves control of the inbox but
+    does not mark an account verified.
 - Password reset uses Better Auth's verification flow: a single-use token with a
   one-hour lifetime; success revokes sessions; the request response is identical
   whether or not the email exists.
@@ -103,13 +128,13 @@ scoped by the authenticated user or by a verified membership.**
   query and discloses no field that the per-member filter did not already send.
   Region statistics are counts over the current view, not another person's raw
   rows.
-- The shared-map page builds its Members panel (member list, Remove/Leave,
-  Invite someone, Pending invitations) on the server and hands it to the client
-  view as rendered content (ADR-035). Owner-only parts are produced only when
+- The shared-map page renders its **Members and settings** dropdown (member list,
+  Remove/Leave, Invite someone, Pending invitations, Map details, Danger zone) on
+  the server (ADR-035). Owner-only parts are produced only when
   `requireMapAccess` returns the `OWNER` role, so a member's response contains no
   invitation emails or invite controls; the Server Actions still re-check the
-  role on every call. Moving these controls inside a collapsed "Show more"
-  dropdown is presentation only.
+  role on every call. Putting these controls inside a collapsed dropdown is
+  presentation only.
 
 Test requirement: for each new server action, at least one test proves a
 non-member cannot perform it and cannot read the data.
@@ -159,9 +184,10 @@ non-member cannot perform it and cannot read the data.
   session for top-level navigations.
 - No state-changing GET requests.
 - Invitation acceptance is a POST that requires the signed-in user's email to
-  match the invitation email. A different account cannot redeem it, but because
-  email verification is not enforced, a forwarded link can be redeemed by
-  registering the unregistered invited address first.
+  match the invitation email. A different account cannot redeem it. Because every
+  account's address is now verified with an emailed code before it can sign in,
+  a forwarded link can no longer be redeemed by simply registering the invited
+  address: the person would also need access to that inbox.
 
 ## 8. Invitation tokens
 
@@ -340,7 +366,9 @@ Before a phase is approved:
 
 | Risk | Why accepted | Revisit |
 | --- | --- | --- |
-| Email verification not enforced; invitation acceptance trusts the email string | Friction at sign-up; a forwarded invite plus registering the unregistered invited address can satisfy the check | Before public launch / Phase 8 |
+| Verification-code emails can be requested for any address (nuisance email) | Codes are harmless without the inbox; production rate limits apply | Before public launch (shared limiter) |
+| Never-verified accounts are not purged | No cleanup job yet; they hold no data and can sign in to nothing | Before public launch (add a scheduled purge) |
+| Sign-up for an already-verified address sends no "account exists" email | Keeps sign-up responses generic; the code screen links to sign-in | If users report confusion |
 | No MFA | Scope; password + rate limiting first | Post-launch |
 | Per-instance rate limiting may be weak on serverless | Simplicity; limits still slow brute force | When abuse is observed or before public launch |
 | Shared-map actions, including invite acceptance, have no rate limit | 256-bit tokens make guessing infeasible; implementation complexity deferred | Before public launch / Phase 8 |

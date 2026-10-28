@@ -7,7 +7,14 @@ import { authClient } from "@/lib/auth-client";
 import { clearPrivateRuntimeCaches } from "@/lib/pwa-cache";
 import { secondaryButtonClass } from "@/components/ui/form";
 
-export function SignOutButton({ redirectTo = "/" }: { redirectTo?: string }) {
+export function SignOutButton({
+  redirectTo = "/",
+  iconOnlyOnMobile = false,
+}: {
+  redirectTo?: string;
+  /** Show just a log-out icon below the `sm` breakpoint (the app's top bar). */
+  iconOnlyOnMobile?: boolean;
+}) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
@@ -27,14 +34,42 @@ export function SignOutButton({ redirectTo = "/" }: { redirectTo?: string }) {
     router.refresh();
   }
 
+  const label = pending ? "Signing out…" : "Sign out";
+
   return (
     <button
       type="button"
       onClick={onSignOut}
       disabled={pending}
-      className={secondaryButtonClass}
+      aria-label={iconOnlyOnMobile ? "Sign out" : undefined}
+      className={`${secondaryButtonClass} ${
+        iconOnlyOnMobile ? "max-sm:size-10 max-sm:p-0" : ""
+      }`}
     >
-      {pending ? "Signing out…" : "Sign out"}
+      {iconOnlyOnMobile ? (
+        <>
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            focusable="false"
+            className="sm:hidden"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <path d="m16 17 5-5-5-5" />
+            <path d="M21 12H9" />
+          </svg>
+          <span className="max-sm:hidden">{label}</span>
+        </>
+      ) : (
+        label
+      )}
     </button>
   );
 }
