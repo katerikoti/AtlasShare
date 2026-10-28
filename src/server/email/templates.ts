@@ -126,6 +126,47 @@ export function renderWelcomeEmail(input: {
   };
 }
 
+/**
+ * Email-verification code. It contains only the code and its lifetime: no link
+ * (so there is nothing to click through a phishing page), no account data.
+ */
+export function renderVerificationCodeEmail(input: {
+  code: string;
+  expiresInMinutes: number;
+}): RenderedEmail {
+  const p = brand.palette;
+  const spaced = input.code.split("").join(" ");
+
+  return {
+    subject: `Your ${brand.name} verification code`,
+    html: layout({
+      preview: "Enter this code to finish creating your account.",
+      heading: "Verify your email",
+      body:
+        paragraph(
+          `Enter this code in ${brand.name} to confirm your email address and finish creating your account.`,
+        ) +
+        `<p style="margin:8px 0 20px;padding:18px 0;text-align:center;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:34px;letter-spacing:6px;font-weight:700;color:${p.ink};background-color:${p.canvas};border-radius:16px;">${escapeHtml(
+          spaced,
+        )}</p>` +
+        paragraph(
+          `The code expires in ${input.expiresInMinutes} minutes. Never share it with anyone.`,
+        ),
+      footnote:
+        "If you did not try to create an account, you can ignore this email. No account is usable until the code is entered.",
+    }),
+    text: [
+      `Your ${brand.name} verification code is: ${input.code}`,
+      "",
+      `Enter it to confirm your email address. It expires in ${input.expiresInMinutes} minutes. Never share it with anyone.`,
+      "",
+      "If you did not try to create an account, ignore this email.",
+      "",
+      `— ${brand.name}`,
+    ].join("\n"),
+  };
+}
+
 export function renderPasswordResetEmail(input: {
   name: string;
   resetUrl: string;

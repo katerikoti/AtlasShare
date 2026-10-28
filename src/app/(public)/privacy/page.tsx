@@ -53,7 +53,7 @@ export default function PrivacyPage() {
           product description, not a legal contract.
         </p>
         <p className="mt-3 text-sm text-ink-muted">
-          Last updated 27 October 2026.
+          Last updated 28 October 2026.
         </p>
       </header>
 
@@ -75,7 +75,17 @@ export default function PrivacyPage() {
             <li>
               <strong className="text-ink">Your account:</strong> name, email
               address, a password hash rather than the password itself, account
-              creation time, and whether a welcome email was attempted.
+              creation time, whether your email address has been verified, and
+              whether a welcome email was attempted.
+            </li>
+            <li>
+              <strong className="text-ink">Verification codes:</strong> to
+              confirm your email address when you sign up, we email you a
+              6-digit code. Only a hash of the code is stored, it stops working
+              after 10 minutes or 5 wrong tries, and it can be used once. An
+              account whose address is never verified cannot sign in; it stays
+              stored until someone signs up again with the same address, which
+              replaces it.
             </li>
             <li>
               <strong className="text-ink">Your map:</strong> the country codes
@@ -135,10 +145,10 @@ export default function PrivacyPage() {
 
         <Section title="Email">
           <p>
-            Account email is sent through Brevo for welcome messages, password
-            resets, and shared-map invitations. {brand.name} does not add
-            tracking pixels and does not include other members&apos; email
-            addresses in those messages.
+            Account email is sent through Brevo for verification codes, welcome
+            messages, password resets, and shared-map invitations. {brand.name}{" "}
+            does not add tracking pixels and does not include other members&apos;
+            email addresses in those messages.
           </p>
           <p>
             Brevo processes delivery and may record its own delivery or open
@@ -191,20 +201,6 @@ export default function PrivacyPage() {
               account page
             </Link>
             .
-          </p>
-        </Section>
-
-        <Section title="Questions">
-          <p>
-            For a privacy question or a deletion problem, use the{" "}
-            <a
-              href={`${brand.repositoryUrl}/issues`}
-              rel="noreferrer"
-              className="font-medium text-moss underline underline-offset-2"
-            >
-              project issue tracker
-            </a>
-            . Please do not post personal information in a public issue.
           </p>
         </Section>
 

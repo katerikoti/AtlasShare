@@ -1,14 +1,22 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { emailOTP } from "better-auth/plugins/email-otp";
 
 import { brand } from "@/config/brand";
 import { getEnv } from "@/config/env";
 import { getDb } from "@/server/db";
 import {
   sendPasswordResetEmail,
+  sendVerificationCodeEmail,
   sendWelcomeEmailOnce,
 } from "@/server/email";
+import { removeUnverifiedAccount } from "@/server/unverified-accounts";
+
+/** How long an email-verification code stays valid, and how many tries it gets. */
+export const VERIFICATION_CODE_MINUTES = 10;
+export const VERIFICATION_CODE_ATTEMPTS = 5;
 
 export function createAuthOptions(): BetterAuthOptions {
   const env = getEnv();
@@ -29,7 +37,10 @@ export function createAuthOptions(): BetterAuthOptions {
       // on a phone. Better Auth hashes with scrypt by default.
       minPasswordLength: 12,
       maxPasswordLength: 128,
-      autoSignIn: true,
+      // An account cannot sign in until its email address is verified with a
+      // code. Sign-up therefore creates no session; the code step signs the
+      // person in once it succeeds.
+      requireEmailVerification: true,
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, token }) => {
@@ -38,6 +49,28 @@ export function createAuthOptions(): BetterAuthOptions {
           name: user.name,
           token,
         });
+      },
+    },
+
+    emailVerification: {
+      // Signing in to an unverified account emails a fresh code (after the
+      // password was correct), so a closed tab never strands a new account.
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+      afterEmailVerification: async (user) => {
+        // Never let a mail failure break verification.
+        try {
+          await sendWelcomeEmailOnce({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+          });
+        } catch (error) {
+          console.error("[email] welcome failed", {
+            userId: user.id,
+            message: error instanceof Error ? error.message : "unknown error",
+          });
+        }
       },
     },
 
@@ -81,31 +114,42 @@ export function createAuthOptions(): BetterAuthOptions {
       },
     },
 
-    databaseHooks: {
-      user: {
-        create: {
-          after: async (user) => {
-            // Never let a mail failure break sign-up.
-            try {
-              await sendWelcomeEmailOnce({
-                id: user.id,
-                name: user.name,
-                email: user.email,
-              });
-            } catch (error) {
-              console.error("[email] welcome failed", {
-                userId: user.id,
-                message:
-                  error instanceof Error ? error.message : "unknown error",
-              });
-            }
-          },
-        },
-      },
+    hooks: {
+      // A new sign-up for an address that only has a never-verified account
+      // replaces that account (see unverified-accounts.ts for why).
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-up/email") return;
+        const email = (ctx.body as { email?: unknown } | undefined)?.email;
+        if (typeof email === "string") await removeUnverifiedAccount(email);
+      }),
     },
 
-    // Must be last: lets server actions set auth cookies.
-    plugins: [nextCookies()],
+    plugins: [
+      emailOTP({
+        otpLength: 6,
+        expiresIn: VERIFICATION_CODE_MINUTES * 60,
+        allowedAttempts: VERIFICATION_CODE_ATTEMPTS,
+        // Only a hash of the code is stored in the verification table.
+        storeOTP: "hashed",
+        // Use codes (not links) for the built-in verification emails.
+        overrideDefaultEmailVerification: true,
+        // The plugin also offers passwordless sign-in and password reset by
+        // code. AtlasShare uses neither: refuse to create accounts that way and
+        // only ever deliver codes for email verification.
+        disableSignUp: true,
+        rateLimit: { window: 60, max: 6 },
+        sendVerificationOTP: async ({ email, otp, type }) => {
+          if (type !== "email-verification") return;
+          await sendVerificationCodeEmail({
+            to: email,
+            code: otp,
+            expiresInMinutes: VERIFICATION_CODE_MINUTES,
+          });
+        },
+      }),
+      // Must be last: lets server actions set auth cookies.
+      nextCookies(),
+    ],
   };
 }
 

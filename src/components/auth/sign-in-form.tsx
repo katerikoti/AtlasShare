@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { VerifyEmailForm } from "@/components/auth/verify-email-form";
 import {
   Field,
   FormMessage,
@@ -18,6 +19,9 @@ export function SignInForm() {
   const next = safeNextPath(useSearchParams().get("next"));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  // Set when the password was right but the address was never verified; the
+  // server has already emailed a fresh code.
+  const [verifyingEmail, setVerifyingEmail] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,6 +40,12 @@ export function SignInForm() {
     setPending(false);
 
     if (authError) {
+      // The server only reports this after the password was correct, so it does
+      // not reveal whether an address is registered.
+      if (authError.code === "EMAIL_NOT_VERIFIED") {
+        setVerifyingEmail(email);
+        return;
+      }
       // Deliberately generic: do not reveal whether the email exists.
       setError("Email or password is incorrect.");
       return;
@@ -43,6 +53,16 @@ export function SignInForm() {
 
     router.replace(next ?? "/account");
     router.refresh();
+  }
+
+  if (verifyingEmail) {
+    return (
+      <VerifyEmailForm
+        email={verifyingEmail}
+        next={next}
+        onBack={() => setVerifyingEmail(null)}
+      />
+    );
   }
 
   return (

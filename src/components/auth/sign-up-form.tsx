@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { authClient } from "@/lib/auth-client";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { VerifyEmailForm } from "@/components/auth/verify-email-form";
 import {
   Field,
   FormMessage,
@@ -14,10 +15,11 @@ import {
 } from "@/components/ui/form";
 
 export function SignUpForm() {
-  const router = useRouter();
   const next = safeNextPath(useSearchParams().get("next"));
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | undefined>();
+  // Set once the account exists and a verification code has been emailed.
+  const [verifyingEmail, setVerifyingEmail] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,8 +56,18 @@ export function SignUpForm() {
       return;
     }
 
-    router.replace(next ?? "/account");
-    router.refresh();
+    // No session yet: the account is usable only after the emailed code.
+    setVerifyingEmail(email);
+  }
+
+  if (verifyingEmail) {
+    return (
+      <VerifyEmailForm
+        email={verifyingEmail}
+        next={next}
+        onBack={() => setVerifyingEmail(null)}
+      />
+    );
   }
 
   return (

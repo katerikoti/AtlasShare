@@ -4,8 +4,70 @@ import { getMailer, type MailMessage, type MailResult } from "./mailer";
 import {
   renderInvitationEmail,
   renderPasswordResetEmail,
+  renderVerificationCodeEmail,
   renderWelcomeEmail,
 } from "./templates";
+
+export type VerificationCodeDeps = {
+  send: (message: MailMessage) => Promise<MailResult>;
+  isProduction: boolean;
+  log: Pick<Console, "info" | "error">;
+};
+
+function defaultVerificationCodeDeps(): VerificationCodeDeps {
+  const mailer = getMailer();
+  return {
+    send: (message) => mailer.send(message),
+    isProduction: getEnv().NODE_ENV === "production",
+    log: console,
+  };
+}
+
+export type VerificationCodeOutcome = "sent" | "skipped" | "failed";
+
+/**
+ * Email the 6-digit verification code.
+ *
+ * Never throws, so account creation and sign-in responses stay generic. If the
+ * message cannot be delivered (no Brevo key, or Brevo rejects the request, for
+ * example because this machine's IP is not authorised), the code is printed to
+ * the server console in development only so sign-up can still be finished
+ * locally. In production the code is never logged, and the person can use
+ * "Send a new code".
+ */
+export async function sendVerificationCodeEmail(
+  input: { to: string; code: string; expiresInMinutes: number },
+  deps: VerificationCodeDeps = defaultVerificationCodeDeps(),
+): Promise<VerificationCodeOutcome> {
+  const rendered = renderVerificationCodeEmail({
+    code: input.code,
+    expiresInMinutes: input.expiresInMinutes,
+  });
+
+  let outcome: VerificationCodeOutcome;
+  try {
+    const result = await deps.send({
+      to: input.to,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+    });
+    outcome = result.status;
+  } catch (error) {
+    deps.log.error("[email] verification code send failed", {
+      message: error instanceof Error ? error.message : "unknown error",
+    });
+    outcome = "failed";
+  }
+
+  if (outcome !== "sent" && !deps.isProduction) {
+    deps.log.info(
+      `[email] (development only) verification code for ${input.to}: ${input.code}`,
+    );
+  }
+
+  return outcome;
+}
 
 export type WelcomeEmailDeps = {
   claim: (userId: string, at: Date) => Promise<number>;

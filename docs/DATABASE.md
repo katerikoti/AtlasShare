@@ -73,8 +73,19 @@ Prisma `@@map`: `user`, `session`, `account`, `verification`.
 - **Account** — `id`, `accountId`, `providerId`, `userId`, password hash for the
   credentials provider, OAuth token fields (unused initially), timestamps.
 - **Verification** — `id`, `identifier`, `value`, `expiresAt`, timestamps. Used
-  for password reset. **Known deviation:** the reset token is part of
-  `identifier` rather than hashed (see principle 4).
+  for password reset and, since ADR-036, for email-verification codes: the row's
+  `identifier` is `email-verification-otp-<email>` and `value` is
+  `<hash of the 6-digit code>:<attempts used>` (the code itself is never
+  stored). A code row is replaced by a new one and removed once the code is used;
+  a never-verified account's row is also removed if a new sign-up replaces that
+  account. **Known deviation:** the password-reset token is part of `identifier`
+  rather than hashed (see principle 4).
+- `User.emailVerified` is now enforced: it is `false` until the code is entered,
+  and sign-in is refused while it is `false`. The accounts that existed before
+  this change were set to `true` once with a one-off `UPDATE "user" SET
+  "emailVerified" = true WHERE "emailVerified" = false` on the development
+  database (2 rows). It is deliberately not a migration; do not run it after
+  launch, since it would verify real unverified accounts.
 
 No **RateLimit** table exists. Rate limiting is Better Auth's in-memory limiter,
 production-only. This is documented as an accepted limitation in `SECURITY.md`.
@@ -367,5 +378,6 @@ Remaining before production:
    current session on sign-out, but a periodic cleanup may be needed at scale.
 4. Implement the invitation purge job and decide production log retention for
    invitation-token paths.
-5. Require verified email before invitation acceptance (currently the account
-   email string is compared without verification).
+5. ~~Require verified email before invitation acceptance~~ — done by enforcing
+   email verification at sign-in (ADR-036, 2026-10-28), so every session belongs
+   to a verified address.

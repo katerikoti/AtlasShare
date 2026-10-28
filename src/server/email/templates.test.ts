@@ -4,8 +4,48 @@ import { brand } from "@/config/brand";
 import {
   renderInvitationEmail,
   renderPasswordResetEmail,
+  renderVerificationCodeEmail,
   renderWelcomeEmail,
 } from "./templates";
+
+describe("renderVerificationCodeEmail", () => {
+  it("shows the code, its lifetime, and the brand", () => {
+    const email = renderVerificationCodeEmail({
+      code: "482913",
+      expiresInMinutes: 10,
+    });
+
+    expect(email.subject).toBe(`Your ${brand.name} verification code`);
+    expect(email.text).toContain("482913");
+    expect(email.text).toContain("10 minutes");
+    // The HTML spaces the digits so they are easy to read and copy by eye.
+    expect(email.html).toContain("4 8 2 9 1 3");
+    expect(email.html).toContain("10 minutes");
+  });
+
+  it("contains no link or account data, only the code", () => {
+    const email = renderVerificationCodeEmail({
+      code: "000111",
+      expiresInMinutes: 10,
+    });
+
+    expect(email.html).not.toContain("<a ");
+    expect(email.html).not.toContain("href");
+    expect(email.text).not.toContain("http");
+    expect(email.text).not.toContain("@");
+    expect(email.html).not.toContain("userId");
+  });
+
+  it("escapes anything that is not a plain code", () => {
+    const email = renderVerificationCodeEmail({
+      code: "<b>1</b>",
+      expiresInMinutes: 10,
+    });
+
+    expect(email.html).not.toContain("<b>");
+    expect(email.html).toContain("&lt;");
+  });
+});
 
 describe("renderWelcomeEmail", () => {
   it("addresses the user and links to the account", () => {

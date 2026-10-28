@@ -5,9 +5,11 @@
 Track the countries you have visited on your own world map, then create shared
 maps with your family and friends.
 
-> **Project status: Phase 6 of 8 complete; Phase 7 (public site & PWA) is
-> implemented and awaiting owner review.**
-> You can create an account, sign in/out, reset a password, manage account
+> **Project status: Phases 1–7 are complete and Phase 8 (hardening and
+> deployment) is in progress; email verification by code is its first finished
+> item.**
+> You can create an account (confirming your email with a 6-digit code), sign
+> in/out, reset a password, manage account
 > settings, mark visited countries on a private 195-country world map, search
 > that list, see continent-level statistics, combine your map with invited
 > members in a private read-only shared view with a country-level comparison,
@@ -72,10 +74,14 @@ npm run db:migrate
 ```
 
 Email is optional in development. Without `BREVO_API_KEY`, welcome, reset, and
-invitation messages are skipped with a log line; sign-up, password-reset
-requests, and shared-map invitations still succeed (read the reset token from
-the `verification` table in development, and copy the invitation link from the
-owner UI). To send real mail, create a free Brevo account, add and verify a
+invitation messages are skipped with a log line (read the reset token from the
+`verification` table in development, and copy the invitation link from the owner
+UI). **Sign-up needs an emailed 6-digit code**: when mail cannot be sent in
+development (no key, or Brevo rejects the request), the code is printed in the
+terminal running `npm run dev` as
+`[email] (development only) verification code for <email>: 123456`, so you can
+finish creating the account. Production never prints codes. To send real mail,
+create a free Brevo account, add and verify a
 sender address (no domain purchase required), then set `BREVO_API_KEY` and point
 `EMAIL_FROM` at that verified address. If Brevo returns `401 unauthorized` with
 an “unrecognised IP address” message, authorize the current IP in Brevo’s

@@ -58,6 +58,14 @@ one of: IP blocking disabled for the production key, a static egress proxy, or a
 scoped M2M token. M2M would require changing the mailer from an `api-key` header
 to an OAuth bearer token; decide before deployment.
 
+**Email is now on the sign-up critical path (ADR-036).** Nobody can finish
+creating an account unless the 6-digit verification email arrives, so before
+launch confirm that production mail really delivers: a verified Brevo sender
+(ideally an authenticated domain with SPF/DKIM), the IP-blocking decision above,
+and a test sign-up from a fresh address that receives the code in its inbox.
+Development without a working mail setup prints the code to the server console
+instead; production never does.
+
 Brevo adds a `List-Unsubscribe` header to transactional email even when the body
 has no unsubscribe link, so Gmail may show an unsubscribe button and may place
 unauthenticated mail in Promotions. The free plan cannot replace this with a
