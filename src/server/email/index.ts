@@ -80,6 +80,7 @@ export type WelcomeEmailDeps = {
 function defaultWelcomeDeps(): WelcomeEmailDeps {
   const db = getDb();
   const mailer = getMailer();
+  const env = getEnv();
 
   return {
     claim: async (userId, at) => {
@@ -97,7 +98,7 @@ function defaultWelcomeDeps(): WelcomeEmailDeps {
     },
     send: (message) => mailer.send(message),
     now: () => new Date(),
-    appUrl: getEnv().NEXT_PUBLIC_APP_URL,
+    appUrl: (env.APP_URL ?? env.NEXT_PUBLIC_APP_URL) as string,
   };
 }
 
@@ -150,8 +151,9 @@ export async function sendPasswordResetEmail(input: {
   name: string;
   token: string;
 }): Promise<void> {
-  const { NEXT_PUBLIC_APP_URL } = getEnv();
-  const resetUrl = new URL("/reset-password", NEXT_PUBLIC_APP_URL);
+  const env = getEnv();
+  const appUrl = (env.APP_URL ?? env.NEXT_PUBLIC_APP_URL) as string;
+  const resetUrl = new URL("/reset-password", appUrl);
   resetUrl.searchParams.set("token", input.token);
 
   const rendered = renderPasswordResetEmail({

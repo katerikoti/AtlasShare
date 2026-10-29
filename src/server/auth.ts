@@ -25,7 +25,7 @@ export function createAuthOptions(): BetterAuthOptions {
     appName: brand.name,
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: [env.NEXT_PUBLIC_APP_URL],
+    trustedOrigins: [(env.APP_URL ?? env.NEXT_PUBLIC_APP_URL) as string],
 
     database: prismaAdapter(getDb(), {
       provider: "postgresql",

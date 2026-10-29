@@ -203,8 +203,9 @@ export async function inviteToSharedMapAction(
     };
   }
 
+  const env = getEnv();
   const inviteUrl = buildInvitationUrl(
-    getEnv().NEXT_PUBLIC_APP_URL,
+    env.APP_URL ?? env.NEXT_PUBLIC_APP_URL!,
     result.token,
   );
   const emailDelivery = await sendInvitationEmail({
