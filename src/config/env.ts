@@ -11,24 +11,27 @@ import { brand } from "@/config/brand";
  *
  * Never import this module from a Client Component.
  */
-const envSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
-  NEXT_PUBLIC_APP_URL: z.url(),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
-  DIRECT_URL: z.string().min(1).optional(),
-  BETTER_AUTH_SECRET: z
-    .string()
-    .min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
-  BETTER_AUTH_URL: z.url(),
-  BREVO_API_KEY: z.string().optional(),
-  EMAIL_FROM: z
-    .string()
-    .min(1)
-    .default(`${brand.name} <hello@example.com>`),
-  TEST_DATABASE_URL: z.string().min(1).optional(),
-});
+const envSchema = z
+  .object({
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    APP_URL: z.string().url().optional(),
+    NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+    DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+    DIRECT_URL: z.string().min(1).optional(),
+    BETTER_AUTH_SECRET: z
+      .string()
+      .min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
+    BETTER_AUTH_URL: z.string().url(),
+    BREVO_API_KEY: z.string().optional(),
+    EMAIL_FROM: z
+      .string()
+      .min(1)
+      .default(`${brand.name} <hello@example.com>`),
+    TEST_DATABASE_URL: z.string().min(1).optional(),
+  })
+  .passthrough();
 
 export type ServerEnv = z.infer<typeof envSchema>;
 
@@ -45,7 +48,15 @@ export function getEnv(): ServerEnv {
     throw new Error(`Invalid environment configuration — ${details}`);
   }
 
-  cached = parsed.data;
+  const data = parsed.data;
+  const appUrl = data.APP_URL || data.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    throw new Error(
+      "Invalid environment configuration — APP_URL or NEXT_PUBLIC_APP_URL: Required",
+    );
+  }
+
+  cached = { ...data, APP_URL: appUrl, NEXT_PUBLIC_APP_URL: appUrl } as ServerEnv;
   return cached;
 }
 
