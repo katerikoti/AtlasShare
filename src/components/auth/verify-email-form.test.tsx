@@ -74,13 +74,13 @@ describe("VerifyEmailForm", () => {
     expect(button).toBeEnabled();
   });
 
-  it("verifies the code and continues to the account page", async () => {
+  it("verifies the code and continues to the map page", async () => {
     render(<VerifyEmailForm email="a@example.com" next={null} onBack={vi.fn()} />);
 
     fireEvent.change(codeInput(), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Verify and continue" }));
 
-    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/account"));
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/map"));
     expect(mocks.verifyEmail).toHaveBeenCalledWith({
       email: "a@example.com",
       otp: "123456",
@@ -246,6 +246,6 @@ describe("SignInForm", () => {
     fillSignIn();
     fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
-    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/account"));
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/map"));
   });
 });

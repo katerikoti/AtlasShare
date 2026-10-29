@@ -127,8 +127,8 @@ export function renderWelcomeEmail(input: {
 }
 
 /**
- * Email-verification code. It contains only the code and its lifetime: no link
- * (so there is nothing to click through a phishing page), no account data.
+ * Email-verification code. Combines a welcome message with the verification
+ * code to save email sends (one email instead of two).
  */
 export function renderVerificationCodeEmail(input: {
   code: string;
@@ -138,13 +138,16 @@ export function renderVerificationCodeEmail(input: {
   const spaced = input.code.split("").join(" ");
 
   return {
-    subject: `Your ${brand.name} verification code`,
+    subject: `Welcome to ${brand.name} — verify your email`,
     html: layout({
-      preview: "Enter this code to finish creating your account.",
-      heading: "Verify your email",
+      preview: "Enter this code to start using your account.",
+      heading: `Welcome to ${brand.name}`,
       body:
         paragraph(
-          `Enter this code in ${brand.name} to confirm your email address and finish creating your account.`,
+          `Thanks for signing up. ${brand.name} keeps a private map of the countries you have visited — and, when you want, combines it with the people you travel with.`,
+        ) +
+        paragraph(
+          "To finish creating your account, enter this verification code:",
         ) +
         `<p style="margin:8px 0 20px;padding:18px 0;text-align:center;font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:34px;letter-spacing:6px;font-weight:700;color:${p.ink};background-color:${p.canvas};border-radius:16px;">${escapeHtml(
           spaced,
@@ -156,7 +159,11 @@ export function renderVerificationCodeEmail(input: {
         "If you did not try to create an account, you can ignore this email. No account is usable until the code is entered.",
     }),
     text: [
-      `Your ${brand.name} verification code is: ${input.code}`,
+      `Welcome to ${brand.name}!`,
+      "",
+      "Thanks for signing up. Your private map of countries is ready — just verify your email to get started.",
+      "",
+      `Your verification code is: ${input.code}`,
       "",
       `Enter it to confirm your email address. It expires in ${input.expiresInMinutes} minutes. Never share it with anyone.`,
       "",

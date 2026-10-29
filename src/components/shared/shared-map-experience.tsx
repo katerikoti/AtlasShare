@@ -13,7 +13,6 @@ import type { CountryRegion } from "@/data/country-regions";
 import { secondaryButtonClass } from "@/components/ui/form";
 import type { SharedMapView } from "@/server/shared-maps";
 import { ExportMapPanel } from "@/components/export/export-map-panel";
-import { MapAttribution } from "@/components/map/map-attribution";
 import { RegionBreakdown } from "@/components/map/region-breakdown";
 import { useMapGeometry } from "@/components/map/use-map-geometry";
 import { ZoomableMap } from "@/components/map/zoomable-map";
@@ -495,9 +494,6 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
       />
 
       {/* On phones the attribution lives under Account → About. */}
-      <div className="max-sm:hidden">
-        <MapAttribution />
-      </div>
     </div>
   );
 }

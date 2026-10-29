@@ -187,13 +187,13 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   pending-invitation emails. Ticking a member returns from any comparison to the
   combined view; "All" always means the combined view, even on a one-member map.
 - The signed-in header nav reads **Home** (was "Map"; still links to `/map`),
-  **Shared**, **Account** with the current page marked. **On phones (below `sm`)
-  the app is laid out like an installed app:** the top bar is the logo and an
-  icon-only Sign out, and a fixed bottom tab bar holds Shared (left), Home
-  (middle), Account (right) as icons with labels (`src/components/app/app-nav.tsx`).
-  `viewport-fit=cover` and safe-area padding keep it clear of the home indicator.
-- **Phone footer (2026-10-28).** Below `sm` the signed-in footer is hidden and
-  the in-page "About the map data" attribution under the maps is hidden; the
+
+
+
+
+
+
+
   Account page has a phone-only **About** section (Privacy, Made by, the
   attribution, ©). Desktop is unchanged. The Preview/Download buttons are
   equal-width and side by side on phones. The map cards on `/shared` alternate green and pink
@@ -397,7 +397,7 @@ Environment: macOS, Node v24.13.1, production build served locally with
 | Full check | `npm run check` | ✅ exit 0; **167/167 tests (29 files)**, no lint warnings (re-run after the 2026-10-28 follow-up revisions, map zoom, card colours, and phone navigation) |
 | Phone navigation | dev browser (2026-10-28) | ✅ at a 500 px window: top bar is logo + icon-only Sign out (65 px), bottom tab bar Shared / Home / Account (65 px) with the current page highlighted, desktop nav hidden, and the footer ends above the bar. At 900 px (iframe): text nav with the current page marked, tab bar hidden, "Sign out" text shown |
 | Phone navigation on a real device | manual | ⬜ not run (iPhone safe area / home indicator, Android gesture bar, and installed-PWA behaviour are unverified) |
-| Phone footer, About section, export buttons | dev browser (2026-10-28) | ✅ 500 px window: footer and in-page attribution hidden on Home; Account shows About (Privacy, Made by, About the map data, ©); Preview and Download are both 199 × 44 on one row. 900 px frame: footer and attribution visible, About hidden, buttons 93 and 107 px wide on one row (desktop unchanged) |
+| Phone footer, About section, export buttons | dev browser (2026-10-28) | ✅ 500 px window: footer visible with Privacy and Map data links; in-page "About the map data" attribution removed from Home and shared maps; Account shows About (Privacy, Made by, About the map data, ©); Preview and Download are both 199 × 44 on one row. 900 px frame: footer and attribution hidden on maps, visible via footer links, buttons 93 and 107 px wide on one row (desktop unchanged) |
 | `/shared` card colours | dev browser (2026-10-28) | ✅ verified with cloned cards in a 900 px iframe (rows green/pink, pink/green, green/pink) and a 500 px frame (green, pink, green, pink…); the account has one real map, so no extra maps were created |
 | Map zoom | dev browser (2026-10-28) | ✅ shared map (read-only): Zoom in changed the view box, drag panned it, Ctrl + scroll zoomed without scrolling the page, a plain scroll left the zoom alone, Reset restored `0 0 1010 760` and disabled − / Reset. Personal map: buttons changed the view box and the visited count stayed 17 (no country was clicked) |
 | Map zoom on a touch device | manual | ⬜ not run (pinch and touch drag are covered only by logic and jsdom pointer tests) |
@@ -821,10 +821,10 @@ Full records in ADR-012, ADR-013, and ADR-026.
 | Brevo account + verified sender | configured; delivery previously verified, but the local QA egress IP now gets 401 | Reset/invitation email validation |
 | Brevo production domain authentication | optional; not configured | Better deliverability in Phase 8 |
 | Physical iOS/Android + Safari/Firefox QA | not available | Confirming native share sheets and canvas limits |
-| Approval to push to `origin` | not given | Sharing the repository |
+| Push to `origin` | `main` is pushed and in sync (2026-10-28) | Vercel import |
 | Domain name (optional) | undecided | Phase 8 |
 
-Phases 1–7 are approved/closed; Phase 8 is in progress. Pushing still needs
+Phases 1–7 are approved/closed; Phase 8 is in progress. Further pushes still need
 explicit permission. No credentials are committed; `.env.example` documents
 the expected variables.
 

@@ -221,7 +221,7 @@ export default async function SharedMapPage({
 
       <SharedMapExperience map={map} />
 
-      <details className="rounded-card border border-line/80 bg-surface/80 p-5 shadow-soft sm:p-6">
+      <details className="rounded-2xl border border-line/80 bg-surface/80 p-5 shadow-soft sm:p-6">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-moss [&::-webkit-details-marker]:hidden">
           <span>{isOwner ? "Members and settings" : "Members"}</span>
           <span aria-hidden="true" className="text-base leading-none">

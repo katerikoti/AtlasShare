@@ -15,7 +15,6 @@ import {
 import { setVisitedCountryAction } from "@/server/actions/visits";
 import { ExportMapPanel } from "@/components/export/export-map-panel";
 import { inputClass, secondaryButtonClass } from "@/components/ui/form";
-import { MapAttribution } from "./map-attribution";
 import { RegionBreakdown } from "./region-breakdown";
 import { useMapGeometry } from "./use-map-geometry";
 import { ZoomableMap } from "./zoomable-map";
@@ -187,7 +186,7 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
         </div>
       ) : null}
 
-      <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
+      <div className="grid min-w-0 grid-cols-1 gap-6">
         <section
           aria-labelledby="map-heading"
           className="min-w-0 rounded-card border border-line/80 bg-surface/80 p-4 shadow-soft sm:p-6"
@@ -355,7 +354,7 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
 
       {/* On phones the attribution lives under Account → About. */}
       <div className="max-sm:hidden">
-        <MapAttribution />
+
       </div>
     </div>
   );

@@ -74,7 +74,7 @@ export function VerifyEmailForm({ email, next, onBack }: VerifyEmailFormProps) {
       return;
     }
 
-    router.replace(next ?? "/account");
+    router.replace(next ?? "/map");
     router.refresh();
   }
 

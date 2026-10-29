@@ -51,7 +51,7 @@ export function SignInForm() {
       return;
     }
 
-    router.replace(next ?? "/account");
+    router.replace(next ?? "/map");
     router.refresh();
   }
 

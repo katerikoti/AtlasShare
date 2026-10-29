@@ -104,13 +104,14 @@ adding build-time credentials.
 1. Create the Neon project and production branch; copy both connection strings.
 2. Create a Brevo account, add and verify a sender address (six-digit code). A
    domain is optional for practice. For production, authenticate the sending
-   domain (DNS records: SPF, DKIM; DMARC recommended) for reliable delivery.3. Create the Vercel project from the GitHub repo.
+   domain (DNS records: SPF, DKIM; DMARC recommended) for reliable delivery.
+3. Create the Vercel project from the GitHub repo.
 4. Add environment variables for Production (and Preview with a separate DB).
 5. Run `prisma migrate deploy` against the production database.
 6. Deploy; confirm `GET /` and `GET /api/auth/ok` (whatever health endpoint is
    appropriate) succeed.
-7. Sign up with a real address; confirm the welcome email arrives and the link
-   works.
+7. Sign up with a real address; confirm the 6-digit verification email arrives,
+   the code verifies the account, and the welcome email follows.
 8. Run the critical-path smoke test with two accounts (mark, share, accept,
    export).
 9. Confirm HTTPS, security headers, and that no secret appears in the client

@@ -44,9 +44,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             </span>
           </Link>
           <DesktopNav />
-          <span className="hidden text-sm text-ink-muted lg:inline">
-            Signed in as {session.user.name}
-          </span>
           <div className="ml-auto">
             <SignOutButton iconOnlyOnMobile />
           </div>

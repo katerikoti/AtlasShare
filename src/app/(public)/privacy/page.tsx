@@ -208,8 +208,28 @@ export default function PrivacyPage() {
           <h2 className="font-display text-2xl tracking-tight sm:text-3xl">
             About the map data
           </h2>
-          <div className="mt-4">
-            <MapAttribution />
+          <div className="mt-4 space-y-4 text-[15px] leading-relaxed text-ink-muted">
+            <p>
+              Country geometry is based on{" "}
+              <a
+                href="https://github.com/VictorCazanave/svg-maps"
+                className="font-medium text-moss underline underline-offset-2"
+              >
+                @svg-maps/world
+              </a>{" "}
+              (CC BY 4.0), filtered to the 193 UN member states plus the Holy See and Palestine.
+            </p>
+            <p>
+              Boundaries follow the source data and are not a statement about disputed territories.
+              Read the{" "}
+              <a
+                href="https://creativecommons.org/licenses/by/4.0/"
+                className="font-medium text-moss underline underline-offset-2"
+              >
+                licence
+              </a>
+              .
+            </p>
           </div>
         </section>
       </div>
