@@ -50,7 +50,6 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       </div>
 
       <footer className="mx-auto flex w-full max-w-5xl flex-col items-center gap-2 text-center text-xs text-ink-muted sm:flex-row sm:justify-center sm:gap-4">
-        <p>Country-level travel only. No location tracking, no public profiles.</p>
         <Link
           href="/privacy"
           className="font-medium text-moss underline decoration-moss/40 underline-offset-4 transition-colors hover:text-ink"
