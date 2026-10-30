@@ -15,7 +15,7 @@ describe("renderVerificationCodeEmail", () => {
       expiresInMinutes: 10,
     });
 
-    expect(email.subject).toBe(`Welcome to ${brand.name} — verify your email`);
+    expect(email.subject).toBe(`Verify your email for ${brand.name}`);
     expect(email.text).toContain("482913");
     expect(email.text).toContain("10 minutes");
     // The HTML spaces the digits so they are easy to read and copy by eye.

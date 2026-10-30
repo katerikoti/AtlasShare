@@ -3,15 +3,12 @@ import { createAuthMiddleware } from "better-auth/api";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { emailOTP } from "better-auth/plugins/email-otp";
+import { after } from "next/server";
 
 import { brand } from "@/config/brand";
 import { getEnv } from "@/config/env";
 import { getDb } from "@/server/db";
-import {
-  sendPasswordResetEmail,
-  sendVerificationCodeEmail,
-  sendWelcomeEmailOnce,
-} from "@/server/email";
+import { sendPasswordResetEmail, sendVerificationCodeEmail } from "@/server/email";
 import { removeUnverifiedAccount } from "@/server/unverified-accounts";
 
 /** How long an email-verification code stays valid, and how many tries it gets. */
@@ -57,21 +54,6 @@ export function createAuthOptions(): BetterAuthOptions {
       // password was correct), so a closed tab never strands a new account.
       sendOnSignIn: true,
       autoSignInAfterVerification: true,
-      afterEmailVerification: async (user) => {
-        // Never let a mail failure break verification.
-        try {
-          await sendWelcomeEmailOnce({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-          });
-        } catch (error) {
-          console.error("[email] welcome failed", {
-            userId: user.id,
-            message: error instanceof Error ? error.message : "unknown error",
-          });
-        }
-      },
     },
 
     session: {
@@ -140,11 +122,21 @@ export function createAuthOptions(): BetterAuthOptions {
         rateLimit: { window: 60, max: 6 },
         sendVerificationOTP: async ({ email, otp, type }) => {
           if (type !== "email-verification") return;
-          await sendVerificationCodeEmail({
+          const promise = sendVerificationCodeEmail({
             to: email,
             code: otp,
             expiresInMinutes: VERIFICATION_CODE_MINUTES,
           });
+          // Ensure the email is sent before the serverless function ends
+          if (typeof after === "function") {
+            try {
+              after(() => promise);
+              return;
+            } catch {
+              // fall through to await
+            }
+          }
+          await promise;
         },
       }),
       // Must be last: lets server actions set auth cookies.

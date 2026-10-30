@@ -24,7 +24,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const session = await requireSession();
 
   return (
-    <div className="flex min-h-dvh flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
+    <div className="flex min-h-dvh flex-col pb-[calc(4rem+max(env(safe-area-inset-bottom),0px))] sm:pb-0">
       <header className="border-b border-line/80 bg-canvas/80 backdrop-blur-sm">
         <div className="mx-auto flex w-full max-w-4xl items-center gap-x-4 px-6 py-3 sm:px-10 sm:py-4">
           <Link

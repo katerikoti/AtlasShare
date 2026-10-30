@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { ExportMapSvg } from "@/components/export/export-map-svg";
 import type { MapGeometry } from "@/components/map/use-map-geometry";
+import { StandaloneAuthRedirect } from "@/components/pwa/standalone-auth-redirect";
 import { brand } from "@/config/brand";
 import { type CountryCode } from "@/data/countries";
 import type { ExportMapInput } from "@/lib/export-map";
@@ -76,6 +77,7 @@ export default async function Home() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 sm:px-10">
+      <StandaloneAuthRedirect />
       <section className="grid items-center gap-14 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:py-24">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-moss">

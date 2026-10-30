@@ -120,7 +120,8 @@ export function MobileTabBar() {
   return (
     <nav
       aria-label="Main tabs"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line/80 bg-canvas/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm sm:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-line/80 bg-canvas/95 pb-[max(env(safe-area-inset-bottom),0px)] backdrop-blur-sm supports-[backdrop-filter]:bg-canvas/80 sm:hidden"
+      style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}
     >
       <ul className="mx-auto grid max-w-md grid-cols-3">
         {[shared, home, account].map((item) => {

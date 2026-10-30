@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { ChangePasswordForm } from "@/components/account/change-password-form";
 import { DeleteAccountForm } from "@/components/account/delete-account-form";
 import { NameForm } from "@/components/account/name-form";
-import { MapAttribution } from "@/components/map/map-attribution";
 import { brand } from "@/config/brand";
 import { requireSession } from "@/server/session";
 
@@ -121,6 +120,14 @@ export default async function AccountPage() {
             </Link>
           </li>
           <li>
+            <Link
+              href="/privacy#map-data"
+              className="font-medium text-moss underline decoration-moss/40 underline-offset-4"
+            >
+              Map data
+            </Link>
+          </li>
+          <li>
             <a
               href={brand.portfolioUrl}
               rel="noreferrer"
@@ -130,7 +137,6 @@ export default async function AccountPage() {
             </a>
           </li>
         </ul>
-        <MapAttribution />
         <p className="text-xs text-ink-muted">
           © {brand.name} {new Date().getFullYear()}
         </p>
