@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useId, useState } from "react";
+import { useActionState, useEffect, useId, useRef, useState } from "react";
 
 import { inviteToSharedMapAction } from "@/server/actions/shared-maps";
 import type { InvitationActionState } from "@/server/actions/types";
@@ -22,6 +22,13 @@ export function InviteMemberForm({ mapId }: { mapId: string }) {
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
   const emailId = useId();
   const linkId = useId();
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      formRef.current?.reset();
+    }
+  }, [state.status]);
 
   async function copyLink() {
     if (!state.inviteUrl) return;
@@ -36,6 +43,7 @@ export function InviteMemberForm({ mapId }: { mapId: string }) {
 
   return (
     <form
+      ref={formRef}
       action={action}
       className="mt-5 max-w-xl"
       onSubmit={() => setCopyStatus(null)}
