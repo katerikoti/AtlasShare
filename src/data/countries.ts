@@ -49,3 +49,13 @@ export function isCountryCode(code: string): code is CountryCode {
 export const countriesAlphabetical = [...countries].sort((a, b) =>
   a.name.localeCompare(b.name, "en", { sensitivity: "base" }),
 );
+
+/**
+ * Countries that can be marked visited but are not drawn on the map.
+ *
+ * Israel's territory is represented by the combined Palestine outline (see
+ * docs/PROGRESS.md D3): marking Israel changes only the country list and
+ * progress counts, never the map or the exported image. Keep this list in
+ * sync with the countries test and the generator's documented merges.
+ */
+export const mapHiddenCountryCodes: ReadonlySet<CountryCode> = new Set(["IL"]);

@@ -1,6 +1,9 @@
 import type { Ref } from "react";
 
-import { countriesAlphabetical } from "@/data/countries";
+import {
+  countriesAlphabetical,
+  mapHiddenCountryCodes,
+} from "@/data/countries";
 import { brand } from "@/config/brand";
 import type { MapGeometry } from "@/components/map/use-map-geometry";
 import {
@@ -217,22 +220,24 @@ export function ExportMapSvg({
         strokeWidth={1}
       />
       <g transform={mapTransform}>
-        {countriesAlphabetical.map((country) => (
-          <path
-            key={country.code}
-            d={geometry.paths[country.code]}
-            data-country={country.code}
-            data-visited={visited.has(country.code)}
-            fill={
-              visited.has(country.code)
-                ? brand.palette.rose
-                : brand.palette.map
-            }
-            stroke={brand.palette.moss}
-            strokeWidth={1.1}
-            strokeLinejoin="round"
-          />
-        ))}
+        {countriesAlphabetical
+          .filter((country) => !mapHiddenCountryCodes.has(country.code))
+          .map((country) => (
+            <path
+              key={country.code}
+              d={geometry.paths[country.code]}
+              data-country={country.code}
+              data-visited={visited.has(country.code)}
+              fill={
+                visited.has(country.code)
+                  ? brand.palette.rose
+                  : brand.palette.map
+              }
+              stroke={brand.palette.moss}
+              strokeWidth={1.1}
+              strokeLinejoin="round"
+            />
+          ))}
       </g>
     </svg>
   );

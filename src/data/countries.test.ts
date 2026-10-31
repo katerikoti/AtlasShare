@@ -8,6 +8,7 @@ import {
   countryCount,
   getCountry,
   isCountryCode,
+  mapHiddenCountryCodes,
 } from "./countries";
 import { countryRegionOrder } from "./country-regions";
 
@@ -72,7 +73,40 @@ describe("country dataset", () => {
     expect(israel?.name).toBe("Israel");
     expect(geometry.paths.PS).toBeTruthy();
     expect(geometry.paths.IL).toBeTruthy();
+  });
+
+  it("draws Palestine as a single hole-free outline of Israel plus the territories", () => {
+    // A single ring without internal West Bank or Gaza borders; see
+    // docs/PROGRESS.md D3. Israel keeps a separate dataset path but is not
+    // drawn on the map (mapHiddenCountryCodes).
     expect(geometry.paths.PS).not.toBe(geometry.paths.IL);
+
+    const subpaths = geometry.paths.PS.split(/(?=M)/g);
+    expect(subpaths).toHaveLength(1);
+    expect(subpaths[0], "palestine ring head").toMatch(
+      /^M -?[\d.]+(e-?\d+)?,-?[\d.]+(e-?\d+)? l /,
+    );
+    expect(subpaths[0].endsWith("z"), "palestine ring closure").toBe(true);
+  });
+
+  it("hides Israel from map rendering while keeping it markable", () => {
+    expect(mapHiddenCountryCodes.has("IL")).toBe(true);
+    expect(mapHiddenCountryCodes.has("PS")).toBe(false);
+  });
+
+  it("draws Morocco including Western Sahara", () => {
+    const subpaths = geometry.paths.MA.split(/(?=M)/g);
+    expect(subpaths).toHaveLength(2);
+
+    for (const [index, subpath] of subpaths.entries()) {
+      if (index === 0) {
+        expect(subpath.startsWith("m "), "first subpath head").toBe(true);
+      } else {
+        expect(subpath, "appended subpath head").toMatch(
+          /^M -?[\d.]+(e-?\d+)?,-?[\d.]+(e-?\d+)? l /,
+        );
+      }
+    }
   });
 
   it("includes the two UN observer states and excludes territories", () => {

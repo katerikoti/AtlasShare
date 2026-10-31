@@ -10,6 +10,7 @@ import {
 import {
   countriesAlphabetical,
   countryCount,
+  mapHiddenCountryCodes,
   type CountryCode,
 } from "@/data/countries";
 import { setVisitedCountryAction } from "@/server/actions/visits";
@@ -213,7 +214,9 @@ export function MapExperience({ initialVisited }: MapExperienceProps) {
               <title id={mapTitleId}>
                 World map. Mark countries with the map or the country list.
               </title>
-              {countriesAlphabetical.map((country) => (
+              {countriesAlphabetical
+                .filter((country) => !mapHiddenCountryCodes.has(country.code))
+                .map((country) => (
                 <path
                   key={country.code}
                   d={geometry.paths[country.code]}

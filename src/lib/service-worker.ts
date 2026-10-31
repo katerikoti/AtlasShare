@@ -6,7 +6,7 @@
  * A new version is how the update prompt and activate-time cleanup discover an
  * old cache. Next's hashed build assets are versioned by their own filenames.
  */
-export const SW_CACHE_VERSION = "2026-10-27.3";
+export const SW_CACHE_VERSION = "2026-10-31.2";
 export const SW_CACHE_PREFIX = "atlas-pwa-";
 export const SW_SHELL_CACHE = `${SW_CACHE_PREFIX}shell-${SW_CACHE_VERSION}`;
 export const SW_RUNTIME_CACHE_PREFIX = `${SW_CACHE_PREFIX}runtime-`;

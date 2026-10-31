@@ -5,13 +5,18 @@ the owner's direction**). Phase 7 (public site & PWA) was moved past by the owne
 on 2026-10-28 ("this is phase 8") while they finish checking texts before
 deploying; its manual device, offline, install, and Lighthouse checks are still
 not run (see Phase 7 verification).
-**Status:** Phases 1–7 are approved/closed by the owner. **Phase 8 so far has
-one item done: email verification by a 6-digit code (ADR-036).** Nothing else in
-Phase 8 has been started: no deployment, security headers/CSP, accessibility
-audit, end-to-end suite, error monitoring, or backups. The work since the last
-push is in the working tree (uncommitted): the owner UI revisions (ADR-035) and
-email verification. `npm run check` (194 tests) and `npm run build` pass.
-**Last updated:** 2026-10-28.
+**Status:** Phases 1–7 are approved/closed by the owner. **Phase 8 progress:**
+email verification by a 6-digit code (ADR-036); the app is **deployed to
+Vercel at https://atlasshare.eu** (custom domain + Neon production branch +
+Brevo production sender); verification-code delivery was reworked into a
+transactional message and verified to arrive promptly; several UX revisions
+(mobile Account "Map data" link, PWA standalone sign-up/sign-in redirect,
+mobile bottom nav, invite form reset, auth-page copy); map geometry adjusted
+per owner decision D3 (Morocco + Western Sahara merged; Palestine drawn as a
+borderless union outline; Israel hidden from the map but markable). Recent
+work in the working tree (uncommitted) covers D3 and dev-environment fixes.
+`npm run check` (197 tests) and `npm run build` pass.
+**Last updated:** 2026-10-31.
 
 This is the first file to read when resuming work. It reflects what is actually
 built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
@@ -27,7 +32,7 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | 5. Insights & filters | ✅ Complete (approved 2026-10-27) | Region field, continent stats, shared comparison, no schema change. |
 | 6. Image export | ✅ Complete (approved 2026-10-27) | 3200 × 2000 PNG, share/download/SVG fallback, combined shared export without identities, browser QA. |
 | 7. Public site & PWA | ✅ Closed by the owner 2026-10-28 | Landing, privacy, install, metadata/OG, manifest, service worker, offline page, and the ADR-035 revisions. Manual device/offline/Lighthouse QA still not run. |
-| 8. Hardening, QA & deployment | 🟡 In progress (started 2026-10-28) | Done: email verification by code (ADR-036). Not started: deployment, security headers/CSP, accessibility audit, e2e smoke tests, monitoring, backups. |
+| 8. Hardening, QA & deployment | 🟡 In progress (started 2026-10-28) | Done: email verification by code (ADR-036); deployed to Vercel at https://atlasshare.eu (custom domain, Neon production branch, Brevo production sender, verification delivery verified); owner UX revisions; map geometry adjustments (D3). Remaining: security headers/CSP, accessibility audit, e2e smoke tests, monitoring, backups. |
 
 ## 2. What exists today
 
@@ -352,8 +357,8 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 
 ### Not built (do not assume otherwise)
 
-No CI and no deployment. The Phase 7 public site and PWA exist but are awaiting
-owner review and manual device checks. Phases 4–6
+No CI. Deployment went live at https://atlasshare.eu (Phase 8, 2026-10-31) but
+ad-hoc only — there is no CI/CD pipeline or error monitoring. Phases 4–6
 added no schema change; the Phase 2 schema is in use, plus the 195-country data
 migration. Visited state has no notes or dates (D2), there are no charts beyond
 the small CSS region bars, and the export does not include region statistics,
@@ -793,9 +798,11 @@ Full records in ADR-012, ADR-013, and ADR-026.
   Holy See (`VA`) and Palestine (`PS`). Exclude dependent territories, Kosovo
   (`XK`), Taiwan (`TW`), Western Sahara (`EH`), Antarctica (`AQ`), and other
   non-state units. Label the feature "countries".
-- Palestine (`PS`) and Israel (`IL`) are both standalone map units and must never
-  be merged. Holy See is displayed as "Holy See (Vatican City)" so both terms are
-  searchable; its code remains `VA`.
+- Palestine (`PS`) and Israel (`IL`) are both standalone map units in the
+  dataset and must never be merged into one country. (Owner-approved
+  presentation-level geometry adjustments came later — see D3; both countries
+  still exist and can be marked.) Holy See is displayed as "Holy See (Vatican
+  City)" so both terms are searchable; its code remains `VA`.
 - Implemented source: `@svg-maps/world@2.0.0` (CC-BY-4.0), filtered through the
   canonical 195-code list in `scripts/generate-countries.mjs`. No custom
   Antarctica outline or Natural Earth dependency remains.
@@ -811,6 +818,44 @@ Full records in ADR-012, ADR-013, and ADR-026.
 - The optional `note` and `firstVisitedAt` columns stay reserved but unused; they
   are not exposed through the app.
 
+### D3 — Map geometry adjustments (revised 2026-10-31, supersedes part of D1)
+
+Per the owner's request the published map renders two documented geometry
+merges (product decision; dataset still keeps 195 separate countries):
+
+- **Morocco (`MA`) is drawn together with Western Sahara** (source code `eh`):
+  one path with two subpaths, so marking Morocco highlights the full territory
+  while both borders remain visible. Western Sahara itself stays out of the
+  country dataset.
+- **Palestine is drawn as the union of Israel and the Palestinian
+  territories** (computed with `polyclip-ts` at generation time): a single
+  hole-free outline with no internal West Bank or Gaza borders. Clicking it
+  highlights the whole area as Palestine; marking is no longer linked to
+  Israel.
+- **Israel can be marked but is not drawn on the map**
+  (`mapHiddenCountryCodes` in `src/data/countries.ts`): marking it changes
+  only the country list and progress counts, never the map or the exported
+  image. Its source path stays in the dataset for completeness.
+
+Implementation details worth remembering:
+
+- SVG paths cannot simply be concatenated. Every source path starts with a
+  relative `m` moveto, and per the SVG spec the pairs following a moveto are
+  implicit linetos **in the moveto's own mode**: after absolute `M` they become
+  absolute, after relative `m` they stay relative. Naive merging therefore drew
+  appended subpaths displaced, or as straight lines from (0,0).
+- `scripts/generate-countries.mjs` handles this with `toAppendablePath()`,
+  which rewrites the appended subpath as `M x,y l <pairs>` (absolute head,
+  explicitly relative continuation). Regression tests live in
+  `src/data/countries.test.ts`.
+- The Israel/Palestine union is computed with `polyclip-ts` (devDependency)
+  after `setPrecision(0.001)`; the epsilon collapses the hairline cracks left
+  by the two datasets' slightly different vertex encodings of the shared
+  border. `ringToPath()` forces an exact ring closure.
+- The PWA service worker runtime-caches `/map/countries.json`. Any change to
+  the geometry must bump `SW_CACHE_VERSION` in `src/lib/service-worker.ts`
+  (current: `2026-10-31.2`), or users keep seeing stale map data for days.
+
 ## 6. Blockers and external dependencies
 
 | Item | Status | Needed for |
@@ -824,20 +869,15 @@ Full records in ADR-012, ADR-013, and ADR-026.
 | Push to `origin` | `main` is pushed and in sync (2026-10-28) | Vercel import |
 | Domain name (optional) | undecided | Phase 8 |
 
-Phases 1–7 are approved/closed; Phase 8 is in progress. Further pushes still need
-explicit permission. No credentials are committed; `.env.example` documents
-the expected variables.
+Phases 1–7 are approved/closed; Phase 8 is in progress. Pushes now happen at the
+owner's direction (the owner approved the 2026-10-31 push). No credentials are
+committed; `.env.example` documents the expected variables.
 
 ## 7. Repository state
 
-- Local git repository on `main`. Phase 1 is `ad7746c`; Phase 2 is `3065b2f`;
-  the Phase 2 documentation commit is `6ae3b7c`.
-- Phase 3 is committed locally in `0abebaf` plus the map-order follow-up; Phase
-  4 is committed locally; Phase 5 is committed locally in `511a42c` and
-  `669e806`; the 195-country conversion is `740cb4e`; the initial Phase 6 export
-  is `3931d72`. The shared-map export revision and its documentation are
-  committed separately after this update; run `git log --oneline` for the exact
-  hashes. **Not pushed** — pushing needs explicit approval.
+- Local git repository on `main`, pushed to `origin` and deployed to Vercel
+  (`https://atlasshare.eu`) on 2026-10-31. Vercel imports the repo and deploys
+  `main` automatically.
 - Remote `origin` = `https://github.com/katerikoti/AtlasShare.git`.
 - `gh` CLI is not installed; git credentials are cached.
 - `package-lock.json` is committed; `node_modules`, `.next`, `.env*`,
@@ -857,25 +897,36 @@ the expected variables.
   “Shared export QA” map; these were deleted after the two-member check, so no QA
   data is left in the development database. The temporary headless Chrome
   profiles and downloaded QA images live outside the repository.
+- A permanent local test account (`test@atlasshare.local`, password
+  `Testpass123456`) exists in the **development** database only, created 2026-10-31
+  for map-geometry verification. Delete it before using real data in dev.
+- Development `.env` now points `APP_URL`/`BETTER_AUTH_URL`/
+  `NEXT_PUBLIC_APP_URL` at `http://localhost:3010` (the dev port used while the
+  owner's server on 3000 runs). If a future dev session serves a different
+  port, update these or form posts fail with Better Auth "Invalid origin".
 
 ## 8. Next steps
 
-1. Phase 8 is in progress. **Done:** email verification by code. **Next, with
-   the owner's go-ahead for each:** try a real sign-up end to end in a browser with
-   a mailbox you control (check the email arrives and looks right), then the rest
-   of Phase 8 (deployment, security headers/CSP, accessibility audit, e2e smoke
-   tests, monitoring, backups). Do not push to `origin` without explicit
-   permission. The Phase 7 manual checks (sign-out → offline, DevTools cache,
-   install, Lighthouse, link preview, 320/390 px, `/install`, and the revised
-   shared-map page with two real members) are still open.
+1. Phase 8 continues. **Done:** email verification by code; live deployment at
+   https://atlasshare.eu; verification-delivery fix; owner UX revisions; D3 map
+   geometry. **Next, with the owner's go-ahead for each:** the remaining Phase 8
+   items (security headers/CSP, accessibility audit, e2e smoke tests, error
+   monitoring, backups). The Phase 7 manual checks (sign-out → offline, DevTools
+   cache, install, Lighthouse, link preview, 320/390 px, `/install`, and the
+   revised shared-map page with two real members) are still open.
 2. Complete the remaining manual checks if desired: physical iOS/Android share
    sheets, Safari/Firefox export rendering, keyboard-only and screen-reader
    passes, authenticated Lighthouse, and visual design approval.
-3. Decide before launch whether to remove the unused `note` /
+3. Verify the pushed deployment on https://atlasshare.eu: mutual sign-up flow,
+   verification email arrival, and the map geometry (Morocco + Western Sahara,
+   Palestine outline). Remind the owner that installed PWAs keep serving the
+   old cached geometry until the new service worker activates (the
+   `2026-10-31.2` version bump handles this on next visit).
+4. Decide before launch whether to remove the unused `note` /
    `firstVisitedAt` columns or keep them reserved.
-4. Keep the shared-rate-limit, email-verification, and invitation-token log
+5. Keep the shared-rate-limit, email-verification, and invitation-token log
    concerns on the pre-launch/Phase 8 list.
-5. Clean up any future QA accounts and maps before using real data.
+6. Clean up any future QA accounts and maps before using real data.
 
 ## 9. Known limitations and debt
 

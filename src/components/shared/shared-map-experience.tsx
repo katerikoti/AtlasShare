@@ -6,6 +6,7 @@ import {
   countriesAlphabetical,
   countryCount,
   getCountry,
+  mapHiddenCountryCodes,
   type CountryCode,
 } from "@/data/countries";
 import { getSharedComparison } from "@/data/country-insights";
@@ -364,12 +365,14 @@ export function SharedMapExperience({ map }: SharedMapExperienceProps) {
                 ? "World map showing countries not yet marked by anyone."
                 : `World map showing countries marked by ${viewLabel}.`}
             </title>
-            {countriesAlphabetical.map((country) => {
-              const visited = visibleCodes.has(country.code);
-              const combinedCount =
-                map.combinedCountries.find(
-                  (entry) => entry.code === country.code,
-                )?.count ?? 0;
+            {countriesAlphabetical
+              .filter((country) => !mapHiddenCountryCodes.has(country.code))
+              .map((country) => {
+                const visited = visibleCodes.has(country.code);
+                const combinedCount =
+                  map.combinedCountries.find(
+                    (entry) => entry.code === country.code,
+                  )?.count ?? 0;
 
               return (
                 <path

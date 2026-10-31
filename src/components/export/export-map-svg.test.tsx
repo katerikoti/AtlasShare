@@ -32,7 +32,10 @@ describe("ExportMapSvg", () => {
       "aria-label",
       "Exported map: 2 of 195 countries visited.",
     );
-    expect(container.querySelectorAll("path[data-country]")).toHaveLength(195);
+    // Israel can be visited but is never drawn: its territory lives in the
+    // combined Palestine outline (mapHiddenCountryCodes, docs D3).
+    expect(container.querySelectorAll("path[data-country]")).toHaveLength(194);
+    expect(container.querySelector('[data-country="IL"]')).toBeNull();
     expect(
       container.querySelector('[data-country="SE"]'),
     ).toHaveAttribute("data-visited", "true");
@@ -71,8 +74,10 @@ describe("ExportMapSvg", () => {
     );
 
     expect(all.count).toBe(195);
+    // 195 countries can be visited; only 194 get a rendered path (Israel is
+    // hidden from the map, see mapHiddenCountryCodes).
     expect(allRender.container.querySelectorAll('[data-visited="true"]')).toHaveLength(
-      195,
+      194,
     );
   });
 
