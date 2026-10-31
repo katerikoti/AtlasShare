@@ -67,7 +67,9 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
   precaches `/icon.png` (cache version `2026-10-27.3`). The public, signed-in,
   and auth headers use the transparent mark. The OG/Twitter images still draw
   their own "A" mark.
-- Metadata: root metadata, `opengraph-image`, `twitter-image`, `icon.png`,
+- Metadata: root metadata, `opengraph-image` (committed PNG with real brand
+  logo and map, regenerated via `npm run data:og-image`), `twitter-image`,
+  `icon.png`,
   `apple-icon.png`, `robots.ts`, `sitemap.ts`. `manifest.ts` serves
   `/manifest.webmanifest` (standalone, 192/512 and maskable icons in
   `public/icons/`).

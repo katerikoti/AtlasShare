@@ -50,9 +50,12 @@ Logo assets: `public/brand/atlas-share-mark-transparent.png` is the header mark
 (public, signed-in, and auth layouts); `atlas-share-mark.png` (solid background)
 is the source for the 192/512/maskable PWA icons, `src/app/icon.png`, and
 `apple-icon.png`; `atlas-share-lockup.png` is the full mark-plus-wordmark
-artwork, kept for reuse. The link-preview images in `opengraph-image.tsx` /
-`twitter-image.tsx` still draw their own mark and have not been switched to the
-logo. The footer credit link comes from `brand.portfolioUrl`.
+artwork, kept for reuse. The link-preview images are the committed PNGs
+`src/app/opengraph-image.png` / `twitter-image.png`, generated from the real
+logo and map geometry by `scripts/generate-og-image.mjs`; re-run
+`npm run data:og-image` after branding changes and commit the result
+(replaces the former on-demand `opengraph-image.tsx` placeholder). The footer
+credit link comes from `brand.portfolioUrl`.
 
 ## 4. System context
 
@@ -165,7 +168,8 @@ src/
     apple-icon.png          # 180 × 180 home-screen icon
     manifest.ts             # /manifest.webmanifest
     sitemap.ts, robots.ts   # public metadata routes
-    opengraph-image.tsx     # link-preview images (also twitter-image.tsx)
+    opengraph-image.png      # link-preview images (also twitter-image.png), generated
+                             # by scripts/generate-og-image.mjs (npm run data:og-image)
     (public)/               # shared public chrome: landing (/), privacy, install
     (auth)/                 # sign in, sign up, forgot/reset, invite/[token]
     (app)/account/          # signed-in account settings
