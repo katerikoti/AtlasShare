@@ -101,10 +101,10 @@ export default async function SharedMapPage({
               Invite friends
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-              No email addresses needed. Generate a link, send it to anyone —
-              for example in a group chat — and everyone who opens it while it
-              is valid joins this map as a member. The link expires after 7
-              days; you can revoke it or replace it with a new link at any time.
+              Generate a link and send it to anyone — for example in a group
+              chat — and everyone who opens it while it is valid joins this map
+              as a member. The link expires after 7 days; you can revoke it or
+              replace it with a new link at any time.
             </p>
             <InviteLinkPanel
               mapId={map.id}
