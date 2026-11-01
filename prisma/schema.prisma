@@ -129,22 +129,24 @@ model SharedMapMember {
   @@map("shared_map_members")
 }
 
+/// A shared map's join link. Multi-use: any signed-in account that opens a
+/// valid link joins as a member. The database stores only the SHA-256 hash of
+/// the token inside the link; the raw link is shown to the owner once at
+/// generation time. At most one non-revoked row per map (application layer, ADR-037).
 model SharedMapInvitation {
   id          String        @id @default(cuid())
   mapId       String
-  email       String        @db.VarChar(320)
   tokenHash   String        @unique
   role        SharedMapRole @default(MEMBER)
   invitedById String
   expiresAt   DateTime
-  acceptedAt  DateTime?
   revokedAt   DateTime?
   createdAt   DateTime      @default(now())
 
   map       SharedMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
   invitedBy User      @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: Cascade)
 
-  @@index([mapId, email])
+  @@index([mapId])
   @@index([expiresAt])
   @@map("shared_map_invitations")
 }

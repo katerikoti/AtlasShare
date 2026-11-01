@@ -117,9 +117,11 @@ export default function PrivacyPage() {
               not receive email addresses, account ids, or account settings.
             </li>
             <li>
-              A shared-map owner can see pending invitation email addresses and
-              revoke those invitations. The invited person sees the map name
-              only after the invitation checks pass.
+              A shared-map owner can generate a shareable invite link, see who
+              used it (the member list), and remove members or revoke the link.
+              Inactive members&apos; contributions disappear from the map; their
+              personal maps are unaffected. People who open an expired or
+              revoked link see only that the link is unavailable.
             </li>
             <li>
               An exported image contains country marks and public brand

@@ -50,15 +50,9 @@ export const deleteSharedMapSchema = z
   })
   .strict();
 
-export const inviteMemberSchema = z
+export const generateInviteSchema = z
   .object({
     mapId: mapIdSchema,
-    email: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .max(320, "Keep the email address under 320 characters.")
-      .pipe(z.email()),
   })
   .strict();
 
@@ -85,7 +79,3 @@ export const leaveSharedMapSchema = z
 export const invitationTokenSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]{43}$/, "That invitation link is not valid.");
-
-export function normalizeEmail(value: string): string {
-  return value.trim().toLowerCase();
-}

@@ -2,7 +2,8 @@
 
 Status: **Phases 1–7 are complete/closed. Phase 8 is in progress (started by the
 owner on 2026-10-28): email verification by code is done (ADR-036); everything
-else in Phase 8 is not started.**
+else in Phase 8 is not started. Phase 9 (multi-use join links, owner-requested
+2026-11-01, ADR-037) is in progress.**
 
 ## How phases work
 
@@ -28,6 +29,7 @@ else in Phase 8 is not started.**
 | 6 | Image export | Shareable PNG of your map | FR-E1…E5 |
 | 7 | Public site & PWA | Landing, privacy, installable app | FR-P1…P5, FR-W1…W4 |
 | 8 | Hardening, QA & deployment | Production launch readiness | NFR-1…8, §10 |
+| 9 | Multi-use join links | Invite friends without email | FR-S1…S10 (revised, ADR-037) |
 
 ---
 
@@ -398,6 +400,70 @@ monitoring, backups/rollback docs.
 
 **Not in this phase:** new features. Bugs found here are fixed; scope creep is
 deferred.
+
+---
+
+## Phase 9 — Multi-use join links 🟡 (owner-requested 2026-11-01)
+
+**Goal:** the owner can invite anyone by sharing one link — no invitation
+emails, no collecting email addresses first.
+
+**Status:** approved by the owner 2026-11-01 ("Make a proper plan, update
+documents, then work on it"). Details in `DECISIONS.md` ADR-037.
+
+**Scope**
+
+- The owner of a shared map generates a **multi-use join link**, valid for
+  **7 days** from creation. Anyone with a (necessarily verified — ADR-036)
+  signed-in account can join while it is valid.
+- The owner can copy the link right after generating it. The link is shown
+  once at generation; the database keeps only its SHA-256 hash (unchanged
+  ADR-012 principle). A **Replace with a new link** button generates a fresh
+  link and revokes the old one in the same transaction — people who already
+  joined keep their membership. A **Revoke** button invalidates the link
+  immediately.
+- One active (non-revoked) link per map, enforced by the revoke-replace
+  transaction, mirroring the previous app-layer invariant.
+- The `/invite/[token]` acceptance flow is unchanged for recipients:
+  signed-out visitors choose sign in / create an account (map name stays
+  hidden) and return through the verification step via `?next=`; signed-in
+  users see the map name and a Join button. The wrong-email state and the
+  `SignOutButton` path are removed because the link is no longer addressed to
+  an email.
+- Email invitations are **removed**: `sendInvitationEmail`,
+  `renderInvitationEmail`, the invite-form email field, and the per-email
+  constraints are deleted. The Brevo quota is no longer spent on invitations.
+- Migration: existing email-bound invitation rows are deleted (any link
+  already emailed becomes inert; the app launched 2026-10-31, so all were ≤7
+  days from expiry anyway); columns `email` and `accepted_at` are dropped and
+  the single-use claim is removed (links are multi-use).
+
+**Acceptance criteria**
+
+- [x] Owner can generate an invite link and copy it; no email is sent or
+      required anywhere in the invite path.
+- [x] Two different accounts can both join with the same link while it is
+      valid, each becoming a MEMBER with one membership row.
+- [x] A signed-out visitor opening the link sees sign in / create account with
+      the map name hidden; after signing in/up (including the verification
+      code step) they land back on the invite page. (The code step itself was
+      not re-run live this session — its redirect persistence is unchanged and
+      covered by component tests; see `PROGRESS.md` verification notes.)
+- [x] Expired, revoked, replaced, or malformed links show the generic
+      unavailable state; no map name leaks.
+- [x] Someone who is already a member sees "You already have access", not a
+      join form.
+- [x] Replace and revoke invalidate the old link immediately; owner-only
+      negative tests still hold for non-owners.
+- [x] The invitation email sender, its template, and the pending-per-email
+      list are gone from code and docs.
+- [x] `npm run check` and `npm run build` pass; results recorded with dates.
+
+**Not in this phase:** typeable short codes, longer/permanent link options,
+member caps, link-usage counters, ownership transfer.
+
+**Gate:** user reviews the report, then the change is pushed to GitHub so the
+Vercel deployment updates.
 
 ---
 

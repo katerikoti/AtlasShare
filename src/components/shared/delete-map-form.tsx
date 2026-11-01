@@ -30,7 +30,7 @@ export function DeleteMapForm({
         Delete this shared map
       </summary>
       <p className="mt-2 text-sm leading-relaxed text-ink-muted">
-        This removes “{mapName}”, its memberships, and pending invitations.
+        This removes “{mapName}”, its memberships, and the invite link.
         Everyone&apos;s private personal maps and visits are untouched.
       </p>
       <form action={action} className="mt-4 max-w-md">

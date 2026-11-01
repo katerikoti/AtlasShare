@@ -17,8 +17,8 @@ import {
   acceptMapInvitation,
   createMapInvitation,
   createSharedMapForUser,
+  getActiveInvitationForMap,
   getInvitationPreview,
-  getPendingInvitationsForMap,
   getSharedMapView,
   getSharedMapsForUser,
   leaveSharedMap,
@@ -91,9 +91,9 @@ describeWithDatabase("shared maps and invitations", () => {
     );
   }
 
-  async function invite(email: string, mapId: string, token?: string) {
+  async function invite(mapId: string, token?: string) {
     return createMapInvitation(
-      { mapId, ownerId: userA.id, email },
+      { mapId, ownerId: userA.id },
       db,
       new Date(),
       token ?? generateInvitationToken(),
@@ -145,15 +145,12 @@ describeWithDatabase("shared maps and invitations", () => {
     await addVisit(userB.id, "FR");
 
     const mapId = await createMap();
-    const invitation = await invite(userB.email, mapId);
+    const invitation = await invite(mapId);
     expect(invitation.status).toBe("created");
     if (invitation.status !== "created") return;
 
     await expect(
-      acceptMapInvitation(
-        { token: invitation.token, userId: userB.id, email: userB.email },
-        db,
-      ),
+      acceptMapInvitation({ token: invitation.token, userId: userB.id }, db),
     ).resolves.toMatchObject({ status: "accepted", mapId });
 
     const view = await getSharedMapView(mapId, userA.id, db);
@@ -191,24 +188,26 @@ describeWithDatabase("shared maps and invitations", () => {
     ]);
   });
 
-  it("scopes pending invitations to the owner", async () => {
+  it("scopes the active invitation to the owner", async () => {
     const mapId = await createMap();
-    const invitation = await invite(userB.email, mapId);
+    const invitation = await invite(mapId);
     expect(invitation.status).toBe("created");
 
-    const ownerList = await getPendingInvitationsForMap(mapId, userA.id, db);
-    expect(ownerList).toHaveLength(1);
-    expect(ownerList[0].email).toBe(userB.email);
+    const ownerActive = await getActiveInvitationForMap(mapId, userA.id, db);
+    expect(ownerActive).toMatchObject({
+      id: invitation.status === "created" ? invitation.invitation.id : "",
+    });
 
-    const nonOwnerList = await getPendingInvitationsForMap(mapId, userB.id, db);
-    expect(nonOwnerList).toEqual([]);
+    await expect(
+      getActiveInvitationForMap(mapId, userB.id, db),
+    ).resolves.toBeNull();
   });
 
-  it("stores only a hashed single-use invitation and rejects the wrong email", async () => {
+  it("stores only the hashed multi-use link and accepts different accounts", async () => {
     const mapId = await createMap();
     const token = generateInvitationToken();
     const before = Date.now();
-    const invitation = await invite(userB.email, mapId, token);
+    const invitation = await invite(mapId, token);
 
     expect(invitation.status).toBe("created");
     if (invitation.status !== "created") return;
@@ -219,72 +218,54 @@ describeWithDatabase("shared maps and invitations", () => {
     expect(row).not.toBeNull();
     expect(row?.tokenHash).toBe(hashInvitationToken(token));
     expect(row?.tokenHash).not.toBe(token);
-    expect(row?.email).toBe(userB.email.toLowerCase());
-    expect(row?.acceptedAt).toBeNull();
     expect(row?.revokedAt).toBeNull();
     expect(row?.expiresAt.getTime()).toBeGreaterThanOrEqual(
       before + invitationTtlMs,
     );
 
     await expect(
-      acceptMapInvitation(
-        { token, userId: userC.id, email: userC.email },
-        db,
-      ),
-    ).resolves.toEqual({ status: "wrong-email" });
-    await expect(
-      getInvitationPreview(token, { userId: userC.id, email: userC.email }, db),
-    ).resolves.toEqual({ status: "wrong-email" });
-
-    const wrongView = await getSharedMapView(mapId, userC.id, db);
-    expect(wrongView).toBeNull();
-
-    await expect(
-      acceptMapInvitation(
-        { token, userId: userB.id, email: userB.email },
-        db,
-      ),
+      acceptMapInvitation({ token, userId: userB.id }, db),
     ).resolves.toMatchObject({ status: "accepted", mapId });
 
-    const after = await db.sharedMapInvitation.findUnique({
-      where: { tokenHash: hashInvitationToken(token) },
-      select: { acceptedAt: true },
-    });
-    expect(after?.acceptedAt).not.toBeNull();
+    // The same link still validates for another account and joins them too.
+    await expect(
+      getInvitationPreview(token, { userId: userC.id }, db),
+    ).resolves.toMatchObject({ status: "valid", mapName: "Test shared map" });
+    await expect(
+      acceptMapInvitation({ token, userId: userC.id }, db),
+    ).resolves.toMatchObject({ status: "accepted", mapId });
 
+    const memberships = await db.sharedMapMember.findMany({
+      where: { mapId },
+      select: { userId: true },
+    });
+    expect(memberships).toHaveLength(3); // owner + userB + userC
+    expect(new Set(memberships.map((m) => m.userId))).toEqual(
+      new Set([userA.id, userB.id, userC.id]),
+    );
+
+    // Joining twice is a no-op, not an error and not a second row.
     await expect(
-      acceptMapInvitation(
-        { token, userId: userB.id, email: userB.email },
-        db,
-      ),
-    ).resolves.toEqual({ status: "invalid" });
+      acceptMapInvitation({ token, userId: userB.id }, db),
+    ).resolves.toMatchObject({ status: "accepted", mapId });
     await expect(
-      getInvitationPreview(token, { userId: userB.id, email: userB.email }, db),
-    ).resolves.toEqual({ status: "invalid" });
+      getInvitationPreview(token, { userId: userB.id }, db),
+    ).resolves.toMatchObject({ status: "already-member" });
   });
 
-  it("allows only one of two simultaneous acceptances to claim a token", async () => {
+  it("keeps two joins with the same link idempotent under a race", async () => {
     const mapId = await createMap();
-    const invitation = await invite(userB.email, mapId);
+    const invitation = await invite(mapId);
     expect(invitation.status).toBe("created");
     if (invitation.status !== "created") return;
 
     const results = await Promise.all([
-      acceptMapInvitation(
-        { token: invitation.token, userId: userB.id, email: userB.email },
-        db,
-      ),
-      acceptMapInvitation(
-        { token: invitation.token, userId: userB.id, email: userB.email },
-        db,
-      ),
+      acceptMapInvitation({ token: invitation.token, userId: userB.id }, db),
+      acceptMapInvitation({ token: invitation.token, userId: userB.id }, db),
     ]);
 
     expect(results.filter((result) => result.status === "accepted")).toHaveLength(
-      1,
-    );
-    expect(results.filter((result) => result.status === "invalid")).toHaveLength(
-      1,
+      2,
     );
     await expect(
       db.sharedMapMember.count({ where: { mapId, userId: userB.id } }),
@@ -293,7 +274,7 @@ describeWithDatabase("shared maps and invitations", () => {
 
   it("rejects expired and revoked invitations with the generic state", async () => {
     const mapId = await createMap();
-    const expired = await invite(userB.email, mapId);
+    const expired = await invite(mapId);
     expect(expired.status).toBe("created");
     if (expired.status !== "created") return;
 
@@ -302,20 +283,13 @@ describeWithDatabase("shared maps and invitations", () => {
       data: { expiresAt: new Date(0) },
     });
     await expect(
-      getInvitationPreview(
-        expired.token,
-        { userId: userB.id, email: userB.email },
-        db,
-      ),
+      getInvitationPreview(expired.token, { userId: userB.id }, db),
     ).resolves.toEqual({ status: "invalid" });
     await expect(
-      acceptMapInvitation(
-        { token: expired.token, userId: userB.id, email: userB.email },
-        db,
-      ),
+      acceptMapInvitation({ token: expired.token, userId: userB.id }, db),
     ).resolves.toEqual({ status: "invalid" });
 
-    const revoked = await invite(userB.email, mapId);
+    const revoked = await invite(mapId);
     expect(revoked.status).toBe("created");
     if (revoked.status !== "created") return;
 
@@ -330,53 +304,43 @@ describeWithDatabase("shared maps and invitations", () => {
       ),
     ).resolves.toBe(1);
     await expect(
-      getInvitationPreview(
-        revoked.token,
-        { userId: userB.id, email: userB.email },
-        db,
-      ),
+      getInvitationPreview(revoked.token, { userId: userB.id }, db),
     ).resolves.toEqual({ status: "invalid" });
     await expect(
-      acceptMapInvitation(
-        { token: revoked.token, userId: userB.id, email: userB.email },
-        db,
-      ),
+      acceptMapInvitation({ token: revoked.token, userId: userB.id }, db),
     ).resolves.toEqual({ status: "invalid" });
   });
 
-  it("revokes the previous pending link when inviting the same email again", async () => {
+  it("replaces the active link when a new one is generated", async () => {
     const mapId = await createMap();
-    const first = await invite(userB.email, mapId);
-    const second = await invite(userB.email, mapId);
+    const first = await invite(mapId);
+    const second = await invite(mapId);
     expect(first.status).toBe("created");
     expect(second.status).toBe("created");
     if (first.status !== "created" || second.status !== "created") return;
 
     await expect(
-      getInvitationPreview(
-        first.token,
-        { userId: userB.id, email: userB.email },
-        db,
-      ),
+      getInvitationPreview(first.token, { userId: userB.id }, db),
     ).resolves.toEqual({ status: "invalid" });
     await expect(
-      getInvitationPreview(
-        second.token,
-        { userId: userB.id, email: userB.email },
-        db,
-      ),
+      getInvitationPreview(second.token, { userId: userB.id }, db),
     ).resolves.toMatchObject({ status: "valid", mapName: "Test shared map" });
+
+    const activeRows = await db.sharedMapInvitation.count({
+      where: { mapId, revokedAt: null },
+    });
+    expect(activeRows).toBe(1);
   });
 
   it("removes a member's contribution without deleting their personal visits", async () => {
     await addVisit(userA.id, "SE");
     await addVisit(userB.id, "NO");
     const mapId = await createMap();
-    const invitation = await invite(userB.email, mapId);
+    const invitation = await invite(mapId);
     expect(invitation.status).toBe("created");
     if (invitation.status !== "created") return;
     await acceptMapInvitation(
-      { token: invitation.token, userId: userB.id, email: userB.email },
+      { token: invitation.token, userId: userB.id },
       db,
     );
 
@@ -421,11 +385,11 @@ describeWithDatabase("shared maps and invitations", () => {
 
   it("lets a member leave and forbids the owner from leaving", async () => {
     const mapId = await createMap();
-    const invitation = await invite(userB.email, mapId);
+    const invitation = await invite(mapId);
     expect(invitation.status).toBe("created");
     if (invitation.status !== "created") return;
     await acceptMapInvitation(
-      { token: invitation.token, userId: userB.id, email: userB.email },
+      { token: invitation.token, userId: userB.id },
       db,
     );
 
@@ -444,7 +408,7 @@ describeWithDatabase("shared maps and invitations", () => {
 
   it("lets only the owner update the map and revoke an invitation", async () => {
     const mapId = await createMap();
-    const invitation = await invite(userB.email, mapId);
+    const invitation = await invite(mapId);
     expect(invitation.status).toBe("created");
     if (invitation.status !== "created") return;
 

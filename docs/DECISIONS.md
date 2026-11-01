@@ -205,6 +205,10 @@ SVG fallback covers canvas failures.
 
 ## ADR-012 — Invitation tokens hashed at rest, per-email, single-use
 
+**Status:** Partially superseded 2026-11-01 by ADR-037: links are now multi-use
+and carry no email. The token format, hashing at rest, 7-day TTL, hashed
+uniqueness, and revocation all remain in force.
+
 **Status:** accepted (Phase 1, implemented Phase 4)
 
 **Context:** Invitation links grant access to other people's travel data.
@@ -530,6 +534,9 @@ an ownership-transfer flow must be added later.
 
 ## ADR-028 — Invitation acceptance matches an unverified account email
 
+**Status:** Superseded 2026-11-01 by ADR-037 (join links carry no email
+address; the email match is gone). Retained for context.
+
 **Status:** accepted in Phase 4; **its main limitation is resolved by ADR-036**
 (email verification enforced, 2026-10-28). The decision below still describes how
 acceptance works; the "unverified address" caveat no longer applies to new or
@@ -845,6 +852,60 @@ does not arrive can request another. Invitations now rest on a verified address.
 Sign-up for an already-verified address shows the code screen but sends nothing
 (no "account exists" email yet). Email-change and OAuth remain out of scope; they
 would need to keep the verified-address rule.
+
+---
+
+## ADR-037 — Multi-use join links replace email invitations (2026-11-01)
+
+**Status:** Accepted (owner-requested, 2026-11-01).
+
+**Context:** Invitation emails were consuming Brevo quota on a free tier, and
+asking a map owner to collect each friend's email address before inviting was
+impractical — the real-world flow is "paste a link in the group chat". The
+previous model (ADR-012) bound one single-use link to one invited email, which
+also forced a wrong-email cant-join state and an account-email match on every
+acceptance. ADR-036 removed the risk that motivated the address match: any
+session now proves the address was verified by an emailed code.
+
+**Decision:**
+
+- A shared map has **one active join link at a time**. The owner generates it
+  from the map's Members-and-settings panel. It is **multi-use**: any signed-in
+  account that opens it while it is valid joins as `MEMBER`.
+- The link **expires 7 days** after creation (unchanged TTL). The owner can
+  **replace** it (generating a new link revokes the previous one in the same
+  transaction; existing members keep their membership) or **revoke** it
+  immediately.
+- The token mechanics are unchanged from ADR-012: 32 random bytes, base64url
+  in the URL path, SHA-256 hash at rest, hashed uniqueness, no logging.
+- The owner sees the copyable link **only at generation time**. The database
+  stores a hash, so the panel shows the link's state (active, expiry date) but
+  cannot redisplay a lost link; generating a fresh link takes the same two
+  clicks and does not remove anyone.
+- `email` and `acceptedAt` (single-use stamping) are dropped from
+  `shared_map_invitations`; all previously emailed invitation rows are deleted
+  by the migration, so any links already sent via email become inert.
+- Acceptance is idempotent upsert into `shared_map_members` guarded by
+  membership uniqueness; no claim step is needed.
+- Email invitations are removed entirely: the Brevo invitation sender, its
+  template, the invite form's email field, and the per-email pending list go
+  away.
+
+**Alternatives considered:** keeping email invites as an option (quota + two UI
+paths for the same job); never-expiring links (a permanent, forwardable door
+into someone else's map with no owner recall beyond revocation they may forget);
+short typeable codes (extra entry UI, smaller entropy, no real demand while a
+pasting flow exists).
+
+**Consequences:** while the link is valid, whoever holds it and joins becomes a
+visible member whose country marks enter the combined view — that is the
+intended semantics of sharing a group invite, and the owner can remove members
+directly. The sign-in/sign-up → verification → join chain still works unchanged
+via the existing `?next=` redirect. The wrong-email state, ADR-028's address
+match, and the "re-invite the same email" rule become obsolete; ADR-028 is
+retired. If informal in-chat sharing proves too open in practice, a follow-up
+can add a member cap or a "confirm membership name" step — not built now.
+
 
 ---
 

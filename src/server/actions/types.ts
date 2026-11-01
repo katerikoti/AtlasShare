@@ -14,6 +14,5 @@ export type SharedMapActionState = {
 
 export type InvitationActionState = SharedMapActionState & {
   inviteUrl?: string;
-  invitedEmail?: string;
-  emailDelivery?: "sent" | "skipped" | "failed";
+  expiresAt?: string;
 };

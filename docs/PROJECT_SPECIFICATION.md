@@ -46,7 +46,7 @@ loggers, or people who want street-level location tracking.
 | **Personal map** | The signed-in user's own visits and derived statistics. |
 | **Shared map** | A named group with members. Shows a combined view. |
 | **Member** | A user who can see a shared map. Roles: owner, member. |
-| **Invitation** | A single-use, expiring link sent to one email address. |
+| **Invitation** | A multi-use, expiring link that the owner copies and shares (ADR-037). |
 | **Country set** | The canonical list of map units. See §6. |
 
 ## 6. Country definition (resolved)
@@ -109,10 +109,13 @@ terms are searchable; its code remains `VA`.
   creator becomes owner and a member.
 - **FR-S2** List the maps the user belongs to, with member count and combined
   count.
-- **FR-S3** Invite one email address at a time; send an email and offer a
-  copyable link. Invitations expire (7 days) and are single-use.
-- **FR-S4** Accept an invitation only when signed in as the invited email; join
-  the map; show a clear error for expired/revoked/used invites.
+- **FR-S3** Invite without email (revised 2026-11-01, ADR-037): the owner
+  generates one multi-use join link per map with a copyable link. Links expire
+  (7 days), can be replaced or revoked.
+- **FR-S4** Join the map after signing in or creating an account via the link;
+  show a clear error for expired/revoked/replaced invites. (The original
+  invited-email match was removed with ADR-037; joiners need a signed-in
+  verified account.)
 - **FR-S5** Owner can revoke pending invitations and remove members.
 - **FR-S6** Member can leave a map. Owner can delete a map (confirmed).
 - **FR-S7** Shared map view shows the combined map: countries visited by any

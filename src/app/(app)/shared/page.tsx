@@ -100,8 +100,9 @@ export default async function SharedMapsPage({
           <div className="mt-4 rounded-card border border-dashed border-line bg-surface/60 p-6 text-sm leading-relaxed text-ink-muted sm:p-8">
             <p className="font-medium text-ink">No shared maps yet.</p>
             <p className="mt-1 max-w-xl">
-              Create one below, then invite someone by email. When they accept,
-              their marked countries appear in the combined view.
+              Create one below, then generate an invite link to share. When
+              friends open it, their marked countries appear in the combined
+              view.
             </p>
           </div>
         ) : (

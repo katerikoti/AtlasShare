@@ -8,7 +8,6 @@ import {
   hashInvitationToken,
   invitationTtlMs,
 } from "@/server/invitations";
-import { normalizeEmail } from "@/server/validation/shared-maps";
 
 function validCountryCodes(codes: string[]): CountryCode[] {
   return [...new Set(codes)]
@@ -264,53 +263,60 @@ export async function getSharedMapView(
   return buildSharedMapView(row, userId);
 }
 
-export async function getPendingInvitationsForMap(
+export type ActiveInvitation = {
+  id: string;
+  expiresAt: Date;
+  createdAt: Date;
+};
+
+/**
+ * The map's active join link, scoped to the owner. Only the hash of the token
+ * is stored, so the caller can display state (expiry) but cannot rebuild the
+ * shareable link; the link is shown once at generation time.
+ */
+export async function getActiveInvitationForMap(
   mapId: string,
   ownerId: string,
   db: PrismaClient = getDb(),
   now: Date = new Date(),
-): Promise<{ id: string; email: string; expiresAt: Date; createdAt: Date }[]> {
-  return db.sharedMapInvitation.findMany({
+): Promise<ActiveInvitation | null> {
+  const invitation = await db.sharedMapInvitation.findFirst({
     where: {
       mapId,
-      acceptedAt: null,
       revokedAt: null,
       expiresAt: { gt: now },
       map: { ownerId },
     },
-    select: {
-      id: true,
-      email: true,
-      expiresAt: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: "asc" },
+    select: { id: true, expiresAt: true, createdAt: true },
+    orderBy: { createdAt: "desc" },
   });
+
+  return invitation;
 }
 
 export type CreateMapInvitationResult =
   | {
       status: "created";
-      invitation: { id: string; email: string; expiresAt: Date };
+      invitation: { id: string; expiresAt: Date };
       token: string;
     }
-  | { status: "already-member" }
   | { status: "not-found" };
 
 /**
- * Create or replace the pending invitation for one email.
+ * Create or replace the map's join link.
  *
- * Previous pending invites for the same map/email are revoked in the same
- * transaction, so only one link can be used. The raw token is returned to the
- * caller for the email/copy link; only its hash is written.
+ * Any previous non-revoked invitation for the map is revoked in the same
+ * transaction, so only one active link exists at a time. The link is
+ * multi-use: acceptance stamps no claim, joiners simply become members. The
+ * raw token is returned to the caller for the copyable link; only its hash
+ * is written.
  */
 export async function createMapInvitation(
-  input: { mapId: string; ownerId: string; email: string },
+  input: { mapId: string; ownerId: string },
   db: PrismaClient = getDb(),
   now: Date = new Date(),
   token: string = generateInvitationToken(),
 ): Promise<CreateMapInvitationResult> {
-  const email = normalizeEmail(input.email);
   const tokenHash = hashInvitationToken(token);
   const expiresAt = new Date(now.getTime() + invitationTtlMs);
 
@@ -321,20 +327,9 @@ export async function createMapInvitation(
     });
     if (!map) return { status: "not-found" };
 
-    const existingMember = await transaction.sharedMapMember.findFirst({
-      where: {
-        mapId: input.mapId,
-        user: { email },
-      },
-      select: { id: true },
-    });
-    if (existingMember) return { status: "already-member" };
-
     await transaction.sharedMapInvitation.updateMany({
       where: {
         mapId: input.mapId,
-        email,
-        acceptedAt: null,
         revokedAt: null,
       },
       data: { revokedAt: now },
@@ -343,13 +338,12 @@ export async function createMapInvitation(
     const invitation = await transaction.sharedMapInvitation.create({
       data: {
         mapId: input.mapId,
-        email,
         tokenHash,
         role: "MEMBER",
         invitedById: input.ownerId,
         expiresAt,
       },
-      select: { id: true, email: true, expiresAt: true },
+      select: { id: true, expiresAt: true },
     });
 
     return { status: "created", invitation, token };
@@ -365,7 +359,6 @@ export async function revokeMapInvitation(
     where: {
       id: input.invitationId,
       mapId: input.mapId,
-      acceptedAt: null,
       revokedAt: null,
       map: { ownerId: input.ownerId },
     },
@@ -445,16 +438,15 @@ export type InvitationPreview =
       mapId: string;
       mapName: string;
     }
-  | { status: "wrong-email" }
   | { status: "invalid" };
 
 /**
- * Resolve an invitation for display without accepting it. The map name is only
- * returned after the token, state, expiry, and invited email all check out.
+ * Resolve a join link for display without joining. The map name is only
+ * returned after the token, state, and expiry all check out.
  */
 export async function getInvitationPreview(
   token: string,
-  viewer: { userId: string; email: string },
+  viewer: { userId: string },
   db: PrismaClient = getDb(),
   now: Date = new Date(),
 ): Promise<InvitationPreview> {
@@ -462,9 +454,7 @@ export async function getInvitationPreview(
     where: { tokenHash: hashInvitationToken(token) },
     select: {
       mapId: true,
-      email: true,
       expiresAt: true,
-      acceptedAt: true,
       revokedAt: true,
       map: { select: { name: true } },
     },
@@ -472,15 +462,10 @@ export async function getInvitationPreview(
 
   if (
     !invitation ||
-    invitation.acceptedAt ||
     invitation.revokedAt ||
     invitation.expiresAt.getTime() <= now.getTime()
   ) {
     return { status: "invalid" };
-  }
-
-  if (invitation.email !== normalizeEmail(viewer.email)) {
-    return { status: "wrong-email" };
   }
 
   const membership = await db.sharedMapMember.findUnique({
@@ -510,84 +495,59 @@ export async function getInvitationPreview(
 
 export type AcceptInvitationResult =
   | { status: "accepted"; mapId: string; mapName: string }
-  | { status: "wrong-email" }
   | { status: "invalid" };
 
 /**
- * Accept an invitation in one transaction.
+ * Join a shared map through its link.
  *
- * The conditional updateMany is the single-use claim. If two requests race,
- * PostgreSQL re-checks the predicate on the locked row and only one update can
- * affect a row. Membership creation and the acceptance stamp commit together.
+ * The link is multi-use, so there is no claim step: the membership upsert is
+ * idempotent, and the (map, user) uniqueness guard keeps one row per person.
+ * A revoke landing between the validity read and the upsert could let one
+ * final join through; treated as a benign, near-invisible race.
  */
 export async function acceptMapInvitation(
-  input: { token: string; userId: string; email: string },
+  input: { token: string; userId: string },
   db: PrismaClient = getDb(),
   now: Date = new Date(),
 ): Promise<AcceptInvitationResult> {
   const tokenHash = hashInvitationToken(input.token);
-  const email = normalizeEmail(input.email);
 
-  return db.$transaction(async (transaction) => {
-    const invitation = await transaction.sharedMapInvitation.findUnique({
-      where: { tokenHash },
-      select: {
-        id: true,
-        mapId: true,
-        email: true,
-        expiresAt: true,
-        acceptedAt: true,
-        revokedAt: true,
-        map: { select: { name: true } },
-      },
-    });
+  const invitation = await db.sharedMapInvitation.findUnique({
+    where: { tokenHash },
+    select: {
+      mapId: true,
+      expiresAt: true,
+      revokedAt: true,
+      map: { select: { name: true } },
+    },
+  });
 
-    if (
-      !invitation ||
-      invitation.acceptedAt ||
-      invitation.revokedAt ||
-      invitation.expiresAt.getTime() <= now.getTime()
-    ) {
-      return { status: "invalid" };
-    }
+  if (
+    !invitation ||
+    invitation.revokedAt ||
+    invitation.expiresAt.getTime() <= now.getTime()
+  ) {
+    return { status: "invalid" };
+  }
 
-    if (invitation.email !== email) {
-      return { status: "wrong-email" };
-    }
-
-    const claimed = await transaction.sharedMapInvitation.updateMany({
-      where: {
-        id: invitation.id,
-        acceptedAt: null,
-        revokedAt: null,
-        expiresAt: { gt: now },
-      },
-      data: { acceptedAt: now },
-    });
-
-    if (claimed.count !== 1) {
-      return { status: "invalid" };
-    }
-
-    await transaction.sharedMapMember.upsert({
-      where: {
-        mapId_userId: {
-          mapId: invitation.mapId,
-          userId: input.userId,
-        },
-      },
-      create: {
+  await db.sharedMapMember.upsert({
+    where: {
+      mapId_userId: {
         mapId: invitation.mapId,
         userId: input.userId,
-        role: "MEMBER",
       },
-      update: {},
-    });
-
-    return {
-      status: "accepted",
+    },
+    create: {
       mapId: invitation.mapId,
-      mapName: invitation.map.name,
-    };
+      userId: input.userId,
+      role: "MEMBER",
+    },
+    update: {},
   });
+
+  return {
+    status: "accepted",
+    mapId: invitation.mapId,
+    mapName: invitation.map.name,
+  };
 }

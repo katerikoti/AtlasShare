@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   removeMapMember: vi.fn(),
   leaveSharedMap: vi.fn(),
   acceptMapInvitation: vi.fn(),
-  sendInvitationEmail: vi.fn(),
 }));
 
 vi.mock("@/server/session", () => ({
@@ -50,10 +49,6 @@ vi.mock("@/server/shared-maps", () => ({
   removeMapMember: mocks.removeMapMember,
   leaveSharedMap: mocks.leaveSharedMap,
   acceptMapInvitation: mocks.acceptMapInvitation,
-}));
-
-vi.mock("@/server/email", () => ({
-  sendInvitationEmail: mocks.sendInvitationEmail,
 }));
 
 import type { SharedMapActionState } from "./types";
@@ -97,7 +92,7 @@ function validForm(action: string): FormData {
     case "delete":
       return form({ mapId: "map_1", confirmation: "DELETE" });
     case "invite":
-      return form({ mapId: "map_1", email: "friend@example.com" });
+      return form({ mapId: "map_1" });
     case "revoke":
       return form({ mapId: "map_1", invitationId: "invite_1" });
     case "remove":
@@ -124,12 +119,10 @@ beforeEach(() => {
   mocks.revokeMapInvitation.mockResolvedValue(1);
   mocks.removeMapMember.mockResolvedValue(1);
   mocks.leaveSharedMap.mockResolvedValue(1);
-  mocks.sendInvitationEmail.mockResolvedValue("sent");
   mocks.createMapInvitation.mockResolvedValue({
     status: "created",
     invitation: {
       id: "invite_1",
-      email: "friend@example.com",
       expiresAt: new Date("2026-11-02T00:00:00.000Z"),
     },
     token: "test-invitation-token",
@@ -149,7 +142,7 @@ describe("shared-map actions without a session", () => {
       ["create", actions.createSharedMapAction],
       ["update", actions.updateSharedMapAction],
       ["delete", actions.deleteSharedMapAction],
-      ["invite", actions.inviteToSharedMapAction],
+      ["invite", actions.generateInviteLinkAction],
       ["revoke", actions.revokeInvitationAction],
       ["remove", actions.removeMemberAction],
       ["leave", actions.leaveSharedMapAction],
@@ -180,7 +173,7 @@ describe("owner-only shared-map actions", () => {
     const cases = [
       ["update", actions.updateSharedMapAction],
       ["delete", actions.deleteSharedMapAction],
-      ["invite", actions.inviteToSharedMapAction],
+      ["invite", actions.generateInviteLinkAction],
       ["revoke", actions.revokeInvitationAction],
       ["remove", actions.removeMemberAction],
     ] as const;
@@ -205,7 +198,7 @@ describe("owner-only shared-map actions", () => {
     const cases = [
       ["update", actions.updateSharedMapAction],
       ["delete", actions.deleteSharedMapAction],
-      ["invite", actions.inviteToSharedMapAction],
+      ["invite", actions.generateInviteLinkAction],
       ["revoke", actions.revokeInvitationAction],
       ["remove", actions.removeMemberAction],
       ["leave", actions.leaveSharedMapAction],
@@ -312,55 +305,34 @@ describe("shared-map action validation and success paths", () => {
     expect(mocks.deleteSharedMapForOwner).not.toHaveBeenCalled();
   });
 
-  it("returns a copyable link and sends the invitation email", async () => {
-    const { inviteToSharedMapAction } = await import("./shared-maps");
+  it("returns a copyable link and sends no email", async () => {
+    const { generateInviteLinkAction } = await import("./shared-maps");
 
-    const state = await inviteToSharedMapAction(idle, validForm("invite"));
+    const state = await generateInviteLinkAction(idle, validForm("invite"));
 
     expect(state).toMatchObject({
       status: "success",
-      invitedEmail: "friend@example.com",
       inviteUrl: "https://atlasshare.example/invite/test-invitation-token",
-      emailDelivery: "sent",
     });
-    expect(state.message).toContain("Invitation emailed");
+    expect(state.message).toContain("Invite link generated");
+    expect(state.inviteUrl).not.toContain("mailto:");
     expect(mocks.createMapInvitation).toHaveBeenCalledWith({
       mapId: "map_1",
       ownerId: "user_owner",
-      email: "friend@example.com",
-    });
-    expect(mocks.sendInvitationEmail).toHaveBeenCalledWith({
-      to: "friend@example.com",
-      mapName: "Test map",
-      inviteUrl: "https://atlasshare.example/invite/test-invitation-token",
-      expiresInDays: 7,
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/shared/map_1");
   });
 
-  it("still returns the link when email delivery is unavailable", async () => {
-    mocks.sendInvitationEmail.mockResolvedValue("skipped");
-    const { inviteToSharedMapAction } = await import("./shared-maps");
-
-    const state = await inviteToSharedMapAction(idle, validForm("invite"));
-
-    expect(state.status).toBe("success");
-    expect(state.emailDelivery).toBe("skipped");
-    expect(state.message).toContain("Copy the link");
-    expect(state.inviteUrl).toContain("/invite/test-invitation-token");
-  });
-
-  it("reports an existing member without sending another email", async () => {
-    mocks.createMapInvitation.mockResolvedValue({ status: "already-member" });
-    const { inviteToSharedMapAction } = await import("./shared-maps");
+  it("returns the not-found error without building a link", async () => {
+    mocks.createMapInvitation.mockResolvedValue({ status: "not-found" });
+    const { generateInviteLinkAction } = await import("./shared-maps");
 
     await expect(
-      inviteToSharedMapAction(idle, validForm("invite")),
+      generateInviteLinkAction(idle, validForm("invite")),
     ).resolves.toEqual({
       status: "error",
-      message: "That email address already belongs to a member of this map.",
+      message: "That shared map was not found.",
     });
-    expect(mocks.sendInvitationEmail).not.toHaveBeenCalled();
   });
 
   it("revokes and removes only when the data layer reports one change", async () => {
@@ -369,7 +341,7 @@ describe("shared-map action validation and success paths", () => {
 
     await expect(
       revokeInvitationAction(idle, validForm("revoke")),
-    ).resolves.toEqual({ status: "success", message: "Invitation revoked." });
+    ).resolves.toEqual({ status: "success", message: "Invite link revoked." });
     await expect(
       removeMemberAction(idle, validForm("remove")),
     ).resolves.toEqual({ status: "success", message: "Member removed." });
@@ -415,17 +387,6 @@ describe("invitation acceptance action", () => {
     expect(mocks.acceptMapInvitation).not.toHaveBeenCalled();
   });
 
-  it("explains a wrong-email invitation without redirecting", async () => {
-    mocks.acceptMapInvitation.mockResolvedValue({ status: "wrong-email" });
-    const { acceptInvitationAction } = await import("./shared-maps");
-
-    const state = await acceptInvitationAction(idle, validForm("accept"));
-
-    expect(state.status).toBe("error");
-    expect(state.message).toMatch(/different email address/i);
-    expect(mocks.redirect).not.toHaveBeenCalled();
-  });
-
   it("uses one generic message for used, expired, revoked, or invalid invites", async () => {
     mocks.acceptMapInvitation.mockResolvedValue({ status: "invalid" });
     const { acceptInvitationAction } = await import("./shared-maps");
@@ -448,7 +409,6 @@ describe("invitation acceptance action", () => {
     expect(mocks.acceptMapInvitation).toHaveBeenCalledWith({
       token: "a".repeat(43),
       userId: "user_owner",
-      email: "owner@example.com",
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/shared");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/shared/map_1");

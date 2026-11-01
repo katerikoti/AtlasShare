@@ -6,6 +6,37 @@ Notable changes, newest first. This project follows a phase-based plan; see
 
 ## [Unreleased]
 
+### Changed — Phase 9: multi-use join links replace email invitations
+(2026-11-01, ADR-037)
+
+- Shared-map owners no longer invite by email. A map has **one active join
+  link** at a time: the owner generates it from the map's Invite friends panel,
+  copies it into a chat, and anyone with a signed-in (necessarily verified)
+  account who opens it while it is valid joins as a member.
+- The link is **multi-use** and expires **7 days** after creation. The owner can
+  **Replace with a new link** (which revokes the old link in the same
+  transaction; nobody who already joined is affected) or **Revoke link**
+  immediately. The raw link is shown once at generation; only its SHA-256 hash
+  is stored (ADR-012 principle kept — shortly after generation, regenerating is
+  the only way to see a link again).
+- No invitation emails are sent anywhere; Brevo is no longer used for invites.
+  The invite form's email field, the pending-per-email list, the wrong-email
+  state, ADR-028's address match, and the single-use claim are removed. The
+  `/invite/[token]` flow keeps hiding the map name from signed-out visitors and
+  carries them through sign-in/sign-up/verification via `?next=` before they are
+  asked to join.
+- New migration `20261101211302_join_links_replace_email_invitations` deletes
+  all existing email-bound invitation rows (previously emailed links become
+  inert — any invite sent between launch 2026-10-31 and this release stops
+  working; share new links), drops `email` and `accepted_at`, and adds a
+  `map_id` index. Applied to the Neon dev database and local `atlasshare_test`.
+- New: `InviteLinkPanel` (+ tests), `generateInviteLinkAction`,
+  `getActiveInvitationForMap`. Removed: `sendInvitationEmail`,
+  `renderInvitationEmail`, `InviteMemberForm`, `RevokeInvitationButton`,
+  `getPendingInvitationsForMap`. Updated: `generateInviteSchema` replaces
+  `inviteMemberSchema`. 197 tests in 33 files pass; `npm run check` and
+  `npm run build` pass.
+
 ### Added — Phase 8: email verification by 6-digit code (2026-10-28, ADR-036)
 
 - Sign-up now creates an unverified account with no session and emails a 6-digit

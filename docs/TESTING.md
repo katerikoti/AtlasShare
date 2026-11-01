@@ -91,7 +91,7 @@ and compare hashes when changing the generator.
   - `src/config/brand.test.ts` — product name, WCAG text contrast, and map border contrast (4).
   - `src/config/env.test.ts` — lazy env parsing, missing/malformed values, short
     secrets, memoization (5).
-  - `src/server/email/templates.test.ts` — welcome/reset/invitation content,
+  - `src/server/email/templates.test.ts` — welcome/reset/verification content,
     escaping, URL shape, no stray tokens (9).
   - `src/server/email/welcome.test.ts` — once-only claim, skip without config,
     release/rethrow on failure (4).
@@ -119,11 +119,12 @@ and compare hashes when changing the generator.
     search and no-match state, optimistic mark with rose styling, rollback/error,
     and region statistics (5).
   - `src/server/shared-maps.integration.test.ts` — combined counts, member
-    privacy shape, create/invite/accept/reinvite/revoke/remove/leave, expiry,
-    wrong email, single-use and concurrency, owner invariants (11).
+    privacy shape, multi-use join links (two accounts join with one link),
+    replace/revoke/expiry, owner-scoped state, join concurrency, membership
+    removal/leaving, and owner invariants (11).
   - `src/server/actions/shared-maps.auth.test.ts` — every shared-map action
     rejects unauthenticated/non-member/non-owner callers as appropriate,
-    validates input, and handles email outcomes (17).
+    validates input, and returns the copyable link with no email involved (15).
   - `src/components/shared/shared-map-experience.test.tsx` — combined view,
     member filter, read-only state, comparison counts, only-you and nobody views,
     view-specific region stats, combined shared-map export, comparison-view
@@ -135,6 +136,9 @@ and compare hashes when changing the generator.
     visited, no external assets, and user title rendered as escaped text (4).
   - `src/server/invitations.test.ts` — token entropy/format, hash/TTL, URL and
     path handling (5).
+  - `src/components/shared/invite-link-panel.test.tsx` — no link vs active link
+    states, replace/revoke presence, expiry rendering, and the copyable-link
+    success state with the hash warning (5).
   - `src/lib/safe-redirect.test.ts` — same-origin redirects accepted; absolute,
     protocol-relative, backslash, control-character, and malformed targets
     rejected (3).

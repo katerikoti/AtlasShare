@@ -1,22 +1,20 @@
 # AtlasShare — Progress
 
-**Current phase:** Phase 8 — Hardening, QA & deployment (**started 2026-10-28 at
-the owner's direction**). Phase 7 (public site & PWA) was moved past by the owner
-on 2026-10-28 ("this is phase 8") while they finish checking texts before
-deploying; its manual device, offline, install, and Lighthouse checks are still
-not run (see Phase 7 verification).
-**Status:** Phases 1–7 are approved/closed by the owner. **Phase 8 progress:**
-email verification by a 6-digit code (ADR-036); the app is **deployed to
-Vercel at https://atlasshare.eu** (custom domain + Neon production branch +
-Brevo production sender); verification-code delivery was reworked into a
-transactional message and verified to arrive promptly; several UX revisions
-(mobile Account "Map data" link, PWA standalone sign-up/sign-in redirect,
-mobile bottom nav, invite form reset, auth-page copy); map geometry adjusted
-per owner decision D3 (Morocco + Western Sahara merged; Palestine drawn as a
-borderless union outline; Israel hidden from the map but markable). Recent
-work in the working tree (uncommitted) covers D3 and dev-environment fixes.
-`npm run check` (197 tests) and `npm run build` pass.
-**Last updated:** 2026-10-31.
+**Current phase:** Phase 9 — Multi-use join links (owner-requested
+2026-11-01, ADR-037; **implemented and verified locally on 2026-11-01**).
+Phase 8 — Hardening, QA & deployment (started 2026-10-28) continues around it:
+the app is deployed to Vercel at https://atlasshare.eu (custom domain + Neon
+production branch + Brevo production sender); remaining Phase 8 items are
+security headers/CSP, accessibility audit, e2e smoke tests, monitoring, and
+backups. Phase 7 (public site & PWA) was closed by the owner on 2026-10-28; its
+manual device, offline, install, and Lighthouse checks are still not run (see
+Phase 7 verification).
+**Status:** Phases 1–7 are approved/closed by the owner. **Phase 9 progress:**
+email invitations were removed and replaced by one multi-use, 7-day,
+revocable/replaceable join link per map (no Brevo quota used); owners can still
+see and remove members. `npm run check` (197 tests) and `npm run build` pass,
+and all four invite flows were exercised in a browser against the local test
+database. **Last updated:** 2026-11-01.
 
 This is the first file to read when resuming work. It reflects what is actually
 built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
@@ -33,6 +31,7 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 | 6. Image export | ✅ Complete (approved 2026-10-27) | 3200 × 2000 PNG, share/download/SVG fallback, combined shared export without identities, browser QA. |
 | 7. Public site & PWA | ✅ Closed by the owner 2026-10-28 | Landing, privacy, install, metadata/OG, manifest, service worker, offline page, and the ADR-035 revisions. Manual device/offline/Lighthouse QA still not run. |
 | 8. Hardening, QA & deployment | 🟡 In progress (started 2026-10-28) | Done: email verification by code (ADR-036); deployed to Vercel at https://atlasshare.eu (custom domain, Neon production branch, Brevo production sender, verification delivery verified); owner UX revisions; map geometry adjustments (D3). Remaining: security headers/CSP, accessibility audit, e2e smoke tests, monitoring, backups. |
+| 9. Multi-use join links | 🟡 Implemented locally (2026-11-01) | Email invitations removed (ADR-037); one multi-use 7-day revocable/replaceable join link per map. Pending owner review + push to production. |
 
 ## 2. What exists today
 
@@ -211,23 +210,26 @@ built, not what is planned. Plans live in `DEVELOPMENT_PLAN.md`.
 - Creating a map inserts the map and the owner's `OWNER` membership in one
   transaction. Any signed-in user can create a map; creating maps is not
   limited beyond the existing auth rate limits.
-- Owner actions: rename/update description, invite by email, revoke pending
-  invitations, remove members, and delete the map after typing `DELETE`.
-  Members can leave; the owner cannot leave and must delete instead. Removing a
-  member or leaving deletes only the membership, never the person's private
-  visits.
-- Invitations use 32 random bytes (43-character base64url), stored as SHA-256
-  hex. They expire after 7 days, are single-use, and are revocable. Acceptance is
-  an atomic conditional update followed by membership creation. Re-inviting the
-  same email revokes the previous pending link in the same transaction.
-- Invitation preview and acceptance require the signed-in account email to match
-  the invited address. Invalid, expired, revoked, used, and malformed tokens get
-  a generic unavailable state; a different signed-in email gets a distinct
-  message but never sees the map name. Pending invitation emails are only
-  queried for the owner.
-- Invitation email is best-effort via Brevo and contains only the map name and
-  link. The owner can always copy the link from the UI if delivery is skipped or
-  fails. The raw token is never logged by application code.
+- Owner actions: rename/update description, invite without email (ADR-037),
+  revoke the invite link, remove members, and delete the map after typing
+  `DELETE`. Members can leave; the owner cannot leave and must delete instead.
+  Removing a member or leaving deletes only the membership, never the person's
+  private visits.
+- **Join links (Phase 9, ADR-037).** Email invitations are gone. A map has one
+  active multi-use join link, valid 7 days; the owner generates it in the
+  Invite friends panel, copies it (link shown once — only a SHA-256 hash is
+  stored), and can replace it (revoking the old link in the same transaction)
+  or revoke it at any time. Any signed-in account — necessarily verified per
+  ADR-036 — that opens a valid link joins as a `MEMBER`; acceptance is an
+  idempotent upsert guarded by membership uniqueness. Recipients keep the
+  `/invite/[token]` flow: signed-out visitors choose sign in or create an
+  account (map name hidden) with a `?next=` return through the verification
+  step; signed-in users see the map name, expiry, and Join button; members see
+  "You already have access". Expired/revoked/replaced/malformed links get the
+  generic unavailable state, and the page's no-referrer/noindex/no-store
+  headers are unchanged. A legacy one-off exception: invitation links emailed
+  before the migration no longer work (rows deleted), as recorded in
+  `DECISIONS.md` ADR-037.
 - The combined view is computed server-side from an authorization-scoped query.
   The client receives each member's display name, membership id, and deduplicated
   country-code set (needed for the filter), plus combined country counts. It does
@@ -367,6 +369,47 @@ the small CSS region bars, and the export does not include region statistics,
 aspect-ratio choices, PDF, or animation.
 
 ## 3. Verification
+
+### Phase 9 verification — multi-use join links (2026-11-01)
+
+Automated:
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Full check | `npm run check` | ✅ exit 0; lint clean (2 pre-existing unused-var warnings in commits from 2026-10-31, unrelated), types pass, **197/197 tests (33 files)** |
+| Integration tests reach the DB | `vitest run src/server/shared-maps.integration.test.ts` | ✅ 11/11 (not skipped): two accounts join with one link; replace revokes the old link and leaves exactly one non-revoked row; expired/revoked rejected generically; owner-scoped state; idempotent concurrent join |
+| Prisma client regenerated | `npx prisma generate` | ✅ schema without `email`/`acceptedAt` |
+| Migration on dev DB | `prisma migrate dev` | ✅ `20261101211302_join_links_replace_email_invitations` applied to the Neon dev database; `migrate status` in sync (migration checksums also normalized after an accidental mass `_prisma_migrations.checksum` update was restored from the migration files) |
+| Migration on test DB | `prisma migrate deploy` with `TEST_DATABASE_URL` | ✅ applied cleanly |
+| Production build | `npm run build` | ✅ exit 0; `/invite/[token]` dynamic; no new routes |
+
+Browser QA (production server on `localhost:3003`, throwaway accounts in the
+local `atlasshare_test` database, all rows deleted afterwards):
+
+| Check | Result |
+| --- | --- |
+| Owner: Invite friends panel generates a link | ✅ copyable read-only link, "Valid until November 8, 2026", Copy/Replace/Revoke, hash note |
+| Owner opening the link while a member | ✅ "You already have access" + Open shared map |
+| Signed-out visitor | ✅ generic invitation page, map name hidden, Sign in / Create an account |
+| Sign-in with `?next` from the invite page | ✅ returned to `/invite/[token]` after sign-in |
+| Signed-in non-member | ✅ map name, expiry, Join button |
+| Join | ✅ redirect `/shared/[id]?joined=1`; member count 2→3→4 across three accounts on two links |
+| Multi-use | ✅ the same link admitted a second, different account |
+| Replace link | ✅ old link invalid for a signed-in non-member (generic state, map name hidden); DB shows old row revoked, exactly one non-revoked row |
+| Revoke link | ✅ DB shows all rows revoked; panel falls back to the Generate state |
+| Malformed token `/invite/not-a-real-token-at-all` | ✅ generic "not available" |
+| Member list + Remove buttons | ✅ unchanged; owner sees and can remove members |
+| Emails in the invite path | ✅ none — the invitation sender and template no longer exist |
+
+Not run (deferred with the owner's approval):
+
+- The sign-up → verification-code redirect chain (`?next=/invite/...`) was not
+  exercised end-to-end with a code email in this session because the local
+  production test server cannot mail verification codes (Brevo egress auth);
+  that flow was verified in Phase 8 and is unchanged by this feature. As a
+  substitute in this session, throwaway accounts were marked verified with the
+  documented one-off SQL approach and signed in normally.
+- Production deployment verification on Vercel (pending push, below).
 
 ### Phase 8 verification — email verification by code (2026-10-28)
 

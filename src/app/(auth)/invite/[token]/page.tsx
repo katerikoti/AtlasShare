@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AcceptInvitationForm } from "@/components/shared/accept-invitation-form";
-import { SignOutButton } from "@/components/auth/sign-out-button";
 import { brand } from "@/config/brand";
 import { isInvitationToken } from "@/server/invitations";
 import { getInvitationPreview } from "@/server/shared-maps";
@@ -37,8 +36,8 @@ export default async function InvitationPage({
           You&apos;ve been invited to a shared map
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-muted">
-          Sign in with the email address that received the invitation, or create
-          an account with it. The map name and its members stay hidden until
+          Sign in, or create an account first — then you&apos;ll come straight
+          back here to join. The map name and its members stay hidden until
           then.
         </p>
         <div className="mt-6 flex flex-col gap-2">
@@ -56,8 +55,8 @@ export default async function InvitationPage({
           </Link>
         </div>
         <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-          This invitation is single-use and expires after seven days. Ask the
-          map owner for a new link if yours has expired.
+          This link expires seven days after it was created. Ask the map owner
+          for a new link if yours has expired.
         </p>
       </div>
     );
@@ -66,7 +65,6 @@ export default async function InvitationPage({
   const preview = isInvitationToken(token)
     ? await getInvitationPreview(token, {
         userId: session.user.id,
-        email: session.user.email,
       })
     : ({ status: "invalid" } as const);
 
@@ -80,8 +78,8 @@ export default async function InvitationPage({
           This invitation is not available
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-muted">
-          The link may have expired, been revoked, already been used, or been
-          copied incorrectly. Ask the map owner to send a new invitation.
+          The link may have expired, been revoked or replaced, or been copied
+          incorrectly. Ask the map owner for a new link.
         </p>
         <Link
           href="/shared"
@@ -89,32 +87,6 @@ export default async function InvitationPage({
         >
           Go to your shared maps
         </Link>
-      </div>
-    );
-  }
-
-  if (preview.status === "wrong-email") {
-    return (
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-moss">
-          Invitation
-        </p>
-        <h1 className="mt-3 font-display text-3xl tracking-tight">
-          This invitation is for a different email address
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-ink-muted">
-          You are signed in as <span className="font-medium text-ink">{session.user.email}</span>.
-          Sign out, then sign in with the address that received the invitation
-          and open the link again.
-        </p>
-        <div className="mt-6">
-          <SignOutButton
-            redirectTo={`/sign-in${nextQuery}`}
-          />
-        </div>
-        <p className="mt-4 text-xs leading-relaxed text-ink-muted">
-          For privacy, the map name is not shown to a different account.
-        </p>
       </div>
     );
   }
@@ -153,18 +125,17 @@ export default async function InvitationPage({
       <p className="mt-3 text-sm leading-relaxed text-ink-muted">
         You are signed in as{" "}
         <span className="font-medium text-ink">{session.user.email}</span>. This
-        invitation expires on {dateFormatter.format(new Date(preview.expiresAt))}{" "}
-        and can be used once.
+        link expires on {dateFormatter.format(new Date(preview.expiresAt))}.
       </p>
       <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-        Accepting adds you as a member. Members can see each other&apos;s names
+        Joining adds you as a member. Members can see each other&apos;s names
         and which countries they have marked, but not email addresses, notes, or
         visit dates. Your personal map stays yours.
       </p>
       <AcceptInvitationForm token={token} />
       <p className="mt-5 text-xs leading-relaxed text-ink-muted">
-        This link only works for {brand.name} accounts with the invited email
-        address.
+        Anyone with this link and a {brand.name} account can join while it is
+        valid.
       </p>
     </div>
   );

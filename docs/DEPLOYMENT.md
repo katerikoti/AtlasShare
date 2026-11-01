@@ -223,8 +223,8 @@ these three.
 - **Emails not arriving:** check the Brevo dashboard for bounces, sender
   verification, domain authentication, and `EMAIL_FROM`. The action itself should
   have succeeded.
-- **Invite link invalid:** check expiry/revocation/accepted state, and that the
-  signed-in email matches the invitation.
+- **Invite link invalid:** check expiry, revocation, and replacement state (the
+  owner may have generated a newer link).
 - **Map blank:** check the dataset asset loaded (network tab), then the SVG
   `viewBox` and path data. A dataset integrity test should have caught this.
 - **Suspected data leak:** rotate secrets, invalidate sessions, audit the

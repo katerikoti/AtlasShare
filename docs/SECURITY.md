@@ -11,8 +11,8 @@ decision in `DECISIONS.md`.
 | --- | --- | --- |
 | Account credentials and sessions | Account takeover exposes all travel data | Better Auth tables, cookies |
 | A user's visited countries | Personal travel history; can reveal habits | `visited_countries` |
-| Shared map membership and invitations | Unauthorized access to other people's data | `shared_maps*` tables |
-| Email addresses | PII, phishing/spam target | `user.email`, invitation email |
+| Shared map membership and join links | Unauthorized access to other people's data | `shared_maps*` tables |
+| Email addresses | PII, phishing/spam target | `user.email` (join links contain no email) |
 | Secrets (DB URL, auth secret, Brevo key) | Full compromise | Environment variables only |
 | Invitation tokens | Grant access to a shared map | Emailed/copied link; hash in DB |
 
@@ -109,18 +109,19 @@ scoped by the authenticated user or by a verified membership.**
 - Personal visits: `where: { userId: session.user.id }`. There is no endpoint
   that accepts a `userId` from the client.
 - Shared maps: `getMapAccess(mapId, userId)` returns the map + membership or
-  `null`; the page renders `notFound()`. All member/invitation mutations use
-  the same helper. Owner-only actions (rename, delete, invite, revoke, remove
-  member) additionally check `role === "OWNER"` server-side.
+  `null`; the page renders `notFound()`. All member/invite-link mutations use
+  the same helper. Owner-only actions (rename, delete, generate invite link,
+  revoke, remove member) additionally check `role === "OWNER"` server-side.
 - Authorization failures for private maps return **404**, not 403, so the
   existence of a map is not disclosed to non-members.
-- Removing a member or revoking an invite takes effect immediately on the next
-  request. No cached member lists.
+- Removing a member or revoking the invite link takes effect immediately on the
+  next request. No cached member lists.
 - The combined map view is computed server-side. The client receives member
   display names, membership ids, and deduplicated country-code sets so the
   member filter works, plus combined counts. It does not receive emails, user
-  ids, raw visit rows, notes, or visit dates. Pending invitation emails are
-  returned only to the owner.
+  ids, raw visit rows, notes, or visit dates. Join links are owned data of the
+  map and only reach the owner (the raw link is returned once by the generate
+  action; the panel otherwise shows state only, because only a hash is stored).
 - The Phase 5 comparison is derived in the browser from that same authorized
   view: "visited by everyone" uses the published per-country counts, "only you"
   intersects the signed-in member's own codes with count-one codes, and "not yet
@@ -129,12 +130,11 @@ scoped by the authenticated user or by a verified membership.**
   Region statistics are counts over the current view, not another person's raw
   rows.
 - The shared-map page renders its **Members and settings** dropdown (member list,
-  Remove/Leave, Invite someone, Pending invitations, Map details, Danger zone) on
-  the server (ADR-035). Owner-only parts are produced only when
-  `requireMapAccess` returns the `OWNER` role, so a member's response contains no
-  invitation emails or invite controls; the Server Actions still re-check the
-  role on every call. Putting these controls inside a collapsed dropdown is
-  presentation only.
+  Remove/Leave, Invite friends, Map details, Danger zone) on the server
+  (ADR-035). Owner-only parts are produced only when `requireMapAccess` returns
+  the `OWNER` role, so a member's response contains no invite controls; the
+  Server Actions still re-check the role on every call. Putting these controls
+  inside a collapsed dropdown is presentation only.
 
 Test requirement: for each new server action, at least one test proves a
 non-member cannot perform it and cannot read the data.
@@ -183,20 +183,25 @@ non-member cannot perform it and cannot read the data.
 - Cookies are `SameSite=Lax`, which blocks cross-site POSTs from carrying the
   session for top-level navigations.
 - No state-changing GET requests.
-- Invitation acceptance is a POST that requires the signed-in user's email to
-  match the invitation email. A different account cannot redeem it. Because every
-  account's address is now verified with an emailed code before it can sign in,
-  a forwarded link can no longer be redeemed by simply registering the invited
-  address: the person would also need access to that inbox.
+- Join-link acceptance is a POST that requires a session, which in turn proves
+  the account's address was verified by an emailed code (ADR-036). No other
+  check applies. (ADR-028's invitation-email match is obsolete since ADR-037;
+  joining is intentionally open to whoever holds the link.)
 
-## 8. Invitation tokens
+## 8. Join-link tokens (ADR-037)
 
 - Generate 32 random bytes (base64url) with a CSPRNG.
 - Store only `SHA-256(token)` in `tokenHash`. The raw token exists only in the
-  email/link.
-- Single use: acceptance stamps `acceptedAt` atomically; a second attempt fails.
-- Expiry: 7 days. Revocable by the owner. Expired/revoked tokens are rejected
-  with the same generic message as invalid ones.
+  copyable link, which the owner is shown **once, at generation time** — the
+  database cannot redisplay it, so a lost link is replaced rather than
+  recovered.
+- Multi-use: any signed-in account that opens a valid link joins as a member;
+  the (map, user) uniqueness guard keeps one membership row per person and the
+  upsert is idempotent (ADR-012's single-use claim was removed with the email
+  model).
+- Expiry: 7 days after creation. Revocable by the owner at any time, and
+  generating a new link revokes the previous one in the same transaction, so at
+  most one non-revoked link per map exists (application-layer invariant).
 - Acceptance is **not rate-limited**. The 256-bit token makes guessing
   infeasible, but a shared limiter is still a pre-launch hardening item.
 - Application code does not log tokens, and invite responses send
@@ -204,10 +209,11 @@ non-member cannot perform it and cannot read the data.
   `Cache-Control: private, no-store`. The raw token is necessarily in the
   request path, so hosting/proxy access logs can record it; restrict log access
   and retention in production.
-- Invitations are per-email. Copyable links still target one address. Changing
-  the invitation email requires revoking and re-inviting. Because email
-  verification is not enforced, a forwarded link can be redeemed by whoever
-  registers the unregistered invited address first; see accepted risks.
+- Join links are not addressed to an email (ADR-037). Anyone holding the link
+  and a verified account joins the map; the owner sees membership plainly and
+  can remove individual members. A leaked link therefore has the same exposure
+  as a group-chat invite in any other app, bounded by the 7-day expiry and the
+  owner's revoke/replace.
 
 ## 9. Rate limiting and abuse
 
@@ -226,8 +232,9 @@ each instance has its own counters. If abuse becomes real, move to a shared
 store (database or managed limiter) and update this section. Limits were not
 exhausted during verification because that would lock the test IP.
 
-Shared-map Server Actions (create, invite, revoke, accept, remove, leave,
-delete) are **not covered by these limits**. In particular, invitation
+Shared-map Server Actions (create, generate invite link, revoke, accept,
+remove, leave, delete) are **not covered by these limits**. In particular,
+join acceptance
 acceptance has no rate limit; see §8 and §20.
 
 ## 10. Secrets and configuration
@@ -371,9 +378,9 @@ Before a phase is approved:
 | Sign-up for an already-verified address sends no "account exists" email | Keeps sign-up responses generic; the code screen links to sign-in | If users report confusion |
 | No MFA | Scope; password + rate limiting first | Post-launch |
 | Per-instance rate limiting may be weak on serverless | Simplicity; limits still slow brute force | When abuse is observed or before public launch |
-| Shared-map actions, including invite acceptance, have no rate limit | 256-bit tokens make guessing infeasible; implementation complexity deferred | Before public launch / Phase 8 |
-| Invitation token appears in the URL path and hosting access logs | Needed for a clickable link; app does not log it and sends no-referrer/no-store headers | Before production; restrict log access/retention |
-| Invitation email is best-effort with no retry/bounce handling | Owner can copy the link; no job queue yet | Phase 8 or when Brevo domain auth is configured |
+| Shared-map actions, including join acceptance, have no rate limit | 256-bit tokens make guessing infeasible; implementation complexity deferred | Before public launch / Phase 8 |
+| Join-link token appears in the URL path and hosting access logs | Needed for a clickable link; app does not log it and sends no-referrer/no-store headers | Before production; restrict log access/retention |
+| A valid join link admits any signed-in account (multi-use, no email binding) | Intended semantics of sharing a group invite; bounded by 7-day expiry, revoke, replace; owner can remove members | If link-sharing proves too open, add a member cap or confirmation step (ADR-037) |
 | Password-reset token stored raw by Better Auth | Single-use and ≤1 hour; replacing the flow is larger than Phase 2 | Before public launch / Phase 8 |
 | No third-party error tracking yet | Avoid extra data processor before launch | Phase 8 |
 | CSP not yet configured | No production deployment yet | Phase 8 |

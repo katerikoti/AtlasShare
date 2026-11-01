@@ -7,7 +7,6 @@ import { z } from "zod";
 import { getEnv } from "@/config/env";
 import { getMapAccess, isMapOwner } from "@/server/authorization";
 import { buildInvitationUrl } from "@/server/invitations";
-import { sendInvitationEmail } from "@/server/email";
 import {
   acceptMapInvitation,
   createMapInvitation,
@@ -22,8 +21,8 @@ import { requireSession } from "@/server/session";
 import {
   createSharedMapSchema,
   deleteSharedMapSchema,
+  generateInviteSchema,
   invitationTokenSchema,
-  inviteMemberSchema,
   leaveSharedMapSchema,
   removeMemberSchema,
   revokeInvitationSchema,
@@ -162,14 +161,13 @@ export async function deleteSharedMapAction(
   redirect("/shared?deleted=1");
 }
 
-export async function inviteToSharedMapAction(
+export async function generateInviteLinkAction(
   _previous: InvitationActionState,
   formData: FormData,
 ): Promise<InvitationActionState> {
   const session = await requireSession();
-  const parsed = inviteMemberSchema.safeParse({
+  const parsed = generateInviteSchema.safeParse({
     mapId: formData.get("mapId"),
-    email: formData.get("email"),
   });
 
   if (!parsed.success) {
@@ -186,21 +184,14 @@ export async function inviteToSharedMapAction(
     result = await createMapInvitation({
       mapId: parsed.data.mapId,
       ownerId: session.user.id,
-      email: parsed.data.email,
     });
   } catch (error) {
-    logFailure("invite", error);
+    logFailure("generate invite link", error);
     return { status: "error", message: genericErrorMessage };
   }
 
   if (result.status === "not-found") {
     return { status: "error", message: mapNotFoundMessage };
-  }
-  if (result.status === "already-member") {
-    return {
-      status: "error",
-      message: "That email address already belongs to a member of this map.",
-    };
   }
 
   const env = getEnv();
@@ -208,24 +199,15 @@ export async function inviteToSharedMapAction(
     env.APP_URL ?? env.NEXT_PUBLIC_APP_URL!,
     result.token,
   );
-  const emailDelivery = await sendInvitationEmail({
-    to: result.invitation.email,
-    mapName: owner.access.map.name,
-    inviteUrl,
-    expiresInDays: 7,
-  });
 
   revalidatePath(`/shared/${parsed.data.mapId}`);
 
   return {
     status: "success",
     message:
-      emailDelivery === "sent"
-        ? `Invitation emailed to ${result.invitation.email}. You can also copy the link below.`
-        : `Invitation created for ${result.invitation.email}, but the email was not sent. Copy the link below and share it directly.`,
-    invitedEmail: result.invitation.email,
+      "Invite link generated. Copy it and send it to your friends — anyone with an account can join while it is valid.",
     inviteUrl,
-    emailDelivery,
+    expiresAt: result.invitation.expiresAt.toISOString(),
   };
 }
 
@@ -257,7 +239,7 @@ export async function revokeInvitationAction(
     if (count !== 1) {
       return {
         status: "error",
-        message: "That invitation is no longer pending.",
+        message: "That invite link is no longer active.",
       };
     }
   } catch (error) {
@@ -266,7 +248,7 @@ export async function revokeInvitationAction(
   }
 
   revalidatePath(`/shared/${parsed.data.mapId}`);
-  return { status: "success", message: "Invitation revoked." };
+  return { status: "success", message: "Invite link revoked." };
 }
 
 export async function removeMemberAction(
@@ -370,20 +352,12 @@ export async function acceptInvitationAction(
     result = await acceptMapInvitation({
       token: parsed.data,
       userId: session.user.id,
-      email: session.user.email,
     });
   } catch (error) {
     logFailure("accept invitation", error);
     return { status: "error", message: genericErrorMessage };
   }
 
-  if (result.status === "wrong-email") {
-    return {
-      status: "error",
-      message:
-        "This invitation is for a different email address. Sign in with the account that received it.",
-    };
-  }
   if (result.status === "invalid") {
     return {
       status: "error",

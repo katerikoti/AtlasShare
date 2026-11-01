@@ -3,18 +3,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DeleteMapForm } from "@/components/shared/delete-map-form";
-import { InviteMemberForm } from "@/components/shared/invite-member-form";
+import { InviteLinkPanel } from "@/components/shared/invite-link-panel";
 import {
   LeaveMapButton,
   RemoveMemberButton,
 } from "@/components/shared/member-actions";
 import { MapSettingsForm } from "@/components/shared/map-settings-form";
-import { RevokeInvitationButton } from "@/components/shared/revoke-invitation-button";
 import { SharedMapExperience } from "@/components/shared/shared-map-experience";
 import { brand } from "@/config/brand";
 import { requireMapAccess } from "@/server/authorization";
 import {
-  getPendingInvitationsForMap,
+  getActiveInvitationForMap,
   getSharedMapView,
 } from "@/server/shared-maps";
 import { requireSession } from "@/server/session";
@@ -23,8 +22,6 @@ export const metadata: Metadata = {
   title: "Shared map",
   description: `A private shared map in ${brand.name}.`,
 };
-
-const dateFormatter = new Intl.DateTimeFormat("en", { dateStyle: "medium" });
 
 export default async function SharedMapPage({
   params,
@@ -41,9 +38,9 @@ export default async function SharedMapPage({
   if (!map) notFound();
 
   const isOwner = access.role === "OWNER";
-  const pendingInvitations = isOwner
-    ? await getPendingInvitationsForMap(mapId, session.user.id)
-    : [];
+  const activeInvitation = isOwner
+    ? await getActiveInvitationForMap(mapId, session.user.id)
+    : null;
 
   const manageContent = (
     <div className="space-y-6">
@@ -101,51 +98,25 @@ export default async function SharedMapPage({
         <>
           <div className="border-t border-line/70 pt-5">
             <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
-              Invite someone
+              Invite friends
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-              Invitations are single-use, expire after 7 days, and only work for
-              the email address they are sent to. The email contains the link;
-              you can also copy it here.
+              No email addresses needed. Generate a link, send it to anyone —
+              for example in a group chat — and everyone who opens it while it
+              is valid joins this map as a member. The link expires after 7
+              days; you can revoke it or replace it with a new link at any time.
             </p>
-            <InviteMemberForm mapId={map.id} />
-          </div>
-
-          <div className="border-t border-line/70 pt-5">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-moss">
-              Pending invitations
-            </h3>
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-              Revoke a link if it was sent to the wrong address or is no longer
-              needed. Accepted invitations disappear from this list.
-            </p>
-            {pendingInvitations.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-line/70 bg-canvas/50 px-4 py-3 text-sm text-ink-muted">
-                No pending invitations.
-              </p>
-            ) : (
-              <ul className="mt-4 divide-y divide-line/70">
-                {pendingInvitations.map((invitation) => (
-                  <li
-                    key={invitation.id}
-                    className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="break-all font-medium">{invitation.email}</p>
-                      <p className="mt-0.5 text-xs text-ink-muted">
-                        Expires{" "}
-                        {dateFormatter.format(new Date(invitation.expiresAt))}
-                      </p>
-                    </div>
-                    <RevokeInvitationButton
-                      mapId={map.id}
-                      invitationId={invitation.id}
-                      email={invitation.email}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
+            <InviteLinkPanel
+              mapId={map.id}
+              activeInvitation={
+                activeInvitation
+                  ? {
+                      id: activeInvitation.id,
+                      expiresAt: activeInvitation.expiresAt.toISOString(),
+                    }
+                  : null
+              }
+            />
           </div>
 
           <div className="border-t border-line/70 pt-5">
@@ -168,8 +139,8 @@ export default async function SharedMapPage({
               Danger zone
             </h3>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-muted">
-              Deleting the shared map ends access for everyone and removes
-              pending invitations.
+              Deleting the shared map ends access for everyone and removes the
+              invite link.
             </p>
             <DeleteMapForm mapId={map.id} mapName={map.name} />
           </div>

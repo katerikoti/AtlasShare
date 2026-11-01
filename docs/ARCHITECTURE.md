@@ -398,35 +398,34 @@ dropdown; then the map card; the "Countries in this view" list; the export panel
 and finally one closed **Members and settings** dropdown (just **Members** for
 non-owners). **Show more** holds only the member checkboxes and Compare progress
 (with the region breakdown). **Members and settings** holds, in order: the member
-list with Remove/Leave, and, for the owner only, Invite someone, Pending
-invitations, Map details, and the Danger zone. The page (a Server Component)
-renders that dropdown itself, so owner checks and invitation data stay
-server-side; non-owners never receive pending-invitation data or invite
-controls. The map card has no legend.
+list with Remove/Leave, and, for the owner only, Invite friends (the link panel,
+ADR-037), Map details, and the Danger zone. The page (a Server Component)
+renders that dropdown itself, so owner checks and the invite-link state stay
+server-side; non-owners never receive invite data or controls. The map card has
+no legend.
 
 `/shared` lists "Maps you belong to:" first, directly under the intro text, then
 the "Create a shared map:" form.
 
 Design constraints:
 
-- Membership is explicit. There is no public sharing, no "anyone with the link
-  can view" in the first release.
-- Invitations are single-use 256-bit tokens delivered by email or copyable link.
-  The database stores only a SHA-256 hash. Tokens expire after 7 days, are
-  revoked on replacement, and are marked accepted atomically.
-- The invited email must match the signed-in account. Email verification is not
-  enforced (see `SECURITY.md`), so this is a string match, not independent proof
-  of address control.
+- Membership is explicit for viewing (combined marks). Join links (ADR-037) are
+  the deliberate group-chat-style entry, bounded in time and revocable.
+- Join links are multi-use 256-bit tokens shared by copy. The database stores
+  only a SHA-256 hash; the raw link is shown to the owner once at generation
+  time. Links expire 7 days after creation, are revoked on replacement, and can
+  be revoked explicitly.
+- No email binding exists. Any signed-in account (whose address was verified at
+  sign-in and sign-up per ADR-036) that opens a valid link joins as a member.
 - Removing a member removes their contribution from the derived view. Their
   private visits are untouched. The owner cannot leave; the map must be deleted.
-- A map owner can rename the map, invite, revoke invitations, remove members,
-  and delete the map. A member can leave. Deleting a map is owner-only and
-  requires typing `DELETE`.
+- A map owner can rename the map, generate/replace/revoke the link, remove
+  members, and delete the map. A member can leave. Deleting a map is owner-only
+  and requires typing `DELETE`.
 - The combined view is computed server-side from an authorization-scoped query.
   The client receives member display names, membership ids, and deduplicated
   country-code sets so the filter works. It never receives raw visit rows,
-  emails, user ids, notes, or visit dates. Pending invitation emails are
-  owner-only.
+  emails, user ids, notes, or visit dates. The raw invite link is owner-only.
 - The shared view is read-only for everyone. Members change their own map on
   `/map`; shared pages do not mutate personal visits.
 - Roles are intentionally minimal: `OWNER` and `MEMBER`. Editors/viewers are a
@@ -489,16 +488,16 @@ Constraints:
   Microsoft may rewrite or flag mail from unauthenticated senders.
 - Plain HTML templates with inline styles, built from the `brand` palette. No
   React Email dependency in the first release.
-- Emails implemented: welcome (Phase 2), password reset (Phase 2), and shared
-  map invitation (Phase 4); the verification-code email is described below.
+- Emails implemented: welcome (Phase 2), password reset (Phase 2), and the
+  verification-code email (ADR-036). The Phase 4 invitation email was removed
+  in ADR-037; shared-map invites are link-only.
 - Sending is best-effort and never blocks the primary mutation from succeeding.
-  The owner can copy the invitation link if sending is skipped or fails.
   Failures are logged without tokens or message bodies.
 - Without `BREVO_API_KEY`, the mailer is a no-op and logs the skipped subject;
-  sign-up and invitation creation still succeed.
+  sign-up still succeeds.
 - `welcomeEmailSentAt` on the user record prevents duplicate welcomes. If email
   is disabled at sign-up, the field stays null and the welcome is **not**
-  retried later; there is no job queue or invitation retry.
+  retried later; there is no job queue or mail retry.
 - Email verification **is enforced** (ADR-036). Sign-up emails a 6-digit code
   (`src/server/email`: `renderVerificationCodeEmail`, `sendVerificationCodeEmail`;
   wired through Better Auth's `emailOTP` plugin in `src/server/auth.ts`). The

@@ -2,7 +2,6 @@ import { getEnv } from "@/config/env";
 import { getDb } from "@/server/db";
 import { getMailer, type MailMessage, type MailResult } from "./mailer";
 import {
-  renderInvitationEmail,
   renderPasswordResetEmail,
   renderVerificationCodeEmail,
   renderWelcomeEmail,
@@ -176,37 +175,3 @@ export async function sendPasswordResetEmail(input: {
   }
 }
 
-export type InvitationEmailOutcome = "sent" | "skipped" | "failed";
-
-/**
- * Invitation email is best-effort: the invitation row and copyable link remain
- * valid even if Brevo is down or not configured. Never log the recipient, map
- * name, or token.
- */
-export async function sendInvitationEmail(input: {
-  to: string;
-  mapName: string;
-  inviteUrl: string;
-  expiresInDays: number;
-}): Promise<InvitationEmailOutcome> {
-  const rendered = renderInvitationEmail({
-    mapName: input.mapName,
-    inviteUrl: input.inviteUrl,
-    expiresInDays: input.expiresInDays,
-  });
-
-  try {
-    const result = await getMailer().send({
-      to: input.to,
-      subject: rendered.subject,
-      html: rendered.html,
-      text: rendered.text,
-    });
-    return result.status;
-  } catch (error) {
-    console.error("[email] invitation send failed", {
-      message: error instanceof Error ? error.message : "unknown error",
-    });
-    return "failed";
-  }
-}

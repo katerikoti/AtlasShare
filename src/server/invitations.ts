@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 
 /**
- * Invitation links are bearer credentials until accepted. The raw token is
- * only ever put in the email/copyable link; the database stores its SHA-256
- * hash. Thirty-two random bytes give 256 bits of entropy.
+ * Invite links are bearer credentials while valid. The raw token is only ever
+ * put in the copyable link; the database stores its SHA-256 hash. Thirty-two
+ * random bytes give 256 bits of entropy.
  */
 export const invitationTokenPattern = /^[A-Za-z0-9_-]{43}$/;
 export const invitationTtlMs = 7 * 24 * 60 * 60 * 1000;

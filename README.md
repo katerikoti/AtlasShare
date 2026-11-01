@@ -75,7 +75,8 @@ npm run db:migrate
 
 Email is optional in development. Without `BREVO_API_KEY`, welcome, reset, and
 invitation messages are skipped with a log line (read the reset token from the
-`verification` table in development, and copy the invitation link from the owner
+`verification` table in development), and generate the invite link from the map's
+Invite friends panel
 UI). **Sign-up needs an emailed 6-digit code**: when mail cannot be sent in
 development (no key, or Brevo rejects the request), the code is printed in the
 terminal running `npm run dev` as

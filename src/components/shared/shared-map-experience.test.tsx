@@ -289,8 +289,8 @@ describe("SharedMapExperience", () => {
     expect(screen.getByRole("checkbox", { name: "All" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: /Ada/ })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Ben" })).toBeChecked();
-    expect(screen.queryByText("Invite someone")).not.toBeInTheDocument();
-    expect(screen.queryByText("Pending invitations")).not.toBeInTheDocument();
+    expect(screen.queryByText("Invite friends")).not.toBeInTheDocument();
+    expect(screen.queryByText("Generate invite link")).not.toBeInTheDocument();
   });
 
   it("returns to the combined view when a comparison is toggled off", async () => {
